@@ -101,7 +101,7 @@ class TestIntegration(unittest.TestCase):
         self._agent = 'power_governor'
         self._options = {'power_budget': 150}
         self._tmp_files = []
-        self._output = None
+        self._output = []
         self._power_limit = geopm_test_launcher.geopmread("MSR::PKG_POWER_LIMIT:PL1_POWER_LIMIT board 0")
         self._frequency = geopm_test_launcher.geopmread("MSR::PERF_CTL:FREQ board 0")
         self._original_freq_map_env = os.environ.get('GEOPM_FREQUENCY_MAP')
@@ -110,8 +110,12 @@ class TestIntegration(unittest.TestCase):
         geopm_test_launcher.geopmwrite("MSR::PKG_POWER_LIMIT:PL1_POWER_LIMIT board 0 " + str(self._power_limit))
         geopm_test_launcher.geopmwrite("MSR::PERF_CTL:FREQ board 0 " + str(self._frequency))
         if sys.exc_info() == (None, None, None) and os.getenv('GEOPM_KEEP_FILES') is None:
-            if self._output is not None:
-                self._output.remove_files()
+            # Let self._output be a list of outputs or a single output
+            if not isinstance(self._output, list):
+                self._output = [self._output]
+
+            for output in self._output:
+                output.remove_files()
             for ff in self._tmp_files:
                 try:
                     os.remove(ff)
@@ -158,6 +162,12 @@ class TestIntegration(unittest.TestCase):
             if actual_key not in expected_policy:
                 self.assertEqual('NAN', actual_value,
                                  msg='Unexpected value for {} (context: {})'.format(actual_key, context))
+
+    def assertFar(self, a, b, epsilon=0.05, msg=''):
+        denom = a if a != 0 else 1
+        if abs((a - b) / denom) < epsilon:
+            self.fail('The fractional difference between {a} and {b} is less than {epsilon}.  {msg}'.format(
+                a=a, b=b, epsilon=epsilon, msg=msg))
 
     def create_progress_df(self, df):
         # Build a df with only the first region entry and the exit.
@@ -1315,6 +1325,46 @@ class TestIntegration(unittest.TestCase):
             util.remove_file_on_compute_nodes(environment_default_path)
             self.assert_geopm_uses_policy(override_policy, test_name + '_override_no_user')
             self.assert_geopm_uses_policy(override_policy, test_name + '_override_with_user', user_policy=user_policy)
+
+    def test_multiple_model_regions(self):
+        """
+        POC of use of new custom named model regions.
+        """
+        name = 'test_multiple_model_regions'
+        min_freq = geopm_test_launcher.geopmread("CPUINFO::FREQ_MIN board 0")
+        sticker_freq = geopm_test_launcher.geopmread("CPUINFO::FREQ_STICKER board 0")
+
+        app_conf = geopmpy.io.BenchConf(name + '_app.config')
+        self._tmp_files.append(app_conf.get_path())
+        app_conf.set_loop_count(100)
+
+        import numpy
+        from numpy import arange
+
+        for scale in arange(0.001, 0.1, 0.001):
+            scaling_region_name = 'scaling_{}'.format(scale)
+            app_conf.append_region(scaling_region_name, scale)
+            timed_scaling_region_name = 'scaling_timed{}'.format(scale)
+            app_conf.append_region(timed_scaling_region_name, scale)
+
+        def get_run_report(test_min_freq, test_max_freq):
+            self._agent = 'energy_efficient'
+            self._options = {'FREQ_MIN': test_min_freq,
+                             'FREQ_MAX': test_max_freq}
+            subtest_name = '{}_{}_{}'.format(name, test_min_freq, test_max_freq)
+            report_path = subtest_name + '.report'
+            agent_conf = geopmpy.io.AgentConf(subtest_name + '_agent.config', self._agent, self._options)
+            self._tmp_files.append(report_path)
+            self._tmp_files.append(agent_conf.get_path())
+            launcher = geopm_test_launcher.TestLauncher(app_conf, agent_conf, report_path)
+            launcher.set_num_node(1)
+            launcher.set_num_rank(1)
+            launcher.run(subtest_name)
+            return geopmpy.io.RawReport(report_path)
+
+        ee_report = get_run_report(min_freq, sticker_freq)
+        baseline_report = get_run_report(sticker_freq, sticker_freq)
+
 
 class TestIntegrationGeopmio(unittest.TestCase):
     ''' Tests of geopmread and geopmwrite.'''
