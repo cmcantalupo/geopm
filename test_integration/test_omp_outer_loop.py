@@ -87,7 +87,6 @@ class TestIntegrationOMPOuterLoop(unittest.TestCase):
         test_config = ['_with_ompt', '_without_ompt']
         cls._expected_regions = ['MPI_Barrier']
         cls._report_path = []
-        cls._trace_path = []
         cls._skip_launch = _g_skip_launch
         cls._keep_files = os.getenv('GEOPM_KEEP_FILES') is not None
         num_node = 1
@@ -95,15 +94,12 @@ class TestIntegrationOMPOuterLoop(unittest.TestCase):
         for config in test_config:
             curr_run = test_name + config
             report_path = curr_run + '.report'
-            trace_path = curr_run + '.trace'
             cls._report_path.append(report_path)
-            cls._trace_path.append(trace_path)
             cls._agent_conf_path = test_name + '-agent-config.json'
             agent_conf = geopmpy.io.AgentConf(cls._agent_conf_path)
             launcher = geopm_test_launcher.TestLauncher(AppConf(),
                                                         agent_conf,
                                                         report_path,
-                                                        trace_path,
                                                         time_limit=6000)
             launcher.set_num_node(num_node)
             launcher.set_num_rank(num_rank)
@@ -120,13 +116,13 @@ class TestIntegrationOMPOuterLoop(unittest.TestCase):
         """
         if (sys.exc_info() == (None, None, None) and not
             cls._keep_files and not cls._skip_launch):
-            os.unlink(cls._report_path)
-            for ff in glob.glob(cls._trace_path + '*'):
-                os.unlink(ff)
+            os.unlink(cls._agent_conf_path)
+            for rp in cls._report_path:
+                os.unlink(rp)
 
-    def test_user_defined_regions_absent(self):
-        """Test that the first run's report does NOT contain the spin and
-           stream regions.
+    def test_regions_absent(self):
+        """Test that the first run's report does NOT contain
+           MPI_Barrier region.
         """
         # self._report_path[0] maps to with-ompt config
         report = geopmpy.io.RawReport(self._report_path[0])
@@ -136,9 +132,9 @@ class TestIntegrationOMPOuterLoop(unittest.TestCase):
                 self.assertFalse(expected_region in report.region_names(host_name),
                                  msg='Region {} should not be present in report'.format(expected_region))
 
-    def test_user_defined_regions_present(self):
-        """Test that the second run's report DOES contain the spin and
-           stream regions.
+    def test_regions_present(self):
+        """Test that the second run's report DOES contain the
+           MPIBarrier region.
         """
         # self._report_path[1] maps to with-ompt config
         report = geopmpy.io.RawReport(self._report_path[1])
