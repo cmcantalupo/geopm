@@ -42,7 +42,8 @@ namespace geopm
     class ReduceModelRegion : public ModelRegion
     {
         public:
-            ReduceModelRegion(double big_o_in,
+            ReduceModelRegion(const std::string &name,
+                              double big_o_in,
                               int verbosity,
                               bool do_imbalance,
                               bool do_progress,

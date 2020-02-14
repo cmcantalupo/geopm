@@ -42,7 +42,8 @@ namespace geopm
     class NestedModelRegion : public ModelRegion
     {
         public:
-            NestedModelRegion(double big_o_in,
+            NestedModelRegion(const std::string &name,
+                              double big_o_in,
                               int verbosity,
                               bool do_imbalance,
                               bool do_progress,

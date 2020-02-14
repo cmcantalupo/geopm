@@ -40,7 +40,8 @@ namespace geopm
     class DGEMMModelRegion : public ModelRegion
     {
         public:
-            DGEMMModelRegion(double big_o_in,
+            DGEMMModelRegion(const std::string &name,
+                             double big_o_in,
                              int verbosity,
                              bool do_imbalance,
                              bool do_progress,

@@ -43,12 +43,13 @@
 
 namespace geopm
 {
-    All2allModelRegion::All2allModelRegion(double big_o_in,
+    All2allModelRegion::All2allModelRegion(const std::string &name,
+                                           double big_o_in,
                                            int verbosity,
                                            bool do_imbalance,
                                            bool do_progress,
                                            bool do_unmarked)
-        : ModelRegion(verbosity)
+        : ModelRegion(name, verbosity)
         , m_send_buffer(NULL)
         , m_recv_buffer(NULL)
         , m_num_send(0)
@@ -56,7 +57,6 @@ namespace geopm
         , m_align(64)
         , m_rank(-1)
     {
-        m_name = "all2all";
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;

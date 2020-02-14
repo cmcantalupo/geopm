@@ -39,14 +39,14 @@
 
 namespace geopm
 {
-    SleepModelRegion::SleepModelRegion(double big_o_in,
+    SleepModelRegion::SleepModelRegion(const std::string &name,
+                                       double big_o_in,
                                        int verbosity,
                                        bool do_imbalance,
                                        bool do_progress,
                                        bool do_unmarked)
-        : ModelRegion(verbosity)
+        : ModelRegion(name, verbosity)
     {
-        m_name = "sleep";
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;

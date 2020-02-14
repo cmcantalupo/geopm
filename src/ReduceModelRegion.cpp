@@ -41,12 +41,13 @@
 
 namespace geopm
 {
-    ReduceModelRegion::ReduceModelRegion(double big_o_in,
+    ReduceModelRegion::ReduceModelRegion(const std::string &name,
+                                         double big_o_in,
                                          int verbosity,
                                          bool do_imbalance,
                                          bool do_progress,
                                          bool do_unmarked)
-        : ModelRegion(verbosity)
+        : ModelRegion(name, verbosity)
     {
         big_o(big_o_in);
     }

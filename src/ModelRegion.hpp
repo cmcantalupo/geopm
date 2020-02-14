@@ -45,7 +45,7 @@ namespace geopm
             static std::unique_ptr<ModelRegion> model_region(const std::string &name,
                                                              double big_o,
                                                              int verbosity);
-            ModelRegion(int verbosity);
+            ModelRegion(const std::string &name, int verbosity);
             virtual ~ModelRegion();
             std::string name(void);
             double big_o(void);
@@ -60,7 +60,7 @@ namespace geopm
         protected:
             virtual void num_progress_updates(double big_o_in);
             static bool name_check(const std::string &name, const std::string &key);
-            std::string m_name;
+            const std::string m_name;
             double m_big_o;
             int m_verbosity;
             uint64_t m_region_id;
