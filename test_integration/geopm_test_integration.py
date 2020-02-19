@@ -873,7 +873,7 @@ class TestIntegration(unittest.TestCase):
             node_names = self._output.get_node_names()
             runtime_list = []
             for node_name in node_names:
-                epoch_data = self._output.get_report_data(node_name=node_name, region='dgemm')
+                epoch_data = self._output.get_report_data(node_name=node_name, region='dgemm-imbalance')
                 runtime_list.append(epoch_data['runtime'].item())
             if agent == 'power_governor':
                 mean_runtime = sum(runtime_list) / len(runtime_list)

@@ -48,6 +48,7 @@
 #include "ScalingModelRegion.hpp"
 #include "BarrierModelRegion.hpp"
 #include "ReduceModelRegion.hpp"
+#include "CompositeModelRegion.hpp"
 
 namespace geopm
 {
@@ -56,9 +57,9 @@ namespace geopm
         bool result = false;
         size_t key_size = key.size();
         if (name.rfind(key) == 0 ||
-            name.find(key) == 0 &&
+            (name.find(key) == 0 &&
             (name[key_size] == '\0' ||
-             name[key_size] == '-')) {
+             name[key_size] == '-'))) {
             result = true;
         }
         return result;
@@ -76,6 +77,9 @@ namespace geopm
             do_progress = false;
         }
 
+        if (name_check(name, "composite")) {
+            return geopm::make_unique<CompositeModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+        }
         if (name_check(name, "sleep")) {
             return geopm::make_unique<SleepModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }

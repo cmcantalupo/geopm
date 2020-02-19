@@ -87,6 +87,8 @@ src/CombinedSignal.cpp
 src/CombinedSignal.hpp
 src/Comm.cpp
 src/Comm.hpp
+src/CompositeModelRegion.cpp
+src/CompositeModelRegion.hpp
 src/ControlMessage.cpp
 src/ControlMessage.hpp
 src/Controller.cpp

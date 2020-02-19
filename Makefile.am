@@ -655,6 +655,8 @@ model_source_files = src/All2allModelRegion.cpp \
                      src/All2allModelRegion.hpp \
                      src/BarrierModelRegion.cpp \
                      src/BarrierModelRegion.hpp \
+                     src/CompositeModelRegion.cpp \
+                     src/CompositeModelRegion.hpp \
                      src/DGEMMModelRegion.cpp \
                      src/DGEMMModelRegion.hpp \
                      src/IgnoreModelRegion.cpp \
