@@ -42,6 +42,7 @@
 #include "geopm.h"
 #include "geopm_time.h"
 #include "Exception.hpp"
+#include "Helper.hpp"
 
 namespace geopm
 {
@@ -52,12 +53,27 @@ namespace geopm
                                            bool do_progress,
                                            bool do_unmarked)
         : ModelRegion(name, verbosity)
+        , M_REGION_DELIM(",")
+        , M_BIG_O_DELIM(":")
     {
-        // todo for each subregion/big o pair in name string create model region and append to m_regions.push_back
-        //: ModelRegion(name, verbosity)
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
+        auto sub_region_names = geopm::string_split(name, M_REGION_DELIM);
+        for (const auto &sub_region_name_big_o : sub_region_names) {
+            // todo assert size is 2
+            if (sub_region_name_big_o == "") {
+                continue;
+            }
+            else {
+                auto split = geopm::string_split(name, M_BIG_O_DELIM);
+                if (split.size() == 2) {
+                    auto region_name = split[0].c_str();
+                    auto region_big_o = std::atoi(split[1].c_str());
+                    m_regions.push_back(ModelRegion::model_region(region_name, region_big_o, verbosity));
+                }
+            }
+        }
     }
 
     void CompositeModelRegion::big_o(double big_o_in)

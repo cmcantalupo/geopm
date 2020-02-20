@@ -53,6 +53,8 @@ namespace geopm
             void big_o(double big_o);
             void run(void);
         protected:
+            const std::string M_REGION_DELIM;
+            const std::string M_BIG_O_DELIM;
             std::vector<std::unique_ptr<ModelRegion>> m_regions;
     };
 }

@@ -56,6 +56,8 @@ namespace geopm
     {
         bool result = false;
         size_t key_size = key.size();
+        // todo
+        // geopm::string_begins_with(name, key)
         if (name.rfind(key) == 0 ||
             (name.find(key) == 0 &&
             (name[key_size] == '\0' ||
