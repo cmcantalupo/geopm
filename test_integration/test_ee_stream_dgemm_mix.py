@@ -52,31 +52,9 @@ from test_integration import util
 _g_skip_launch = False
 
 
-class AppConf(object):
-    """Class that is used by the test launcher as a geopmpy.io.BenchConf
-    when running the script as a benchmark.
-
-    """
-    def write(self):
-        """No configuration files are required.
-
-        """
-        pass
-
-    def get_exec_path(self):
-        """Path to bencmark
-
-        """
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        return os.path.join(script_dir, '.libs', 'test_ee_stream_dgemm_mix')
-
-    def get_exec_args(self):
-        return []
-
-
-@util.skip_unless_cpufreq()
-@util.skip_unless_optimized()
-@util.skip_unless_run_long_tests()
+#@util.skip_unless_cpufreq()
+#@util.skip_unless_optimized()
+#@util.skip_unless_run_long_tests()
 class TestIntegrationEEStreamDGEMMMix(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -85,13 +63,27 @@ class TestIntegrationEEStreamDGEMMMix(unittest.TestCase):
         """
         sys.stdout.write('(' + os.path.basename(__file__).split('.')[0] +
                          '.' + cls.__name__ + ') ...')
-        test_name = 'test_ee_stream_dgemm_mix'
+        test_name = 'test_ee_stream_dgemm_mix_new'
         cls._report_path = test_name + '.report'
         cls._trace_path = test_name + '.trace'
         cls._skip_launch = _g_skip_launch
         cls._keep_files = os.getenv('GEOPM_KEEP_FILES') is not None
         cls._agent_conf_path = test_name + '-agent-config.json'
         if  not cls._skip_launch:
+            app_conf = geopmpy.io.BenchConf(test_name + '_app.config')
+            #self._tmp_files.append(app_conf.get_path())
+            app_conf.set_loop_count(300)
+            dgemm_factor = 17
+            stream_factor = 1.0
+            num_mix = 5
+            mix_factor = 1.0 / (num_mix - 1)
+            for mix_idx in range(0, num_mix):
+                stream_idx = num_mix - 1 - mix_idx;
+                dgemm_idx = mix_idx;
+                stream_big_o = stream_factor * mix_factor * stream_idx;
+                dgemm_big_o = dgemm_factor * mix_factor * dgemm_idx;
+                mix_name = "composite:stream:{},dgemm:{}".format(stream_big_o, dgemm_big_o)
+                app_conf.append_region(mix_name, 0) # note big o doesnt mean anything here
             num_node = 2
             num_rank = 2
             min_freq = geopm_test_launcher.geopmread("CPUINFO::FREQ_MIN board 0")
@@ -100,7 +92,7 @@ class TestIntegrationEEStreamDGEMMMix(unittest.TestCase):
                                               'energy_efficient',
                                               {'frequency_min':min_freq,
                                                'frequency_max':sticker_freq})
-            launcher = geopm_test_launcher.TestLauncher(AppConf(),
+            launcher = geopm_test_launcher.TestLauncher(app_conf,
                                                         agent_conf,
                                                         cls._report_path,
                                                         cls._trace_path,
