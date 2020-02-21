@@ -37,6 +37,7 @@
 #include <vector>
 #include <mpi.h>
 
+#include "geopm.h"
 #include "Exception.hpp"
 
 namespace geopm
@@ -47,7 +48,7 @@ namespace geopm
                                          bool do_imbalance,
                                          bool do_progress,
                                          bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
     {
         big_o(big_o_in);
     }

@@ -72,7 +72,7 @@ namespace geopm
                                        bool do_imbalance,
                                        bool do_progress,
                                        bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_COMPUTE, verbosity)
         , m_matrix_a(NULL)
         , m_matrix_b(NULL)
         , m_matrix_c(NULL)
@@ -83,11 +83,6 @@ namespace geopm
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         big_o(big_o_in);
-        int err = ModelRegion::region(GEOPM_REGION_HINT_COMPUTE);
-        if (err) {
-            throw Exception("DGEMMModelRegion::DGEMMModelRegion()",
-                            err, __FILE__, __LINE__);
-        }
     }
 
     DGEMMModelRegion::~DGEMMModelRegion()

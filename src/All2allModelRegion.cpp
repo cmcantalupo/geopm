@@ -49,7 +49,7 @@ namespace geopm
                                            bool do_imbalance,
                                            bool do_progress,
                                            bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
         , m_send_buffer(NULL)
         , m_recv_buffer(NULL)
         , m_num_send(0)
@@ -61,10 +61,7 @@ namespace geopm
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         big_o(big_o_in);
-        int err = ModelRegion::region(GEOPM_REGION_HINT_UNKNOWN);
-        if (!err) {
-            err = MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
-        }
+        int err = MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
         if (err) {
             throw Exception("All2allModelRegion::All2allModelRegion()",
                             err, __FILE__, __LINE__);

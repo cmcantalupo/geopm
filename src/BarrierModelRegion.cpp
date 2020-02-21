@@ -31,6 +31,7 @@
  */
 
 #include "config.h"
+#include "geopm.h"
 #include "BarrierModelRegion.hpp"
 
 #include <iostream>
@@ -46,7 +47,7 @@ namespace geopm
                                            bool do_imbalance,
                                            bool do_progress,
                                            bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
     {
 
     }

@@ -49,7 +49,7 @@ namespace geopm
                                          bool do_imbalance,
                                          bool do_progress,
                                          bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
         , m_spin_region("spin", big_o_in, verbosity, do_imbalance, do_progress, do_unmarked)
         , m_all2all_region("all_2_all", big_o_in, verbosity, do_imbalance, do_progress, do_unmarked)
     {

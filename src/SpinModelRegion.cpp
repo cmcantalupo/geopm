@@ -35,6 +35,7 @@
 
 #include <iostream>
 
+#include "geopm.h"
 #include "geopm_time.h"
 #include "Exception.hpp"
 
@@ -46,17 +47,12 @@ namespace geopm
                                     bool do_imbalance,
                                     bool do_progress,
                                     bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
     {
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         big_o(big_o_in);
-        int err = ModelRegion::region();
-        if (err) {
-            throw Exception("SpinModelRegion::SpinModelRegion()",
-                            err, __FILE__, __LINE__);
-        }
     }
 
     SpinModelRegion::~SpinModelRegion()

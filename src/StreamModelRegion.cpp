@@ -46,7 +46,7 @@ namespace geopm
                                          bool do_imbalance,
                                          bool do_progress,
                                          bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_MEMORY, verbosity)
         , m_array_a(NULL)
         , m_array_b(NULL)
         , m_array_c(NULL)
@@ -57,11 +57,6 @@ namespace geopm
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         big_o(big_o_in);
-        int err = ModelRegion::region(GEOPM_REGION_HINT_MEMORY);
-        if (err) {
-            throw Exception("StreamModelRegion::StreamModelRegion()",
-                            err, __FILE__, __LINE__);
-        }
     }
 
     StreamModelRegion::~StreamModelRegion()

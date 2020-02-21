@@ -118,7 +118,7 @@ namespace geopm
         }
     }
 
-    ModelRegion::ModelRegion(const std::string &name, int verbosity)
+    ModelRegion::ModelRegion(const std::string &name, uint64_t hint, int verbosity)
         : m_name(name)
         , m_big_o(0.0)
         , m_verbosity(verbosity)
@@ -128,7 +128,11 @@ namespace geopm
         , m_num_progress_updates(1)
         , m_norm(1.0)
     {
-
+        int err = ModelRegion::region(hint);
+        if (err) {
+            throw Exception("ModelRegion::ModelRegion(" + m_name + ")",
+                            err, __FILE__, __LINE__);
+        }
     }
 
     ModelRegion::~ModelRegion()
@@ -167,11 +171,6 @@ namespace geopm
             err = geopm_prof_region(m_name.c_str(), hint, &m_region_id);
         }
         return err;
-    }
-
-    int ModelRegion::region(void)
-    {
-        return region(GEOPM_REGION_HINT_UNKNOWN);
     }
 
     void ModelRegion::region_enter(void)

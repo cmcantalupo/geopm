@@ -45,11 +45,10 @@ namespace geopm
             static std::unique_ptr<ModelRegion> model_region(const std::string &name,
                                                              double big_o,
                                                              int verbosity);
-            ModelRegion(const std::string &name, int verbosity);
+            ModelRegion(const std::string &name, uint64_t hint, int verbosity);
             virtual ~ModelRegion();
             std::string name(void);
             double big_o(void);
-            virtual int region(void);
             virtual int region(uint64_t hint);
             virtual void region_enter(void);
             virtual void region_exit(void);
