@@ -83,7 +83,8 @@ class TestIntegrationEEStreamDGEMMMix(unittest.TestCase):
                 stream_big_o = stream_factor * mix_factor * stream_idx;
                 dgemm_big_o = dgemm_factor * mix_factor * dgemm_idx;
                 mix_name = "composite,stream:{},dgemm:{}".format(stream_big_o, dgemm_big_o)
-                app_conf.append_region(mix_name, 0) # note big o doesnt mean anything here
+                #app_conf.append_region(mix_name, 0) # note big o doesnt mean anything here
+                app_conf.append_region('loop,' + mix_name + ',spin_0.075:0.075,spin_0.01:0.01,barrier:0', 300) # note big o means loop count
             num_node = 2
             num_rank = 2
             min_freq = geopm_test_launcher.geopmread("CPUINFO::FREQ_MIN board 0")
