@@ -1169,6 +1169,45 @@ class TestIntegration(unittest.TestCase):
         """
         self._test_agent_frequency_map('test_agent_frequency_map_policy', use_env=False)
 
+    def get_agent_energy_efficient_conf(cls, profile_name, min_freq, max_freq, perf_margin):
+        agent = "energy_efficient"
+        options = {'FREQ_MIN': min_freq,
+                   'FREQ_MAX': max_freq,
+                   'PERF_MARGIN': perf_margin}
+        return geopmpy.io.AgentConf(profile_name + '_agent.config', agent, options)
+
+    def _get_agent_energy_efficient_single_region_report(cls, profile_name, report_path, min_freq, max_freq, perf_margin, num_node, num_rank, region_name, big_o, loop_count):
+        agent_conf = cls.get_agent_energy_efficient_conf(profile_name, min_freq, max_freq, perf_margin)
+        app_conf = geopmpy.io.BenchConf(profile_name + '_app.config')
+        app_conf.set_loop_count(loop_count)
+        app_conf.append_region(region_name, big_o)
+        launcher = geopm_test_launcher.TestLauncher(app_conf, agent_conf, report_path)
+        launcher.set_num_node(num_node)
+        launcher.set_num_rank(num_rank)
+        launcher.run(profile_name)
+        return geopmpy.io.AppOutput(report_path)
+
+    def get_agent_energy_efficient_single_region_report(cls):
+        min_freq = geopm_test_launcher.geopmread("CPUINFO::FREQ_MIN board 0")
+        sticker_freq = geopm_test_launcher.geopmread("CPUINFO::FREQ_STICKER board 0")
+        num_node = 12
+        num_rank = 12
+        loop_count = 100
+
+        #import numpy
+        #from numpy import arange
+        #for big_o in arange(0.001, 0.1, 0.001):
+        for region_name in ['timed_scaling']#, 'scaling', 'spin', 'dgemm']
+            for big_o in [0.001, 0.01, 0.1, 1.0]:
+                for perf_margin in [0.05, 0.10, 0.15, 0.20]:
+                    for max_freq in [min_freq, sticker_freq]:
+                        for trial in range(0, 3):
+                            profile_name = 'agent_energy_efficient_{}_{}_{}_region_{}_{}_trial_{}'.format(min_freq, max_freq, perf_margin, region_name, big_o, trial)
+                            report_path = profile_name + '.report'
+                            cls._get_agent_energy_efficient_single_region_report(profile_name, report_path,
+                                                                                 min_freq, sticker_freq, perf_margin,
+                                                                                 num_node, num_rank, region_name, big_o, loop_count)
+
     def test_agent_energy_efficient_single_region(self):
         """
         Test of the EnergyEfficientAgent against single region loop.
