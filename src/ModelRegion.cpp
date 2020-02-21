@@ -79,9 +79,9 @@ namespace geopm
             do_progress = false;
         }
 
-        if (name_check(name, "loop")) {
-            return geopm::make_unique<LoopModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
-        }
+        //if (name_check(name, "loop")) {
+            //return (std::unique_ptr<ModelRegion>) geopm::make_unique<LoopModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+        //}
         if (name_check(name, "composite")) {
             return geopm::make_unique<CompositeModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
