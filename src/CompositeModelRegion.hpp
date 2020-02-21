@@ -53,9 +53,23 @@ namespace geopm
             void big_o(double big_o);
             void run(void);
         protected:
-            const std::string M_REGION_DELIM;
-            const std::string M_BIG_O_DELIM;
+            static const std::string M_REGION_DELIM;
+            static const std::string M_BIG_O_DELIM;
             std::vector<std::unique_ptr<ModelRegion>> m_regions;
+    };
+
+    class LoopModelRegion : protected CompositeModelRegion
+    {
+        public:
+            LoopModelRegion(const std::string &name,
+                                 double big_o_in,
+                                 int verbosity,
+                                 bool do_imbalance,
+                                 bool do_progress,
+                                 bool do_unmarked);
+            virtual ~LoopModelRegion() = default;
+            void big_o(double big_o);
+            void run(void);
     };
 }
 

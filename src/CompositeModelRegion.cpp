@@ -46,6 +46,8 @@
 
 namespace geopm
 {
+    const std::string CompositeModelRegion::M_REGION_DELIM = ",";
+    const std::string CompositeModelRegion::M_BIG_O_DELIM = ":";
     CompositeModelRegion::CompositeModelRegion(const std::string &name,
                                            double big_o_in,
                                            int verbosity,
@@ -53,15 +55,14 @@ namespace geopm
                                            bool do_progress,
                                            bool do_unmarked)
         : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
-        , M_REGION_DELIM(",")
-        , M_BIG_O_DELIM(":")
     {
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         auto sub_region_names = geopm::string_split(name, M_REGION_DELIM);
         for (const auto &sub_region_name_big_o : sub_region_names) {
-            if (sub_region_name_big_o == "composite") {
+            if (sub_region_name_big_o == "composite" ||
+                sub_region_name_big_o == "loop") {
                 continue;
             }
             else {
@@ -89,5 +90,31 @@ namespace geopm
             region->run();
         }
         ModelRegion::region_exit();
+    }
+
+    LoopModelRegion::LoopModelRegion(const std::string &name,
+                                     double big_o_in,
+                                     int verbosity,
+                                     bool do_imbalance,
+                                     bool do_progress,
+                                     bool do_unmarked)
+        : CompositeModelRegion(name, big_o_in, verbosity, do_imbalance, do_progress, do_unmarked)
+    {
+        big_o(big_o_in);
+    }
+
+    void LoopModelRegion::big_o(double big_o_in)
+    {
+        m_big_o = big_o_in;
+    }
+
+    void LoopModelRegion::run(void)
+    {
+        // important that region enter exit not called for this loop region type
+        for (int x = 0; x < (int) m_big_o; ++x) {
+            for(const auto &region : m_regions) {
+                region->run();
+            }
+        }
     }
 }
