@@ -52,7 +52,7 @@ namespace geopm
                                            bool do_imbalance,
                                            bool do_progress,
                                            bool do_unmarked)
-        : ModelRegion(name, verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
         , M_REGION_DELIM(",")
         , M_BIG_O_DELIM(":")
     {
@@ -61,16 +61,18 @@ namespace geopm
         m_do_unmarked = do_unmarked;
         auto sub_region_names = geopm::string_split(name, M_REGION_DELIM);
         for (const auto &sub_region_name_big_o : sub_region_names) {
-            // todo assert size is 2
-            if (sub_region_name_big_o == "") {
+            if (sub_region_name_big_o == "composite") {
                 continue;
             }
             else {
-                auto split = geopm::string_split(name, M_BIG_O_DELIM);
+                auto split = geopm::string_split(sub_region_name_big_o, M_BIG_O_DELIM);
                 if (split.size() == 2) {
                     auto region_name = split[0].c_str();
                     auto region_big_o = std::atoi(split[1].c_str());
                     m_regions.push_back(ModelRegion::model_region(region_name, region_big_o, verbosity));
+                }
+                else {
+                    // throw
                 }
             }
         }
