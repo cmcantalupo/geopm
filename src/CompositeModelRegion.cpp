@@ -60,6 +60,7 @@ namespace geopm
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         auto sub_region_names = geopm::string_split(name, M_REGION_DELIM);
+        // TODO need composite_end and loop_end to support nested composites and loops
         for (const auto &sub_region_name_big_o : sub_region_names) {
             if (sub_region_name_big_o == "composite" ||
                 sub_region_name_big_o == "loop") {
