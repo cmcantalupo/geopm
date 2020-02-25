@@ -48,7 +48,9 @@
 #include "ScalingModelRegion.hpp"
 #include "BarrierModelRegion.hpp"
 #include "ReduceModelRegion.hpp"
+#ifdef GEOPM_ENABLE_BETA
 #include "CompositeModelRegion.hpp"
+#endif
 
 namespace geopm
 {
@@ -79,12 +81,14 @@ namespace geopm
             do_progress = false;
         }
 
+#ifdef GEOPM_ENABLE_BETA
         //if (name_check(name, "loop")) {
             //return (std::unique_ptr<ModelRegion>) geopm::make_unique<LoopModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         //}
         if (name_check(name, "composite")) {
             return geopm::make_unique<CompositeModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
+#endif
         if (name_check(name, "sleep")) {
             return geopm::make_unique<SleepModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }

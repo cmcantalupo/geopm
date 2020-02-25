@@ -651,12 +651,14 @@ endif
                        # end
 endif
 
+model_beta_source_files = src/CompositeModelRegion.cpp \
+                          src/CompositeModelRegion.hpp \
+                          # end
+
 model_source_files = src/All2allModelRegion.cpp \
                      src/All2allModelRegion.hpp \
                      src/BarrierModelRegion.cpp \
                      src/BarrierModelRegion.hpp \
-                     src/CompositeModelRegion.cpp \
-                     src/CompositeModelRegion.hpp \
                      src/DGEMMModelRegion.cpp \
                      src/DGEMMModelRegion.hpp \
                      src/IgnoreModelRegion.cpp \
@@ -683,6 +685,11 @@ if ENABLE_MPI
     geopmbench_SOURCES = $(model_source_files) \
                          src/geopmbench_main.cpp \
                          # end
+if ENABLE_BETA
+    geopmbench_SOURCES += $(model_beta_source_files)
+else
+    EXTRA_DIST += $(model_beta_source_files)
+endif
 else
     EXTRA_DIST += $(model_source_files) \
                   src/geopmbench_main.cpp \
