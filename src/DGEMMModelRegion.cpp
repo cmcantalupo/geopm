@@ -66,28 +66,23 @@ void dgemm(const char *transa, const char *transb, const int *M,
 
 namespace geopm
 {
-    DGEMMModelRegion::DGEMMModelRegion(double big_o_in,
+    DGEMMModelRegion::DGEMMModelRegion(const std::string &name,
+                                       double big_o_in,
                                        int verbosity,
                                        bool do_imbalance,
                                        bool do_progress,
                                        bool do_unmarked)
-        : ModelRegion(verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_COMPUTE, verbosity)
         , m_matrix_a(NULL)
         , m_matrix_b(NULL)
         , m_matrix_c(NULL)
         , m_matrix_size(0)
         , m_pad_size(64)
     {
-        m_name = "dgemm";
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         big_o(big_o_in);
-        int err = ModelRegion::region(GEOPM_REGION_HINT_COMPUTE);
-        if (err) {
-            throw Exception("DGEMMModelRegion::DGEMMModelRegion()",
-                            err, __FILE__, __LINE__);
-        }
     }
 
     DGEMMModelRegion::~DGEMMModelRegion()

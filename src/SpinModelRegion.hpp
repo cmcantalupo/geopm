@@ -41,7 +41,8 @@ namespace geopm
     {
         friend class NestedModelRegion;
         public:
-            SpinModelRegion(double big_o_in,
+            SpinModelRegion(const std::string &name,
+                            double big_o_in,
                             int verbosity,
                             bool do_imbalance,
                             bool do_progress,

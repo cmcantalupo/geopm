@@ -40,28 +40,23 @@
 
 namespace geopm
 {
-    StreamModelRegion::StreamModelRegion(double big_o_in,
+    StreamModelRegion::StreamModelRegion(const std::string &name,
+                                         double big_o_in,
                                          int verbosity,
                                          bool do_imbalance,
                                          bool do_progress,
                                          bool do_unmarked)
-        : ModelRegion(verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_MEMORY, verbosity)
         , m_array_a(NULL)
         , m_array_b(NULL)
         , m_array_c(NULL)
         , m_array_len(0)
         , m_align(64)
     {
-        m_name = "stream";
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         big_o(big_o_in);
-        int err = ModelRegion::region(GEOPM_REGION_HINT_MEMORY);
-        if (err) {
-            throw Exception("StreamModelRegion::StreamModelRegion()",
-                            err, __FILE__, __LINE__);
-        }
     }
 
     StreamModelRegion::~StreamModelRegion()

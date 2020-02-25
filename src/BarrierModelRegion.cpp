@@ -31,6 +31,7 @@
  */
 
 #include "config.h"
+#include "geopm.h"
 #include "BarrierModelRegion.hpp"
 
 #include <iostream>
@@ -40,12 +41,13 @@
 
 namespace geopm
 {
-    BarrierModelRegion::BarrierModelRegion(double big_o_in,
+    BarrierModelRegion::BarrierModelRegion(const std::string &name,
+                                           double big_o_in,
                                            int verbosity,
                                            bool do_imbalance,
                                            bool do_progress,
                                            bool do_unmarked)
-        : ModelRegion(verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
     {
 
     }

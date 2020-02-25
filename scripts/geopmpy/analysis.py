@@ -1302,6 +1302,188 @@ class EnergyEfficientAgentAnalysis(Analysis):
         pass
 
 
+class CompositeRegionMixAnalysis(Analysis):
+    """
+    TODO update
+    Runs a full frequency sweep, then offline and online modes of the
+    energy efficieny plugin. The energy and runtime of the
+    application best-fit, per-phase offline mode, and per-phase
+    online mode are compared to the run a sticker frequency.
+    """
+
+    @staticmethod
+    def add_options(parser, enforce_required):
+        FreqSweepAnalysis.add_options(parser, enforce_required)
+
+    @staticmethod
+    def help_text():
+        return "  Composite region mix analysis: {}\n{}".format(CompositeRegionMixAnalysis.__doc__, FreqSweepAnalysis.help_text())
+
+    def __init__(self, profile_prefix, output_dir, verbose, iterations, min_freq, max_freq):
+        super(CompositeRegionMixAnalysis, self).__init__(profile_prefix=profile_prefix,
+                                                     output_dir=output_dir,
+                                                     verbose=verbose,
+                                                     iterations=iterations)
+        self._sweep_analysis = {}
+        self._offline_analysis = {}
+        self._online_analysis = {}
+        self._min_freq = min_freq
+        self._max_freq = max_freq
+        self._sub_regions = ['dgemm', 'stream']
+        self._mix_ratios = [(1.0, 0.25), (1.0, 0.5), (1.0, 0.75), (1.0, 1.0),
+                            (0.75, 1.0), (0.5, 1.0), (0.25, 1.0)]
+
+        for (ratio_idx, ratio) in enumerate(self._mix_ratios):
+            profile_prefix = self._name + '_mix_{}'.format(ratio_idx)
+            # Analysis class that runs the frequency sweep (will append _freq_XXXX to name)
+            self._sweep_analysis[ratio_idx] = FreqSweepAnalysis(profile_prefix=profile_prefix,
+                                                                output_dir=self._output_dir,
+                                                                verbose=self._verbose,
+                                                                iterations=self._iterations,
+                                                                min_freq=self._min_freq,
+                                                                max_freq=self._max_freq)
+            # Analysis class that includes a full sweep plus the plugin run with freq map
+            self._offline_analysis[ratio_idx] = FrequencyMapBaselineComparisonAnalysis(profile_prefix=profile_prefix,
+                                                                                       output_dir=self._output_dir,
+                                                                                       verbose=self._verbose,
+                                                                                       iterations=self._iterations,
+                                                                                       min_freq=self._min_freq,
+                                                                                       max_freq=self._max_freq)
+            # Analysis class that runs the online plugin
+            self._online_analysis[ratio_idx] = EnergyEfficientAgentAnalysis(profile_prefix=profile_prefix,
+                                                                            output_dir=self._output_dir,
+                                                                            verbose=self._verbose,
+                                                                            iterations=self._iterations,
+                                                                            min_freq=self._min_freq,
+                                                                            max_freq=self._max_freq)
+
+    def launch(self, config):
+        source_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        app_path = os.path.join(source_dir, '.libs', 'geopmbench')
+        # if not found, use geopmbench from user's PATH
+        if not os.path.exists(app_path):
+            app_path = "geopmbench"
+
+        loop_count = 10
+        dgemm_bigo = 20.25
+        stream_bigo = 1.449
+        dgemm_bigo_jlse = 35.647
+        dgemm_bigo_quartz = 29.12
+        stream_bigo_jlse = 1.6225
+        stream_bigo_quartz = 1.7941
+        hostname = socket.gethostname()
+        if hostname.endswith('.alcf.anl.gov'):
+            dgemm_bigo = dgemm_bigo_jlse
+            stream_bigo = stream_bigo_jlse
+        else:
+            dgemm_bigo = dgemm_bigo_quartz
+            stream_bigo = stream_bigo_quartz
+
+        for (ratio_idx, ratio) in enumerate(self._mix_ratios):
+            profile_prefix = self._name + '_mix_{}'.format(ratio_idx)
+            app_conf_name = os.path.join(self._output_dir, profile_prefix + '_app.config')
+            app_conf = geopmpy.io.BenchConf(app_conf_name)
+            app_conf.set_loop_count(loop_count)
+            # todo implement python CompositeRegion helper and use here
+            # todo loop thru self._sub_regions
+            # todo ensure mix_ratio properly sized given sub regions
+            # todo take sub regions and mixes via CLI
+            app_conf.append_region(self._sub_regions[0],  ratio[0] * dgemm_bigo)
+            app_conf.append_region(self._sub_regions[1], ratio[1] * stream_bigo)
+            app_conf.append_region('all2all', 1.0)
+            app_conf.write()
+            app_argv = [app_path, app_conf_name]
+            self._sweep_analysis[ratio_idx].launch(config + app_argv)
+            self._offline_analysis[ratio_idx].launch(config + app_argv)
+            self._online_analysis[ratio_idx].launch(config + app_argv)
+
+    def find_files(self):
+        for (ratio_idx, ratio) in enumerate(self._mix_ratios):
+            self._sweep_analysis[ratio_idx].find_files()
+            self._offline_analysis[ratio_idx].find_files()
+            self._online_analysis[ratio_idx].find_files()
+
+    def parse(self):
+        sweep_output = {}
+        offline_output = {}
+        online_output = {}
+        for (ratio_idx, ratio) in enumerate(self._mix_ratios):
+            sweep_output[ratio_idx] = self._sweep_analysis[ratio_idx].parse()
+            _, offline_output[ratio_idx] = self._offline_analysis[ratio_idx].parse()
+            _, online_output[ratio_idx] = self._online_analysis[ratio_idx].parse()
+
+        return sweep_output, offline_output, online_output
+
+    def summary_process(self, parse_output):
+        sweep_output, offline_output, online_output = parse_output
+        app_freq_data = []
+        series_names = ['offline application', 'offline per-phase', 'online per-phase']
+        regions = sweep_output[0].get_report_df().index.get_level_values('region').unique().tolist()
+
+        energy_result_df = pandas.DataFrame()
+        runtime_result_df = pandas.DataFrame()
+        for (ratio_idx, ratio) in enumerate(self._mix_ratios):
+            name = self._name + '_mix_{}'.format(ratio_idx)
+
+            optimal_freq = self._sweep_analysis[ratio_idx]._region_freq_map(sweep_output[ratio_idx])
+
+            freq_temp = [optimal_freq[region]
+                         for region in sorted(regions)]
+            app_freq_data.append(freq_temp)
+
+            freq_pname = FreqSweepAnalysis.get_freq_profiles(sweep_output[ratio_idx].get_report_df(), name)
+
+            baseline_freq, baseline_name = freq_pname[0]
+            best_fit_freq = optimal_freq['epoch']
+            best_fit_name = FreqSweepAnalysis.fixed_freq_name(name, best_fit_freq)
+
+            comp_df = baseline_comparison(sweep_output[ratio_idx], best_fit_name, sweep_output[ratio_idx])
+            offline_app_energy = comp_df.loc[pandas.IndexSlice['epoch', int(baseline_freq * 1e-6)], 'energy_savings']
+            offline_app_runtime = comp_df.loc[pandas.IndexSlice['epoch', int(baseline_freq * 1e-6)], 'runtime_savings']
+
+            comp_df = baseline_comparison(offline_output[ratio_idx], name + '_offline', sweep_output[ratio_idx])
+            offline_phase_energy = comp_df.loc[pandas.IndexSlice['epoch', int(baseline_freq * 1e-6)], 'energy_savings']
+            offline_phase_runtime = comp_df.loc[pandas.IndexSlice['epoch', int(baseline_freq * 1e-6)], 'runtime_savings']
+
+            comp_df = baseline_comparison(online_output[ratio_idx], name + '_online', sweep_output[ratio_idx])
+            online_phase_energy = comp_df.loc[pandas.IndexSlice['epoch', int(baseline_freq * 1e-6)], 'energy_savings']
+            online_phase_runtime = comp_df.loc[pandas.IndexSlice['epoch', int(baseline_freq * 1e-6)], 'runtime_savings']
+
+            row = pandas.DataFrame([[offline_app_energy, offline_phase_energy, online_phase_energy]],
+                                   columns=series_names, index=[ratio_idx])
+            energy_result_df = energy_result_df.append(row)
+
+            row = pandas.DataFrame([[offline_app_runtime, offline_phase_runtime, online_phase_runtime]],
+                                   columns=series_names, index=[ratio_idx])
+            runtime_result_df = runtime_result_df.append(row)
+
+        # produce combined output
+        app_freq_df = pandas.DataFrame(app_freq_data, columns=sorted(regions))
+        return energy_result_df, runtime_result_df, app_freq_df
+
+    def plot_process(self, parse_output):
+        return self.summary_process(parse_output)
+
+    def summary(self, process_output):
+        rs = 'Summary:\n'
+        energy_result_df, runtime_result_df, app_freq_df = process_output
+        rs += 'Energy\n'
+        rs += '{}\n'.format(energy_result_df)
+        rs += 'Runtime\n'
+        rs += '{}\n'.format(runtime_result_df)
+        rs += 'Application best-fit frequencies\n'
+        rs += '{}\n'.format(app_freq_df)
+        sys.stdout.write(rs)
+        return rs
+
+    def plot(self, process_output):
+        sys.stdout.write('Plot:\n')
+        energy_result_df, runtime_result_df, app_freq_df = process_output
+        geopmpy.plotter.generate_bar_plot_sc17(energy_result_df, 'Energy-to-Solution Decrease', self._output_dir)
+        geopmpy.plotter.generate_bar_plot_sc17(runtime_result_df, 'Time-to-Solution Increase', self._output_dir)
+        geopmpy.plotter.generate_app_best_freq_plot_sc17(app_freq_df, 'Offline auto per-phase best-fit frequency', self._output_dir)
+
+
 class StreamDgemmMixAnalysis(Analysis):
     """
     Runs a full frequency sweep, then offline and online modes of the

@@ -40,7 +40,8 @@ namespace geopm
     class IgnoreModelRegion : public ModelRegion
     {
         public:
-            IgnoreModelRegion(double big_o_in,
+            IgnoreModelRegion(const std::string &name,
+                              double big_o_in,
                               int verbosity,
                               bool do_imbalance,
                               bool do_progress,

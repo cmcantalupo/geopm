@@ -31,6 +31,7 @@
  */
 
 #include "config.h"
+#include "geopm.h"
 #include "SleepModelRegion.hpp"
 
 #include <iostream>
@@ -39,23 +40,18 @@
 
 namespace geopm
 {
-    SleepModelRegion::SleepModelRegion(double big_o_in,
+    SleepModelRegion::SleepModelRegion(const std::string &name,
+                                       double big_o_in,
                                        int verbosity,
                                        bool do_imbalance,
                                        bool do_progress,
                                        bool do_unmarked)
-        : ModelRegion(verbosity)
+        : ModelRegion(name, GEOPM_REGION_HINT_UNKNOWN, verbosity)
     {
-        m_name = "sleep";
         m_do_imbalance = do_imbalance;
         m_do_progress = do_progress;
         m_do_unmarked = do_unmarked;
         big_o(big_o_in);
-        int err = ModelRegion::region();
-        if (err) {
-            throw Exception("SleepModelRegion::SleepModelRegion()",
-                            err, __FILE__, __LINE__);
-        }
     }
 
     SleepModelRegion::~SleepModelRegion()

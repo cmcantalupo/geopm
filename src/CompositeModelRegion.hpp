@@ -30,31 +30,46 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DGEMMMODELREGION_HPP_INCLUDE
-#define DGEMMMODELREGION_HPP_INCLUDE
+#ifndef COMPOSITEMODELREGION_HPP_INCLUDE
+#define COMPOSITEMODELREGION_HPP_INCLUDE
 
+#include <vector>
+#include <string>
+#include <cstdint>
 #include "ModelRegion.hpp"
 
 namespace geopm
 {
-    class DGEMMModelRegion : public ModelRegion
+    class CompositeModelRegion : public ModelRegion
     {
         public:
-            DGEMMModelRegion(const std::string &name,
-                             double big_o_in,
-                             int verbosity,
-                             bool do_imbalance,
-                             bool do_progress,
-                             bool do_unmarked);
-            virtual ~DGEMMModelRegion();
+            CompositeModelRegion(const std::string &name,
+                                 double big_o_in,
+                                 int verbosity,
+                                 bool do_imbalance,
+                                 bool do_progress,
+                                 bool do_unmarked);
+            virtual ~CompositeModelRegion() = default;
             void big_o(double big_o);
             void run(void);
         protected:
-            double *m_matrix_a;
-            double *m_matrix_b;
-            double *m_matrix_c;
-            size_t m_matrix_size;
-            const size_t m_pad_size;
+            static const std::string M_REGION_DELIM;
+            static const std::string M_BIG_O_DELIM;
+            std::vector<std::unique_ptr<ModelRegion>> m_regions;
+    };
+
+    class LoopModelRegion : protected CompositeModelRegion
+    {
+        public:
+            LoopModelRegion(const std::string &name,
+                                 double big_o_in,
+                                 int verbosity,
+                                 bool do_imbalance,
+                                 bool do_progress,
+                                 bool do_unmarked);
+            virtual ~LoopModelRegion() = default;
+            void big_o(double big_o);
+            void run(void);
     };
 }
 

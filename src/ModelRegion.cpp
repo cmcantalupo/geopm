@@ -48,6 +48,9 @@
 #include "ScalingModelRegion.hpp"
 #include "BarrierModelRegion.hpp"
 #include "ReduceModelRegion.hpp"
+#ifdef GEOPM_ENABLE_BETA
+#include "CompositeModelRegion.hpp"
+#endif
 
 namespace geopm
 {
@@ -55,9 +58,12 @@ namespace geopm
     {
         bool result = false;
         size_t key_size = key.size();
-        if (name.find(key) == 0 &&
+        // todo
+        // geopm::string_begins_with(name, key)
+        if (name.rfind(key) == 0 ||
+            (name.find(key) == 0 &&
             (name[key_size] == '\0' ||
-             name[key_size] == '-')) {
+             name[key_size] == '-'))) {
             result = true;
         }
         return result;
@@ -75,35 +81,43 @@ namespace geopm
             do_progress = false;
         }
 
+#ifdef GEOPM_ENABLE_BETA
+        //if (name_check(name, "loop")) {
+            //return (std::unique_ptr<ModelRegion>) geopm::make_unique<LoopModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+        //}
+        if (name_check(name, "composite")) {
+            return geopm::make_unique<CompositeModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+        }
+#endif
         if (name_check(name, "sleep")) {
-            return geopm::make_unique<SleepModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<SleepModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "spin")) {
-            return geopm::make_unique<SpinModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<SpinModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "dgemm")) {
-            return geopm::make_unique<DGEMMModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<DGEMMModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "stream")) {
-            return geopm::make_unique<StreamModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<StreamModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "all2all")) {
-            return geopm::make_unique<All2allModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<All2allModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "nested")) {
-            return geopm::make_unique<NestedModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<NestedModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "ignore")) {
-            return geopm::make_unique<IgnoreModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<IgnoreModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "scaling")) {
-            return geopm::make_unique<ScalingModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<ScalingModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "barrier")) {
-            return geopm::make_unique<BarrierModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<BarrierModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else if (name_check(name, "reduce")) {
-            return geopm::make_unique<ReduceModelRegion>(big_o, verbosity, do_imbalance, do_progress, do_unmarked);
+            return geopm::make_unique<ReduceModelRegion>(name, big_o, verbosity, do_imbalance, do_progress, do_unmarked);
         }
         else {
             throw Exception("model_region_factory: unknown name: " + name,
@@ -111,8 +125,9 @@ namespace geopm
         }
     }
 
-    ModelRegion::ModelRegion(int verbosity)
-        : m_big_o(0.0)
+    ModelRegion::ModelRegion(const std::string &name, uint64_t hint, int verbosity)
+        : m_name(name)
+        , m_big_o(0.0)
         , m_verbosity(verbosity)
         , m_do_imbalance(false)
         , m_do_progress(false)
@@ -120,7 +135,11 @@ namespace geopm
         , m_num_progress_updates(1)
         , m_norm(1.0)
     {
-
+        int err = ModelRegion::region(hint);
+        if (err) {
+            throw Exception("ModelRegion::ModelRegion(" + m_name + ")",
+                            err, __FILE__, __LINE__);
+        }
     }
 
     ModelRegion::~ModelRegion()
@@ -159,11 +178,6 @@ namespace geopm
             err = geopm_prof_region(m_name.c_str(), hint, &m_region_id);
         }
         return err;
-    }
-
-    int ModelRegion::region(void)
-    {
-        return region(GEOPM_REGION_HINT_UNKNOWN);
     }
 
     void ModelRegion::region_enter(void)
