@@ -85,9 +85,9 @@ class EndpointTestIntegration : public ::testing::Test
 void EndpointTest::SetUp()
 {
     size_t policy_shmem_size = sizeof(struct geopm_endpoint_policy_shmem_s);
-    m_policy_shmem = geopm::make_unique<MockSharedMemory>(policy_shmem_size);
+    m_policy_shmem = std::make_shared<MockSharedMemory>(policy_shmem_size);
     size_t sample_shmem_size = sizeof(struct geopm_endpoint_sample_shmem_s);
-    m_sample_shmem = geopm::make_unique<MockSharedMemory>(sample_shmem_size);
+    m_sample_shmem = std::make_shared<MockSharedMemory>(sample_shmem_size);
 
     m_timeout = 2;
 
@@ -257,7 +257,7 @@ TEST_F(EndpointTest, stop_wait_loop)
 
     auto run_thread = std::async(std::launch::async,
                                  [&mio, this] {
-                                     mio.wait_for_agent_attach(m_timeout);
+                                     mio.wait_for_agent_attach(this->m_timeout);
                                  });
     mio.stop_wait_loop();
     // wait for less than timeout; should exit before time limit without throwing
@@ -275,7 +275,7 @@ TEST_F(EndpointTest, attach_wait_loop_timeout_throws)
     geopm_time(&before);
     auto run_thread = std::async(std::launch::async,
                                  [&mio, this] {
-                                     mio.wait_for_agent_attach(m_timeout);
+                                     mio.wait_for_agent_attach(this->m_timeout);
                                  });
     // throw from our timeout should happen before longer async timeout
     std::future_status result = run_thread.wait_for(std::chrono::seconds(m_timeout + 1));
@@ -301,7 +301,7 @@ TEST_F(EndpointTest, detach_wait_loop_timeout_throws)
     geopm_time(&before);
     auto run_thread = std::async(std::launch::async,
                                  [&mio, this] {
-                                     mio.wait_for_agent_detach(m_timeout);
+                                     mio.wait_for_agent_detach(this->m_timeout);
                                  });
     // throw from our timeout should happen before longer async timeout
     std::future_status result = run_thread.wait_for(std::chrono::seconds(m_timeout + 1));
@@ -323,7 +323,7 @@ TEST_F(EndpointTest, wait_stops_when_agent_attaches)
 
     auto run_thread = std::async(std::launch::async,
                                  [&mio, this] {
-                                     mio.wait_for_agent_attach(m_timeout);
+                                     mio.wait_for_agent_attach(this->m_timeout);
                                  });
     // simulate agent attach
     strncpy(data->agent, "monitor", GEOPM_ENDPOINT_AGENT_NAME_MAX);
@@ -364,7 +364,7 @@ TEST_F(EndpointTest, wait_stops_when_agent_detaches)
 
     auto run_thread = std::async(std::launch::async,
                                  [&mio, this] {
-                                     mio.wait_for_agent_detach(m_timeout);
+                                     mio.wait_for_agent_detach(this->m_timeout);
                                  });
 
     // simulate agent detach
