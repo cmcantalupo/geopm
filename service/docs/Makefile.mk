@@ -33,6 +33,7 @@ EXTRA_DIST += docs/source/conf.py \
               docs/source/geopmdpy.rst \
               docs/source/index.rst \
               docs/source/modules.rst \
+              docs/source/tutorial.rst \
               docs/source/readme.rst \
               # end
 

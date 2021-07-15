@@ -335,7 +335,8 @@ EXTRA_DIST = $(TUTORIAL_DIST) \
              service/docs/source/geopmdpy.rst \
              service/docs/source/index.rst \
              service/docs/source/modules.rst \
-             servuce/docs/source/readme.rst \
+             service/docs/source/readme.rst \
+             service/docs/source/tutorial.rst \
              service/geopm-service.spec.in \
              service/Makefile.am \
              service/test/README.md \

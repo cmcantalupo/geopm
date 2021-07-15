@@ -8,6 +8,7 @@ Welcome to GEOPM Service's documentation!
    :caption: Contents:
 
    readme
+   tutorial
    modules
 
 Indices and tables
