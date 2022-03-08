@@ -74,6 +74,20 @@ fi
 [enable_coverage="0"]
 )
 
+AC_ARG_ENABLE([docs],
+  [AS_HELP_STRING([--disable-docs], [Disable the use of the sd_bus interface of libdocs to support the ServiceIOGroup])],
+[if test "x$enable_docs" = "xno" ; then
+  enable_docs="0"
+else
+  enable_docs="1"
+fi
+],
+[enable_docs="1"]
+)
+
+AC_SUBST([enable_docs])
+AM_CONDITIONAL([ENABLE_DOCS], [test "x$enable_docs" = "x1"])
+
 AC_ARG_ENABLE([systemd],
   [AS_HELP_STRING([--disable-systemd], [Disable the use of the sd_bus interface of libsystemd to support the ServiceIOGroup])],
 [if test "x$enable_systemd" = "xno" ; then
