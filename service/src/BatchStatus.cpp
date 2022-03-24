@@ -70,9 +70,16 @@ namespace geopm
      * Members of class BatchStatusImp *
      ***********************************/
 
-    BatchStatusImp::BatchStatusImp(int m_read_fd, int m_write_fd)
-        : m_read_fd{m_read_fd}
-        , m_write_fd{m_write_fd}
+    BatchStatusImp::BatchStatusImp(int read_fd, int write_fd, const std::string &fifo_prefix)
+        : m_read_fd{read_fd}
+        , m_write_fd{write_fd}
+        , m_fifo_prefix(fifo_prefix)
+    {
+
+    }
+
+    BatchStatusImp::BatchStatusImp(int read_fd, int write_fd)
+        : BatchStatusImp(read_fd, write_fd, M_DEFAULT_FIFO_PREFIX)
     {
 
     }
@@ -121,8 +128,8 @@ namespace geopm
     // The constructor which is called by the server.
     BatchStatusServer::BatchStatusServer(int client_pid, const std::string &server_key)
         : BatchStatusImp(-1, -1)
-        , m_read_fifo_path(M_FIFO_PREFIX + server_key + "-in")
-        , m_write_fifo_path(M_FIFO_PREFIX + server_key + "-out")
+        , m_read_fifo_path(m_fifo_prefix + server_key + "-in")
+        , m_write_fifo_path(m_fifo_prefix + server_key + "-out")
     {
         // The server first creates the fifo in the file system.
         check_return(
@@ -180,8 +187,8 @@ namespace geopm
     // The constructor which is called by the client.
     BatchStatusClient::BatchStatusClient(const std::string &server_key)
     : BatchStatusImp(-1, -1)
-    , m_read_fifo_path(std::string(M_FIFO_PREFIX) +  server_key + "-out")
-    , m_write_fifo_path(std::string(M_FIFO_PREFIX) + server_key + "-in" )
+    , m_read_fifo_path(std::string(m_fifo_prefix) +  server_key + "-out")
+    , m_write_fifo_path(std::string(m_fifo_prefix) + server_key + "-in" )
     {
         // Assume that the server itself will make the fifo.
     }

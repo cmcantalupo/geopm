@@ -75,13 +75,14 @@ namespace geopm
 
             // This is the single place where the server prefix is located,
             // which is also accessed by BatchStatusTest.
-            static constexpr const char* M_FIFO_PREFIX = "/tmp/geopm-service-batch-status-";
+            static constexpr const char* M_DEFAULT_FIFO_PREFIX = "/tmp/geopm-service-batch-status-";
     };
 
     class BatchStatusImp : public BatchStatus
     {
         public:
             BatchStatusImp(int m_read_fd, int m_write_fd);
+            BatchStatusImp(int m_read_fd, int m_write_fd, const std::string &fifo_prefix);
             virtual ~BatchStatusImp() = default;
             void send_message(char msg) override;
             char receive_message(void) override;
@@ -92,6 +93,7 @@ namespace geopm
             void check_return(int ret, const std::string &func_name);
             int m_read_fd;
             int m_write_fd;
+            std::string m_fifo_prefix;
     };
 
     class BatchStatusServer : public BatchStatusImp
