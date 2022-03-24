@@ -81,8 +81,8 @@ namespace geopm
     class BatchStatusImp : public BatchStatus
     {
         public:
-            BatchStatusImp(int m_read_fd, int m_write_fd);
-            BatchStatusImp(int m_read_fd, int m_write_fd, const std::string &fifo_prefix);
+            BatchStatusImp(int read_fd, int write_fd);
+            BatchStatusImp(int read_fd, int write_fd, const std::string &fifo_prefix);
             virtual ~BatchStatusImp() = default;
             void send_message(char msg) override;
             char receive_message(void) override;
