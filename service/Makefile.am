@@ -85,6 +85,7 @@ EXTRA_DIST = .gitignore \
              dox/blurb.md \
              dox/Doxyfile.in \
              geopm-service.spec.in \
+             geopm-service.dsc \
              io.github.geopm.conf \
              io.github.geopm.xml \
              geopmaccess \
