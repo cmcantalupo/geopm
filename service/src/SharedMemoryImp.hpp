@@ -52,7 +52,7 @@ namespace geopm
             /// @return Key to the shared memory region.
             std::string key(void) const override;
             size_t size(void) const override;
-            void unlink(void) override;
+            void unlink_key(void) override;
             std::unique_ptr<SharedMemoryScopedLock> get_scoped_lock(void) override;
             /// @brief Takes a key and a size and creates
             ///        an inter-process shared memory region.
@@ -74,6 +74,9 @@ namespace geopm
             /// @param [in] gid Group ID to become owner.
             void chown(const unsigned int uid, const unsigned int gid) override;
         private:
+            int open_helper(const std::string &name, int flags, int mode);
+            int unlink_helper(const std::string &name);
+            bool is_name_file(const std::string &name);
             /// @brief Shared memory key for the region.
             std::string m_shm_key;
             /// @brief Size of the region.

@@ -147,11 +147,11 @@ namespace geopm
             }
         }
         if (m_signal_shmem != nullptr) {
-            m_signal_shmem->unlink();
+            m_signal_shmem->unlink_key();
         }
 
         if (m_control_shmem != nullptr) {
-            m_control_shmem->unlink();
+            m_control_shmem->unlink_key();
         }
     }
 

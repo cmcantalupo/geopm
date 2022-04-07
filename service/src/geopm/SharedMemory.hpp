@@ -62,7 +62,7 @@ namespace geopm
             /// @return Size of the shared memory region.
             virtual size_t size(void) const = 0;
             /// @brief Unlink the shared memory region.
-            virtual void unlink(void) = 0;
+            virtual void unlink_key(void) = 0;
             /// @brief Attempt to lock the mutex for the shared memory region
             ///        and return a scoped mutex object that will unlock the
             ///        mutex when it goes out of scope.

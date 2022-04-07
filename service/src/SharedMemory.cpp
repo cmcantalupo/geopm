@@ -124,10 +124,10 @@ namespace geopm
         mode_t old_mask = umask(0);
         int shm_id = 0;
         if (is_secure) {
-            shm_id = shm_open(m_shm_key.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+            shm_id = open_helper(m_shm_key.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
         }
         else {
-            shm_id = shm_open(m_shm_key.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+            shm_id = open_helper(m_shm_key.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
         }
         if (shm_id < 0) {
             std::ostringstream ex_str;
@@ -137,7 +137,7 @@ namespace geopm
         int err = ftruncate(shm_id, m_size);
         if (err) {
             (void) close(shm_id);
-            (void) shm_unlink(m_shm_key.c_str());
+            (void) unlink_helper(m_shm_key.c_str());
             (void) umask(old_mask);
             std::ostringstream ex_str;
             ex_str << "SharedMemoryImp: Could not extend shared memory to size " << m_size;
@@ -146,7 +146,7 @@ namespace geopm
         m_ptr = mmap(NULL, m_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_id, 0);
         if (m_ptr == MAP_FAILED) {
             (void) close(shm_id);
-            (void) shm_unlink(m_shm_key.c_str());
+            (void) unlink_helper(m_shm_key.c_str());
             (void) umask(old_mask);
             throw Exception("SharedMemoryImp: Could not mmap shared memory region", errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
         }
@@ -174,15 +174,16 @@ namespace geopm
         }
     }
 
-    void SharedMemoryImp::unlink(void)
+    void SharedMemoryImp::unlink_key(void)
     {
         // ProfileSampler destructor calls unlink, so don't throw if constructed
         // as owner
         if (m_is_linked) {
-            int err = shm_unlink(m_shm_key.c_str());
+            int err = 0;
+            err = unlink_helper(m_shm_key.c_str());
             if (err && m_do_unlink_check) {
                 std::ostringstream tmp_str;
-                tmp_str << "SharedMemoryImp::unlink() Call to shm_unlink(" << m_shm_key  << ") failed";
+                tmp_str << "SharedMemoryImp::unlink() Call to unlink(" << m_shm_key  << ") failed";
                 throw Exception(tmp_str.str(), errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
             }
             m_is_linked = false;
@@ -219,7 +220,7 @@ namespace geopm
         int err = 0;
 
         if (!timeout) {
-            shm_id = shm_open(shm_key.c_str(), O_RDWR, 0);
+            shm_id = open_helper(shm_key.c_str(), O_RDWR, 0);
             if (shm_id < 0) {
                 std::ostringstream ex_str;
                 ex_str << "SharedMemoryImp: Could not open shared memory with key \""  <<  shm_key << "\"";
@@ -244,7 +245,7 @@ namespace geopm
             struct geopm_time_s begin_time;
             geopm_time(&begin_time);
             while (shm_id < 0 && geopm_time_since(&begin_time) < (double)timeout) {
-                shm_id = shm_open(shm_key.c_str(), O_RDWR, 0);
+                shm_id = open_helper(shm_key.c_str(), O_RDWR, 0);
             }
             if (shm_id < 0) {
                 std::ostringstream ex_str;
@@ -282,7 +283,7 @@ namespace geopm
         int err = 0;
         int shm_id = -1;
         if (m_is_linked) {
-            shm_id = shm_open(m_shm_key.c_str(), O_RDWR, 0);
+            shm_id = open_helper(m_shm_key.c_str(), O_RDWR, 0);
         }
         else {
             throw Exception("SharedMemoryImp: Cannot chown shm that has been unlinked.", GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
@@ -307,5 +308,41 @@ namespace geopm
         if (err) {
             throw Exception("SharedMemoryImp: Could not close shared memory file", errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
         }
+    }
+
+    int SharedMemoryImp::open_helper(const std::string &name, int flags, int mode)
+    {
+        int err = 0;
+        if (is_name_file(name)) {
+            err = open(name.c_str(), flags, mode);
+        }
+        else {
+            err = shm_open(name.c_str(), flags, mode);
+        }
+        return err;
+    }
+
+    int SharedMemoryImp::unlink_helper(const std::string &name)
+    {
+        int err = 0;
+        if (is_name_file(name)) {
+            err = unlink(name.c_str());
+        }
+        else {
+            err = shm_unlink(name.c_str());
+        }
+        return err;
+    }
+
+    bool SharedMemoryImp::is_name_file(const std::string &name)
+    {
+        bool result = true;
+        if (!string_begins_with(name, "/")) {
+            throw Exception();
+        }
+        if (name.rfind('/') == 0) {
+            result = false;
+        }
+        return result;
     }
 }
