@@ -40,7 +40,7 @@ Homepage: https://geopm.github.io
 Vcs-Browser: https://github.com/geopm/geopm
 Vcs-Git: git://github.com/geopm/geopm.git
 # Removed  from Build-Depends line
-Build-Depends: python3-all-dev, python3-setuptools, python3-dasbus (>= 1.6), python3-jsonschema, python3-psutil, python3-cffi, python3-gi python3-gi-cairo
+Build-Depends: python3-all-dev, python3-setuptools, python3-dasbus (>= 1.6), python3-jsonschema, python3-psutil, python3-cffi, python3-gi python3-gi-cairo, libsystemd-dev
 Package-List:
  geopm-service deb admin optional
  geopm-service-dev deb libdevel extra
