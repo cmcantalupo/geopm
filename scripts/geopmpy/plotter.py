@@ -20,7 +20,7 @@ import code
 
 try:
     with open(os.devnull, 'w') as FNULL:
-        subprocess.check_call("python -c 'import matplotlib.pyplot'", stdout=FNULL, stderr=FNULL, shell=True)
+        subprocess.check_call(['python', '-c',  "'import matplotlib.pyplot'"], stdout=FNULL, stderr=FNULL)
 except subprocess.CalledProcessError:
     sys.stderr.write('Warning: Unable to use default matplotlib backend ({}).  For interactive plotting,'
                      ' please install Tkinter support in the OS.  '
@@ -71,12 +71,12 @@ class Config(object):
         fontsize: The int size of the font for text in the plot.
         legend_fontsize: The int size of the font in the legend.
         show: A bool to display an interactive plot if true.
-        shell: A bool to drops to a Python shell for further analysis if true.
+        interactive: A bool to drop to a Python shell for further analysis if true.
     """
     def __init__(self, profile_name='Default', misc_text='', datatype=None, normalize=False,
                  output_dir='figures', write_csv=False, output_types=['svg'], verbose=False,
-                 style='classic', fig_size=None, fontsize=None, legend_fontsize=None, show=False, shell=False,
-                 min_drop=0, max_drop=999,
+                 style='classic', fig_size=None, fontsize=None, legend_fontsize=None, show=False,
+                 interactive=False, min_drop=0, max_drop=999,
                  ref_version=None, ref_profile_name=None, ref_plugin=None,
                  tgt_version=None, tgt_profile_name=None, tgt_plugin=None):
         # Custom params
@@ -104,7 +104,7 @@ class Config(object):
         self.fontsize = fontsize
         self.legend_fontsize = legend_fontsize
         self.show = show
-        self.shell = shell
+        self.interactive = interactive
 
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
@@ -112,7 +112,7 @@ class Config(object):
         if self.show:
             self.block = True
 
-        if self.shell:
+        if self.interactive:
             self.block = False
 
         plt.style.use(style)
@@ -294,7 +294,7 @@ def generate_box_plot(report_df, config):
         if config.show:
             plt.show(block=config.block)
 
-        if config.shell:
+        if config.interactive:
             code.interact(local=dict(globals(), **locals()))
 
         plt.close()
@@ -472,7 +472,7 @@ def generate_bar_plot(report_df, config):
     if config.show:
         plt.show(block=config.block)
 
-    if config.shell:
+    if config.interactive:
         code.interact(local=dict(globals(), **locals()))
 
     plt.close()
@@ -487,7 +487,8 @@ def generate_bar_plot_sc17(data, name, output_dir):
 
     cols = data.columns
     colors = ['gray', 'blue', 'orange', 'green', 'red']  # todo: change to map
-    assert len(colors) >= len(cols)
+    if len(colors) < len(cols):
+        raise RuntimeError('Not enough colors for the number of data columns')
     num_series = len(cols)
     bar_width = 0.7 / num_series
 
@@ -534,7 +535,8 @@ def generate_best_freq_plot_sc17(data, name, output_dir):
 
     cols = data.columns
     colors = ['blue', 'orange', 'green', 'red']  # todo: change to map
-    assert len(colors) >= len(cols)
+    if len(colors) < len(cols):
+        raise RuntimeError('Not enough colors for the number of data columns')
     num_series = len(cols)
     bar_width = 0.7 / num_series
 
@@ -791,7 +793,7 @@ def generate_power_plot(trace_df, config):
         if config.show:
             plt.show(block=config.block)
 
-        if config.shell:
+        if config.interactive:
             code.interact(local=dict(globals(), **locals()))
 
         plt.close()
@@ -941,7 +943,7 @@ def generate_epoch_plot(trace_df, config):
         if config.show:
             plt.show(block=config.block)
 
-        if config.shell:
+        if config.interactive:
             code.interact(local=dict(globals(), **locals()))
 
         plt.close()
@@ -1081,7 +1083,7 @@ def generate_freq_plot(trace_df, config):
             if config.show:
                 plt.show(block=config.block)
 
-            if config.shell:
+            if config.interactive:
                 code.interact(local=dict(globals(), **locals()))
 
             plt.close()
@@ -1105,7 +1107,7 @@ def main(argv):
     parser.add_argument('-p', '--plot_types',
                         help='the type of plot to be generated. (e.g. {})'.format(','.join(report_plots | trace_plots)),
                         action='store', default='bar', type=lambda s: s.split(','))
-    parser.add_argument('-s', '--shell',
+    parser.add_argument('-i', '--interactive',
                         help='drop to a Python shell after plotting.',
                         action='store_true')
     parser.add_argument('-c', '--csv',
@@ -1224,7 +1226,7 @@ def main(argv):
                               .format('\n'.join(profile_name_list)))
         profile_name = profile_name_list[0]
 
-    report_config = ReportConfig(shell=args.shell, profile_name=profile_name, misc_text=args.misc_text,
+    report_config = ReportConfig(interactive=args.interactive, profile_name=profile_name, misc_text=args.misc_text,
                                  output_dir=args.output_dir, normalize=args.normalize, write_csv=args.csv,
                                  output_types=args.output_types, verbose=args.verbose, speedup=args.speedup,
                                  datatype=args.datatype, min_drop=args.min_drop, max_drop=args.max_drop,
@@ -1233,7 +1235,7 @@ def main(argv):
                                  tgt_profile_name=args.tgt_profile_name, tgt_plugin=args.tgt_plugin, show=args.show)
 
     if trace_plots.intersection(args.plot_types):
-        trace_config = TraceConfig(shell=args.shell, profile_name=profile_name, misc_text=args.misc_text,
+        trace_config = TraceConfig(interactive=args.interactive, profile_name=profile_name, misc_text=args.misc_text,
                                    output_dir=args.output_dir, normalize=args.normalize, write_csv=args.csv,
                                    output_types=args.output_types, verbose=args.verbose, smooth=args.smooth,
                                    analyze=args.analyze, min_drop=args.min_drop, max_drop=args.max_drop,
