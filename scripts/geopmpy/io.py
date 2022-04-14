@@ -734,7 +734,7 @@ class RawReport(object):
         result = None
         try:
             result = copy.deepcopy(self._raw_dict['Figure of Merit'])
-        except:
+        except KeyError:
             pass
         return result
 
@@ -742,7 +742,7 @@ class RawReport(object):
         result = None
         try:
             result = copy.deepcopy(self._raw_dict['Total Runtime'])
-        except:
+        except KeyError:
             pass
         return result
 
@@ -941,7 +941,7 @@ class RawReportCollection(object):
             rv = val
             try:
                 rv = float(val)
-            except:
+            except ValueError:
                 pass
             return rv
 
