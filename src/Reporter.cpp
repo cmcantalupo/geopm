@@ -140,7 +140,17 @@ namespace geopm
             if (!common_report.good()) {
                 throw Exception("Failed to open report file", GEOPM_ERROR_INVALID, __FILE__, __LINE__);
             }
-            common_report << create_header(agent_name, application_io.profile_name(), agent_report_header);
+            std::string profile_name = application_io.profile_name();
+            std::string bad_char = "\"\n";
+            for (auto &bc in bad_char) {
+                if (profile_name.find(bc)) {
+                    profile_name.erase(std::remove(profile_name.begin(),
+                                                   profile_name.end(), bc),
+                                       profile_name.end());
+                    std::cerr << "Warning: Erased \"" << bc << "\" character from profile name, not allowed\n";
+                }
+            }
+            common_report << create_header(agent_name, profile_name, agent_report_header);
         }
 
         std::string host_report = create_report(application_io.region_name_set(),
