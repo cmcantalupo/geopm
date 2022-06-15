@@ -83,7 +83,7 @@ templates_path = ['_templates']
 autosectionlabel_prefix_document = True
 
 # Fail the documentation build for nitpicky things like broken cross-references.
-nitpicky = True
+#nitpicky = True
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),

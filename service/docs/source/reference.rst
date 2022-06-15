@@ -123,12 +123,6 @@ GEOPM Service
 .. doxygenindex::
    :project: geopm-service
 
-GEOPM Runtime
-^^^^^^^^^^^^^
-
-.. doxygenindex::
-   :project: geopm-runtime
-
 
 Signals and Controls
 --------------------
