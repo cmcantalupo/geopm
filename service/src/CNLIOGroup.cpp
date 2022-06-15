@@ -22,8 +22,8 @@
 
 namespace geopm
 {
-    static const std::string FRESHNESS_FILE_NAME("freshness");
-    static const std::string RAW_SCAN_HZ_FILE_NAME("raw_scan_hz");
+    const std::string CNLIOGroup::M_FRESHNESS_FILE_NAME = "freshness";
+    const std::string CNLIOGroup::M_RAW_SCAN_HZ_FILE_NAME = "raw_scan_hz";
 
     static std::function<double()> get_formatted_file_reader(const std::string &path,
                                                              const std::string &units)
@@ -104,7 +104,7 @@ namespace geopm
                                    "Time that the sample was reported, in seconds since this agent initialized",
                                    Agg::max,
                                    string_format_double,
-                                   std::bind(&CNLIOGroup::read_time, this, cpu_info_path + "/" + FRESHNESS_FILE_NAME),
+                                   std::bind(&CNLIOGroup::read_time, this, cpu_info_path + "/" + M_FRESHNESS_FILE_NAME),
                                    false,
                                    NAN,
                                    M_UNITS_SECONDS,
@@ -113,14 +113,14 @@ namespace geopm
         , m_time_zero(geopm::time_zero())
     {
         m_sample_rate = read_double_from_file(
-            cpu_info_path + "/" + RAW_SCAN_HZ_FILE_NAME, "");
+            cpu_info_path + "/" + M_RAW_SCAN_HZ_FILE_NAME, "");
         if (m_sample_rate <= 0) {
             throw Exception("CNLIOGroup::CNLIOGroup(): Unexpected sample frequency " +
                                 std::to_string(m_sample_rate),
                             GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
         }
         m_initial_freshness =
-            read_double_from_file(cpu_info_path + "/" + FRESHNESS_FILE_NAME, "");
+            read_double_from_file(cpu_info_path + "/" + M_FRESHNESS_FILE_NAME, "");
 
         for (const auto &signal : m_signal_available) {
             // Attempt to call each of the read functions so we can fail

@@ -157,6 +157,8 @@ namespace geopm
             geopm_time_s m_time_zero;
             double m_initial_freshness;
             double m_sample_rate;
+            static const std::string M_FRESHNESS_FILE_NAME;
+            static const std::string M_RAW_SCAN_HZ_FILE_NAME;
     };
 }
 

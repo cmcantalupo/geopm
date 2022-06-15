@@ -39,8 +39,6 @@ namespace geopm
     };
 }
 
-extern "C"
-{
     void geopm_error_message(int error_value, char *error_message, size_t message_size)
     {
         if (message_size != 0) {
@@ -49,7 +47,6 @@ extern "C"
             strncpy(error_message, msg.c_str(), message_size - 1);
         }
     }
-}
 
 namespace geopm
 {

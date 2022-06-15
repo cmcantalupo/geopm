@@ -29,7 +29,7 @@ enum geopm_error_e {
     GEOPM_ERROR_DATA_STORE = -14,
 };
 
-/* Convert error number into an error message */
+/*! @brief Convert error number into an error message */
 void geopm_error_message(int err, char *msg, size_t size);
 
 #ifdef __cplusplus
