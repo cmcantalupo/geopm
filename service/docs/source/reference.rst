@@ -114,6 +114,22 @@ GEOPM Manual Pages
    geopm_agent_power_governor.7
 
 
+Doxygen Documentation
+---------------------
+
+GEOPM Service
+^^^^^^^^^^^^^
+
+.. doxygenindex::
+   :project: geopm-service
+
+GEOPM Runtime
+^^^^^^^^^^^^^
+
+.. doxygenindex::
+   :project: geopm-runtime
+
+
 Signals and Controls
 --------------------
 

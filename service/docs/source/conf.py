@@ -13,9 +13,13 @@ import sys
 import glob
 import sphinx_rtd_theme
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'scripts')))
-sys.path.append(os.path.join(os.path.dirname(__file__), "_ext"))
+_base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+_service_dir = os.path.join(_base_dir, 'service')
+_docs_dir = os.path.join(_base_dir, 'service', 'docs')
+
+sys.path.insert(0, _service_dir)
+sys.path.insert(0, os.path.join(_base_dir, 'scripts'))
+sys.path.append(os.path.join(_docs_dir, 'source', '_ext'))
 
 # -- Project information -----------------------------------------------------
 
@@ -58,6 +62,7 @@ extensions = [
     'sphinxemoji.sphinxemoji',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
+    'breathe',
     'geopmlint',
     'geopm_rst_extensions',
 ]
@@ -87,6 +92,13 @@ intersphinx_mapping = {
     'cffi': ('https://cffi.readthedocs.io/en/latest', None),
     'pandas': ('https://pandas.pydata.org/docs/', None),
 }
+
+breathe_projects = {
+    'geopm-runtime': os.path.join(_base_dir, 'dox', 'xml'),
+    'geopm-service': os.path.join(_service_dir, 'dox', 'xml')
+}
+
+breathe_default_project = 'geopm-service'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
