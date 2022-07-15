@@ -448,7 +448,10 @@ class ActiveSessions(object):
         """
         self.check_client_active(client_pid, 'remove_client')
         session_file = self._get_session_path(client_pid)
-        os.remove(session_file)
+        try:
+            os.remove(session_file)
+        except FileNotFoundError:
+            pass
         self._sessions.pop(client_pid)
 
     def get_clients(self):
