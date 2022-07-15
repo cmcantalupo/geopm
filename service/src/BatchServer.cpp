@@ -229,7 +229,7 @@ namespace geopm
         try {
             event_loop();
         }
-        catch(...) {
+        catch (const Exception &ex) {
             if (m_is_client_waiting) {
                 std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
                           << " Batch server was terminated while client was waiting: sending client quit message\n";
@@ -238,9 +238,22 @@ namespace geopm
                           << " Batch server was terminated while client was waiting: client received quit message\n";
                 m_is_client_waiting = false;
             }
-            throw;
+            else if (std::string(ex.what()).find("Received unknown response from client: 0") != std::string::npos) {
+                std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
+                          << " Batch client " << m_client_pid << " terminated while server " << getpid() << " was waiting\n";
+            }
+        }
+        catch (const std::runtime_error &ex) {
+                std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
+                          << " Batch server was terminated with exception: "
+                          << ex.what() << "\n";
+        }
+        catch (...) {
+                std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
+                          << " Batch server was terminated with unknown exception\n";
         }
     }
+
     void BatchServerImp::event_loop(void)
     {
         // Start event loop
@@ -397,7 +410,6 @@ namespace geopm
             char msg = setup();  // BatchStatus::M_MESSAGE_CONTINUE
             check_return(write(pipe_fd[1], &msg, 1), "write(2)");
             check_return(close(pipe_fd[1]), "close(2)");
-            // TODO : Reset all signal handlers to defaults
             run();
             m_signal_shmem.reset();
             m_control_shmem.reset();
