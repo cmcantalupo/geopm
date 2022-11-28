@@ -19,6 +19,7 @@ namespace geopm
 {
     class SharedMemory;
     class SharedMemoryScopedLock;
+    class Scheduler;
 
     /// @brief Provides an abstraction for a shared memory buffer that
     ///        can be used to pass entry, exit, epoch and short region
@@ -61,29 +62,6 @@ namespace geopm
             static std::unique_ptr<ApplicationRecordLog> make_unique(std::shared_ptr<SharedMemory> shmem);
             /// @brief Destructor for pure virtual base class.
             virtual ~ApplicationRecordLog() = default;
-            /// @brief Set the process identifier.
-            ///
-            /// Called by the Profile to set the process identifier
-            /// that will be used to tag all control messages.  This
-            /// method must be called prior to the enter(), exit() or
-            /// epoch() methods.  The value provided is any integer
-            /// unique to the compute node that identifies the caller
-            /// of the profile interface.  Commonly this is the MPI
-            /// rank, but could also be the linux process ID for a
-            /// parent thread.
-            ///
-            /// @param [in] process The process identifier.
-            virtual void set_process(int process) = 0;
-            /// @brief Set the reference time.
-            ///
-            /// Called by the Profile to set the reference time that
-            /// is used to construct the time element of a record_s.
-            /// This method must be called prior to the enter(),
-            /// exit() or epoch() methods.
-            ///
-            /// @param [in] time The timestamp when the profiled
-            ///        process began.
-            virtual void set_time_zero(const geopm_time_s &time) = 0;
             /// @brief Create a message in the log defining a region
             ///        entry.
             ///
@@ -157,6 +135,11 @@ namespace geopm
             ///        output vector.
             virtual void dump(std::vector<record_s> &records,
                               std::vector<short_region_s> &short_regions) = 0;
+            virtual void affinity(const geopm_time_s &time, int cpu_idx) = 0;
+            virtual void cpuset_changed(const geopm_time_s &time) = 0;
+            virtual void start_profile(const geopm_time_s &time, const std::string &profile_name) = 0;
+            virtual void stop_profile(const geopm_time_s &time, const std::string &profile_name) = 0;
+            virtual void overhead(const geopm_time_s &time, double overhead_sec) = 0;
             /// @brief Gets the shared memory size requirement.
             ///
             /// This method returns the value to use when sizing the
@@ -183,7 +166,7 @@ namespace geopm
             static size_t max_region(void);
         protected:
             ApplicationRecordLog() = default;
-            static constexpr size_t M_LAYOUT_SIZE = 49192;
+            static constexpr size_t M_LAYOUT_SIZE = 57384;
             static constexpr int M_MAX_RECORD = 1024;
             static constexpr int M_MAX_REGION = M_MAX_RECORD + 1;
     };
@@ -191,14 +174,20 @@ namespace geopm
     {
         public:
             ApplicationRecordLogImp(std::shared_ptr<SharedMemory> shmem);
+            ApplicationRecordLogImp(std::shared_ptr<SharedMemory> shmem,
+                                    int process,
+                                    std::shared_ptr<Scheduler> scheduler);
             virtual ~ApplicationRecordLogImp() = default;
-            void set_process(int process) override;
-            void set_time_zero(const geopm_time_s &time) override;
             void enter(uint64_t hash, const geopm_time_s &time) override;
             void exit(uint64_t hash, const geopm_time_s &time) override;
             void epoch(const geopm_time_s &time) override;
             void dump(std::vector<record_s> &records,
                       std::vector<short_region_s> &short_regions) override;
+            void affinity(const geopm_time_s &time, int cpu_idx) override;
+            void cpuset_changed(const geopm_time_s &time) override;
+            void start_profile(const geopm_time_s &time, const std::string &profile_name) override;
+            void stop_profile(const geopm_time_s &time, const std::string &profile_name) override;
+            void overhead(const geopm_time_s &time, double overhead_sec) override;
         private:
             struct m_layout_s {
                 int num_record;
@@ -207,7 +196,7 @@ namespace geopm
                 short_region_s region_table[M_MAX_REGION];
             };
             static_assert(sizeof(m_layout_s) == M_LAYOUT_SIZE,
-                          "Defined layout size does not match the actual layout size");
+                          "Defined layout size does not match the actual layout size ");
 
             struct m_region_enter_s {
                 int record_idx;
@@ -215,16 +204,14 @@ namespace geopm
                 geopm_time_s enter_time;
                 bool is_short;
             };
-            void check_setup(void);
             void check_reset(m_layout_s &layout);
             void append_record(m_layout_s &layout, const record_s &record);
             int m_process;
             std::shared_ptr<SharedMemory> m_shmem;
             std::map<uint64_t, m_region_enter_s> m_hash_region_enter_map;
-            geopm_time_s m_time_zero;
-            bool m_is_setup;
             uint64_t m_epoch_count;
             uint64_t m_entered_region_hash;
+            std::shared_ptr<Scheduler> m_scheduler;
     };
 }
 

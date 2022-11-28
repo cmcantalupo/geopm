@@ -17,6 +17,8 @@
 
 #include "Environment.hpp"
 #include "geopm/Exception.hpp"
+#include "geopm/ServiceProxy.hpp"
+#include "Profile.hpp"
 #ifndef GEOPM_TEST
 #include <mpi.h>
 #endif
@@ -31,14 +33,11 @@ extern "C"
 #include "geopm_hint.h"
 #include "geopm_pmpi.h"
 #include "geopm_sched.h"
+#include "geopm_time.h"
 #include "geopm_mpi_comm_split.h"
-    /**
-     * Helper that creates the DefaultProfile signleton (if not already created)
-     * and catches all exceptions.
-     */
-    int geopm_prof_init(void);
 }
 
+using geopm::Exception;
 
 static int g_is_geopm_pmpi_ctl_enabled = 0;
 static MPI_Comm g_geopm_comm_world_swap = MPI_COMM_WORLD;
@@ -113,10 +112,10 @@ extern "C" {
 #ifndef GEOPM_TEST
 static int geopm_pmpi_init(const char *exec_name)
 {
+    int do_profile = 0;
     int rank;
     int err = 0;
     int pmpi_ctl = 0;
-    int do_profile = 0;
     g_geopm_comm_world_swap_f = PMPI_Comm_c2f(MPI_COMM_WORLD);
     g_geopm_comm_world_f = PMPI_Comm_c2f(MPI_COMM_WORLD);
     PMPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -148,6 +147,14 @@ static int geopm_pmpi_init(const char *exec_name)
                 g_geopm_comm_world_swap_f = PMPI_Comm_c2f(g_geopm_comm_world_swap);
             }
             if (!err && is_ctl) {
+                try {
+                    geopm::Profile::default_profile().shutdown();
+                }
+                catch (const Exception &ex) {
+                    throw Exception(std::string("Requested GEOPM Controller be launched in process mode,"
+                                    " but GEOPM Service is not active: ") + ex.what(),
+                                    GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+                }
                 err = geopm_ctl_create(g_geopm_comm_world_swap, &g_ctl);
                 if (!err) {
                     err = geopm_ctl_run(g_ctl);
@@ -199,14 +206,12 @@ static int geopm_pmpi_init(const char *exec_name)
                     err = pthread_attr_destroy(&thread_attr);
                 }
             }
-            CPU_FREE(cpu_set);
+            if (cpu_set) {
+               CPU_FREE(cpu_set);
+            }
         }
         if (!err) {
             err = geopm_env_do_profile(&do_profile);
-        }
-        if (!err && do_profile) {
-            // should only get called by one thread
-            geopm_prof_init();
         }
 #ifdef GEOPM_DEBUG
         if (err) {
@@ -258,6 +263,7 @@ extern "C" {
     {
         int err = 0;
         int pmpi_ctl = 0;
+        uint64_t init_rid = 0;
 
         err = geopm_env_pmpi_ctl(&pmpi_ctl);
         if (!err &&
@@ -266,13 +272,12 @@ extern "C" {
             required = MPI_THREAD_MULTIPLE;
         }
         err = PMPI_Init_thread(argc, argv, required, provided);
+        geopm_time_s begin_time;
+        geopm_time(&begin_time);
         if (!err &&
             pmpi_ctl == geopm::Environment::M_CTL_PTHREAD &&
             *provided < MPI_THREAD_MULTIPLE) {
             err = GEOPM_ERROR_RUNTIME;
-        }
-        if (!err) {
-            err = PMPI_Barrier(MPI_COMM_WORLD);
         }
         if (!err) {
             if (argv && *argv && **argv && strlen(**argv)) {
@@ -282,6 +287,7 @@ extern "C" {
                 err = geopm_pmpi_init("Fortran");
             }
         }
+        geopm_prof_overhead(geopm_time_since(&begin_time));
         return err;
     }
 
@@ -291,7 +297,7 @@ extern "C" {
         int tmp_err = 0;
         int pmpi_ctl = 0;
         int do_profile = 0;
-
+        geopm_time_s overhead_entry = geopm::time_curr();
         err = geopm_env_pmpi_ctl(&pmpi_ctl);
         if (!err) {
             err = geopm_env_do_profile(&do_profile);
@@ -300,6 +306,7 @@ extern "C" {
             (!g_ctl || pmpi_ctl == geopm::Environment::M_CTL_PTHREAD))
         {
             PMPI_Barrier(g_geopm_comm_world_swap);
+            geopm_prof_overhead(geopm_time_since(&overhead_entry));
             err = geopm_prof_shutdown();
         }
 

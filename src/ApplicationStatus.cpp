@@ -46,11 +46,6 @@ namespace geopm
         // accessed atomically by hardware.
         m_buffer = (m_app_status_s *)m_shmem->pointer();
         m_cache.resize(m_shmem->size());
-
-        // initialize shmem if all zero is not appropriate
-        for (int cpu = 0; cpu < m_num_cpu; ++cpu) {
-            set_process({cpu}, -1);
-        }
         update_cache();
     }
 
@@ -160,36 +155,6 @@ namespace geopm
             result = (double)m_cache[cpu_idx].completed_work / total_work;
         }
         return result;
-    }
-
-    void ApplicationStatusImp::set_process(const std::set<int> &cpu_idx, int process)
-    {
-        GEOPM_DEBUG_ASSERT(m_buffer != nullptr, "m_buffer not set");
-        for (auto cpu : cpu_idx) {
-            if (cpu < 0 || cpu >= m_num_cpu) {
-                throw Exception("ApplicationStatusImp::set_process(): invalid CPU index: " + std::to_string(cpu),
-                                GEOPM_ERROR_INVALID, __FILE__, __LINE__);
-            }
-            m_buffer[cpu].process = process;
-            if (process == -1) {
-                set_hash(cpu, GEOPM_REGION_HASH_INVALID, GEOPM_REGION_HINT_INACTIVE);
-            }
-            else {
-                set_hash(cpu, GEOPM_REGION_HASH_UNMARKED, GEOPM_REGION_HINT_UNSET);
-            }
-        }
-    }
-
-    int ApplicationStatusImp::get_process(int cpu_idx) const
-    {
-        if (cpu_idx < 0 || cpu_idx >= m_num_cpu) {
-            throw Exception("ApplicationStatusImp::get_process(): invalid CPU index: " + std::to_string(cpu_idx),
-                            GEOPM_ERROR_INVALID, __FILE__, __LINE__);
-        }
-        GEOPM_DEBUG_ASSERT(m_cache.size() == buffer_size(m_num_cpu),
-                           "Memory for m_cache not sized correctly");
-
-        return m_cache[cpu_idx].process;
     }
 
     void ApplicationStatusImp::update_cache(void)

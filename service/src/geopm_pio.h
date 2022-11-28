@@ -472,6 +472,25 @@ void geopm_pio_reset(void);
 /// @return 0 if the value is valid, GEOPM_ERROR_INVALID if the value is invalid.
 int geopm_pio_check_valid_value(double value);
 
+/// @brief Discover the thread PIDS associated with an application
+///
+/// Called by a profiling application (like geopmctl) to determine
+/// which Linux PIDs should be tracked as part of an application.
+///
+/// @param [in] profile_name String that identifies the application
+///        being profiled.
+///
+/// @param [in] max_num_pid Number of integers allocated for the pid
+///        array.
+///
+/// @param [out] num_pid Actual number of elements written to the pid
+///        array.
+///
+/// @param [out] pid An array of Linux PIDs that are associated with
+///        the application.
+int geopm_pio_profile_pids(const char *profile_name, int max_num_pid, int *num_pid, int *pid);
+
+
 #ifdef __cplusplus
 }
 #endif

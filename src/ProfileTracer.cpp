@@ -15,6 +15,7 @@
 #include "geopm/PlatformTopo.hpp"
 #include "geopm/Helper.hpp"
 #include "geopm_hint.h"
+#include "geopm_time.h"
 #include "Environment.hpp"
 #include "geopm/Exception.hpp"
 #include "CSV.hpp"
@@ -29,6 +30,7 @@ namespace geopm
 
     ProfileTracerImp::ProfileTracerImp(const std::string &start_time)
         : ProfileTracerImp(start_time,
+                           geopm::time_zero(),
                            1024 * 1024,
                            environment().do_trace_profile(),
                            environment().trace_profile(),
@@ -39,12 +41,14 @@ namespace geopm
     }
 
     ProfileTracerImp::ProfileTracerImp(const std::string &start_time,
+                                       const geopm_time_s &time_zero,
                                        size_t buffer_size,
                                        bool is_trace_enabled,
                                        const std::string &file_name,
                                        const std::string &host_name,
                                        ApplicationSampler& application_sampler)
         : m_is_trace_enabled(is_trace_enabled)
+        , m_time_zero(time_zero)
     {
         m_application_sampler = &application_sampler;
         if (m_is_trace_enabled) {
@@ -89,6 +93,15 @@ namespace geopm
                         "The ProfileTracerImp::ProfileTracerImp() must be called prior to calling ProfileTracerImp::event_format()");
                     result = string_format_hex(m_application_sampler->get_short_region(value).hash);
                     break;
+                case EVENT_AFFINITY:
+                    result = string_format_integer(value);
+                    break;
+                case EVENT_START_PROFILE:
+                    result = string_format_hex(value);
+                    break;
+                case EVENT_STOP_PROFILE:
+                    result = string_format_hex(value);
+                    break;
                 default:
                     result = "INVALID";
                     GEOPM_DEBUG_ASSERT(false, "ProfileTracer::event_format(): event out of range");
@@ -104,8 +117,10 @@ namespace geopm
     {
         if (m_is_trace_enabled) {
             std::vector<double> sample(M_NUM_COLUMN);
+            m_time_zero = geopm::time_zero();
             for (const auto &it : records) {
-                sample[M_COLUMN_TIME] = it.time;
+                geopm_time_s tt = {it.time};
+                sample[M_COLUMN_TIME] = geopm_time_diff(&m_time_zero, &tt);
                 sample[M_COLUMN_PROCESS] = it.process;
                 sample[M_COLUMN_EVENT] = it.event;
                 sample[M_COLUMN_SIGNAL] = it.signal;

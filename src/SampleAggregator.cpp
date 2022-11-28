@@ -239,9 +239,15 @@ namespace geopm
                 signal.epoch_count_last = epoch_count;
                 signal.region_accum_it = sample_aggregator_emplace_hash(signal.region_accum, hash);
             }
-            else if (hash != GEOPM_REGION_HASH_INVALID) {
+            else {
+                if (std::isnan(sample)) {
+                    continue;
+                }
                 // Measure the change since the last update
-                double delta = sample - signal.sample_last;
+                double delta = 0;
+                if (!std::isnan(signal.sample_last)) {
+                    delta = sample - signal.sample_last;
+                }
                 // Update that application totals
                 signal.app_accum->update(delta);
                 // If we have observed our first epoch, update epoch totals
@@ -280,12 +286,12 @@ namespace geopm
             int epoch_count = m_platform_io.sample(signal.epoch_count_idx);
             if (!m_is_updated) {
                 // On first call just initialize the signal values
-                signal.time_last = time;
+                signal.time_last = 0.0;
                 signal.region_hash_last = hash;
                 signal.epoch_count_last = epoch_count;
                 signal.region_accum_it = sample_aggregator_emplace_hash(signal.region_accum, hash);
             }
-            else if (hash != GEOPM_REGION_HASH_INVALID) {
+            else {
                 // Measure the time change since the last update
                 double delta = time - signal.time_last;
                 // Update that application totals
@@ -298,6 +304,7 @@ namespace geopm
                 signal.period_accum->update(delta, sample);
                 // Update region totals
                 signal.region_accum_it->second->update(delta, sample);
+
                 sample_aggregator_update_epoch(signal, epoch_count);
                 sample_aggregator_update_hash_exit(signal, hash);
                 if (signal.region_hash_last != hash) {

@@ -167,7 +167,7 @@ class Config(object):
         self.plugin = opts.plugin
         self.debug_attach = opts.debug_attach
         if opts.preload:
-            sys.stderr.write("Warning: <geopmpy.launcher> The --geopm-preload option is deprecated, libgeopm is always preloaded.\n")
+            sys.stderr.write("Warning: <geopmpy.launcher> The --geopm-preload option is deprecated, libgeopmload is always preloaded.\n")
         self.preload = True
         self.omp_num_threads = None
         self.allow_ht_pinning = opts.allow_ht_pinning and 'GEOPM_DISABLE_HYPERTHREADS' not in os.environ
@@ -392,6 +392,7 @@ class Launcher(object):
         # Calculate derived values
         if self.rank_per_node is None and self.num_rank and self.num_node:
             self.rank_per_node = int_ceil_div(self.num_rank, self.num_node)
+        self.environ_ext['GEOPM_NUM_PROC'] = str(self.rank_per_node)
 
         if self.num_node is None and self.num_rank and self.rank_per_node:
             self.num_node = int_ceil_div(self.num_rank, self.rank_per_node)
@@ -469,19 +470,16 @@ class Launcher(object):
             argv_mod.extend(self.argv_unparsed)
         else:
             argv_mod.extend(self.argv)
-        echo = []
+
+        echo_app = []
         if self.is_geopm_enabled:
-            echo.append(str(self.config))
+            echo_app.append(str(self.config))
             for it in self.environ_ext.items():
-                echo.append('{}={}'.format(it[0], it[1]))
-        echo.extend(argv_mod)
-        echo = u'\n' + u' '.join(echo) + u'\n\n'
+                echo_app.append('{}={}'.format(it[0], it[1]))
+        echo_app.extend(argv_mod)
+        echo_app = u'\n' + u' '.join(echo_app) + u'\n\n'
         if not self.quiet:
-            stderr.write(echo) # Echo the command that's about to be run
-        if self.is_geopm_enabled and self.config.launch_script:
-            with open(os.open(self.config.launch_script, os.O_CREAT | os.O_WRONLY), 'w') as fid:
-                fid.write('#!/bin/bash\n')
-                fid.write(echo)
+            stderr.write(echo_app) # Echo the command that's about to be run
 
         signal.signal(signal.SIGINT, self.int_handler)
 
@@ -494,6 +492,24 @@ class Launcher(object):
             is_geopmctl = True
         else:
             is_geopmctl = False
+
+        echo_ctl = []
+        if is_geopmctl:
+            self.config.set_omp_num_threads(1)
+            echo_ctl.append(str(self.config))
+            for it in self.environ_ext.items():
+                echo_ctl.append('{}={}'.format(it[0], it[1]))
+            echo_ctl.extend(geopm_argv)
+            echo_ctl = u'\n' + u' '.join(echo_ctl) + u' &\n\n'
+            if not self.quiet:
+                stderr.write(echo_ctl) # Echo the command that's about to be run
+
+        if self.is_geopm_enabled and self.config.launch_script:
+            with open(os.open(self.config.launch_script, os.O_CREAT | os.O_WRONLY), 'w') as fid:
+                fid.write('#!/bin/bash\n')
+                if is_geopmctl:
+                    fid.write(echo_ctl)
+                fid.write(echo_app)
 
         # Popen stream redirection only works with things that can be written
         # through file descriptors. The launcher may be given a StringIO or some
@@ -761,7 +777,8 @@ Warning: <geopm> geopmpy.launcher: Incompatible CPU frequency governor
         result.extend(self.num_rank_option(is_geopmctl))
         if self.config and self.config.do_affinity:
             result.extend(self.affinity_option(is_geopmctl))
-        result.extend(self.preload_option())
+        if not is_geopmctl:
+            result.extend(self.preload_option())
         result.extend(self.timeout_option())
         result.extend(self.time_limit_option())
         result.extend(self.job_name_option())
@@ -812,7 +829,7 @@ Warning: <geopm> geopmpy.launcher: Incompatible CPU frequency governor
     def preload_option(self):
         if self.config and self.config.get_preload():
             self.environ_ext['LD_PRELOAD'] = ':'.join((ll for ll in
-                                                       ('libgeopm.so', os.getenv('LD_PRELOAD'))
+                                                       ('libgeopmload.so.1.0.0', os.getenv('LD_PRELOAD'))
                                                        if ll is not None))
         return []
 
@@ -1129,7 +1146,7 @@ class SrunLauncher(Launcher):
         result = []
         if self.config and self.config.get_preload():
             value = ':'.join((ll for ll in
-                              ('libgeopm.so', os.getenv('LD_PRELOAD'))
+                              ('libgeopmload.so.1.0.0', os.getenv('LD_PRELOAD'))
                               if ll is not None))
             result = ["--export=LD_PRELOAD={},ALL".format(value)]
         return result
@@ -1678,7 +1695,7 @@ class AprunLauncher(Launcher):
         result = []
         if self.config and self.config.get_preload():
             value = ':'.join((ll for ll in
-                              ('libgeopm.so', os.getenv('LD_PRELOAD'))
+                              ('libgeopmload.so.1.0.0', os.getenv('LD_PRELOAD'))
                               if ll is not None))
             result = ['-e',  'LD_PRELOAD={}'.format(value)]
         return result

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "ServiceProxy.hpp"
+#include "geopm/ServiceProxy.hpp"
 
 #include <sstream>
 
@@ -157,6 +157,41 @@ namespace geopm
                                  setting);
     }
 
+    void ServiceProxyImp::platform_start_profile(const std::string &profile_name)
+    {
+        (void)m_bus->call_method("PlatformStartProfile",
+                                 profile_name);
+    }
+
+    void ServiceProxyImp::platform_stop_profile(const std::vector<std::string> &region_names)
+    {
+        std::shared_ptr<SDBusMessage> bus_message = m_bus->make_call_message("PlatformStopProfile");
+        bus_message->append_strings(region_names);
+        (void)m_bus->call_method(bus_message);
+    }
+
+    std::vector<int> ServiceProxyImp::platform_get_profile_pids(const std::string &profile_name)
+    {
+        std::vector<int> result;
+        std::shared_ptr<SDBusMessage> bus_reply = m_bus->call_method("PlatformGetProfilePids",
+                                                                     profile_name);
+        bus_reply->enter_container(SDBusMessage::M_MESSAGE_TYPE_ARRAY, "i");
+        int pid = bus_reply->read_integer();
+        while (bus_reply->was_success()) {
+            result.push_back(pid);
+            pid = bus_reply->read_integer();
+        }
+        bus_reply->exit_container();
+        return result;
+    }
+
+    std::vector<std::string> ServiceProxyImp::platform_get_profile_region_names(const std::string &profile_name)
+    {
+        std::shared_ptr<SDBusMessage> bus_reply = m_bus->call_method("PlatformGetProfileRegionNames",
+                                                                     profile_name);
+        return read_string_array(bus_reply);
+    }
+
     std::vector<std::string> ServiceProxyImp::read_string_array(
         std::shared_ptr<SDBusMessage> bus_message)
     {
@@ -168,6 +203,33 @@ namespace geopm
             str = bus_message->read_string();
         }
         bus_message->exit_container();
+        return result;
+    }
+}
+
+extern "C" {
+    int geopm_pio_profile_pids(const char *profile_name, int max_num_pid, int *num_pid, int *pid)
+    {
+        int result = 0;
+        try {
+            auto service_proxy = geopm::ServiceProxy::make_unique();
+            auto pid_vec = service_proxy->platform_get_profile_pids(profile_name);
+            int result_len = pid_vec.size();
+            bool is_overflow = false;
+            if (result_len > max_num_pid) {
+                result_len = max_num_pid;
+                is_overflow = true;
+            }
+            std::copy(pid_vec.begin(), pid_vec.begin() + result_len, pid);
+            if (is_overflow) {
+                throw geopm::Exception("geopm_pio_profile_pids(): Number of profile PIDs is greater than length of array",
+                                       GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+            }
+        }
+        catch (...) {
+            result = geopm::exception_handler(std::current_exception());
+            result = result < 0 ? result : GEOPM_ERROR_RUNTIME;
+        }
         return result;
     }
 }

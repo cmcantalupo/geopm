@@ -6,10 +6,13 @@
 #include "config.h"
 #include "ReduceModelRegion.hpp"
 
+#include <mpi.h>
 #include <iostream>
 #include <vector>
-#include <mpi.h>
+#include <thread>
+#include <chrono>
 
+#include "GEOPMBenchConfig.hpp"
 #include "geopm/Exception.hpp"
 
 namespace geopm
@@ -22,6 +25,8 @@ namespace geopm
         : ModelRegion(verbosity)
     {
         big_o(big_o_in);
+        const GEOPMBenchConfig &config = geopmbench_config();
+        m_is_mpi_enabled = config.is_mpi_enabled();
     }
 
     void ReduceModelRegion::big_o(double big_o)
@@ -35,18 +40,24 @@ namespace geopm
 
     void ReduceModelRegion::run(void)
     {
-        int num_rank = 0;
-        int err = MPI_Comm_size(MPI_COMM_WORLD, &num_rank);
-        if (err) {
-            throw Exception("MPI_Comm_size", err, __FILE__, __LINE__);
+        if (m_is_mpi_enabled) {
+            int num_rank = 0;
+            int err = 0;
+            err = MPI_Comm_size(MPI_COMM_WORLD, &num_rank);
+            if (err) {
+                throw Exception("MPI_Comm_size", err, __FILE__, __LINE__);
+            }
+            if (m_verbosity != 0) {
+                std::cout << "Executing reduce\n";
+            }
+            err = MPI_Allreduce(m_send_buffer.data(), m_recv_buffer.data(),
+                                m_num_elem, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            if (err) {
+                throw Exception("MPI_Allreduce", err, __FILE__, __LINE__);
+            }
         }
-        if (m_verbosity != 0) {
-            std::cout << "Executing reduce\n";
-        }
-        err = MPI_Allreduce(m_send_buffer.data(), m_recv_buffer.data(),
-                            m_num_elem, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        if (err) {
-            throw Exception("MPI_Allreduce", err, __FILE__, __LINE__);
+        else {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
     }
 }

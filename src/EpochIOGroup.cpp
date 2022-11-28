@@ -19,6 +19,11 @@
 
 namespace geopm
 {
+    const std::set<std::string> EpochIOGroup::m_valid_signal_name = {
+        "EPOCH::EPOCH_COUNT",
+        "EPOCH_COUNT",
+    };
+
     EpochIOGroup::EpochIOGroup()
         : EpochIOGroup(platform_topo(),
                        ApplicationSampler::application_sampler())
@@ -31,29 +36,10 @@ namespace geopm
         : m_topo(topo)
         , m_app(app)
         , m_num_cpu(m_topo.num_domain(GEOPM_DOMAIN_CPU))
-        , m_per_cpu_count(m_num_cpu, NAN)
+        , m_per_cpu_count(m_num_cpu, 0.0)
         , m_is_batch_read(false)
-        , m_is_initialized(false)
     {
 
-    }
-
-    const std::set<std::string> EpochIOGroup::m_valid_signal_name = {
-        "EPOCH::EPOCH_COUNT",
-        "EPOCH_COUNT",
-    };
-
-    void EpochIOGroup::init(void)
-    {
-        int cpu_idx = 0;
-        for (const auto &proc : m_app.per_cpu_process()) {
-            if (proc != -1) {
-                m_process_cpu_map[proc].insert(cpu_idx);
-                m_per_cpu_count[cpu_idx] = 0;
-            }
-            ++cpu_idx;
-        }
-        m_is_initialized = true;
     }
 
     std::set<std::string> EpochIOGroup::signal_names(void) const
@@ -125,19 +111,24 @@ namespace geopm
 
     void EpochIOGroup::read_batch(void)
     {
-        if (!m_is_initialized) {
-            init();
-        }
         /// update_records() will get called by controller
         auto records = m_app.get_records();
         for (const auto &record : records) {
-            GEOPM_DEBUG_ASSERT(m_process_cpu_map.find(record.process) != m_process_cpu_map.end(),
-                               "Process " + std::to_string(record.process) + " in record not found");
             if (record.event == EVENT_EPOCH_COUNT) {
-                const auto &cpu_set = m_process_cpu_map.at(record.process);
-                for (const auto &cpu_idx : cpu_set) {
+                for (int cpu_idx : m_app.client_cpu_set(record.process)) {
                     m_per_cpu_count[cpu_idx] = (double)record.signal;
                 }
+            }
+        }
+        std::vector<bool> is_valid(m_num_cpu, false);
+        for (int pid : m_app.client_pids()) {
+            for (int cpu_idx : m_app.client_cpu_set(pid)) {
+                is_valid[cpu_idx] = true;
+            }
+        }
+        for (int cpu_idx = 0; cpu_idx != m_num_cpu; ++cpu_idx) {
+            if (!is_valid[cpu_idx] && m_per_cpu_count[cpu_idx] == 0.0) {
+                m_per_cpu_count[cpu_idx] = NAN;
             }
         }
         m_is_batch_read = true;

@@ -40,11 +40,17 @@ void EpochIOGroupTest::SetUp()
     m_num_cpu = 4;
     m_pid_0 = 33;
     m_pid_1 = 42;
-    std::vector<int> cpu_process { m_pid_0, m_pid_0, m_pid_1, m_pid_1 };
+    std::vector<int> pids {m_pid_0,  m_pid_1};
+    std::set<int> cpu_set_0 {0, 1};
+    std::set<int> cpu_set_1 {2, 3};
     ON_CALL(m_topo, num_domain(GEOPM_DOMAIN_CPU))
         .WillByDefault(Return(m_num_cpu));
-    ON_CALL(m_app, per_cpu_process())
-        .WillByDefault(Return(cpu_process));
+    ON_CALL(m_app, client_pids())
+        .WillByDefault(Return(pids));
+    ON_CALL(m_app, client_cpu_set(m_pid_0))
+        .WillByDefault(Return(cpu_set_0));
+    ON_CALL(m_app, client_cpu_set(m_pid_1))
+        .WillByDefault(Return(cpu_set_1));
     EXPECT_CALL(m_topo, num_domain(GEOPM_DOMAIN_CPU));
     m_group = std::make_shared<EpochIOGroup>(m_topo, m_app);
 }
@@ -56,7 +62,6 @@ TEST_F(EpochIOGroupTest, valid_signals)
         "EPOCH_COUNT",
     };
     // enable signals
-    EXPECT_CALL(m_app, per_cpu_process());
     m_group->read_batch();
 
     auto signal_names = m_group->signal_names();
@@ -104,7 +109,6 @@ TIME|PROCESS|EVENT|SIGNAL
 1.28657223|33|EPOCH_COUNT|2
 1.286573997|42|EPOCH_COUNT|1
 )");
-    EXPECT_CALL(m_app, per_cpu_process());
     m_group->read_batch();
     // no more push allowed
     EXPECT_THROW(m_group->push_signal("EPOCH_COUNT", GEOPM_DOMAIN_CPU, 0), Exception);
@@ -112,7 +116,6 @@ TIME|PROCESS|EVENT|SIGNAL
 
 TEST_F(EpochIOGroupTest, sample_count)
 {
-    EXPECT_CALL(m_app, per_cpu_process());
     int idx0 = -1;
     int idx1 = -1;
     idx0 = m_group->push_signal("EPOCH_COUNT", GEOPM_DOMAIN_CPU, 0);

@@ -2,6 +2,7 @@
  * Copyright (c) 2015 - 2023, Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
+#include "config.h"
 
 #include <sched.h>
 #include <unistd.h>
@@ -16,15 +17,15 @@
 
 #include "geopm_prof.h"
 #include "geopm_hint.h"
+#include "geopm_time.h"
 #include "Profile.hpp"
-#include "config.h"
 
 #include "geopm_test.hpp"
 #include "MockComm.hpp"
-#include "MockProfileTable.hpp"
-#include "MockControlMessage.hpp"
 #include "MockApplicationRecordLog.hpp"
 #include "MockApplicationStatus.hpp"
+#include "MockServiceProxy.hpp"
+#include "MockScheduler.hpp"
 
 
 using geopm::Profile;
@@ -43,65 +44,44 @@ class ProfileTest : public ::testing::Test
         std::set<int> m_cpu_list = {2, 3};
         std::shared_ptr<MockApplicationRecordLog> m_record_log;
         std::shared_ptr<MockApplicationStatus> m_status;
-
-        // legacy mocks
-        std::shared_ptr<MockComm> m_world_comm;
-        std::shared_ptr<MockComm> m_shm_comm;
-        std::shared_ptr<MockComm> m_comm;
-        std::shared_ptr<MockProfileTable> m_table;
-        std::shared_ptr<MockControlMessage> m_ctl_msg;
-
+        std::shared_ptr<MockServiceProxy> m_service_proxy;
         std::unique_ptr<Profile> m_profile;
+        std::shared_ptr<MockScheduler> m_scheduler;
 };
 
 void ProfileTest::SetUp()
 {
     m_record_log = std::make_shared<MockApplicationRecordLog>();
     m_status = std::make_shared<MockApplicationStatus>();
+    m_service_proxy = std::make_shared<MockServiceProxy>();
+    EXPECT_CALL(*m_service_proxy, platform_start_profile("profile"));
+    EXPECT_CALL(*m_service_proxy, platform_stop_profile(_));
 
-    EXPECT_CALL(*m_record_log, set_process(m_process));
-    EXPECT_CALL(*m_record_log, set_time_zero(_));
+    EXPECT_CALL(*m_record_log, cpuset_changed(_));
+    EXPECT_CALL(*m_record_log, start_profile(_, "profile"));
+    EXPECT_CALL(*m_record_log, stop_profile(_, "profile"));
+    EXPECT_CALL(*m_status, set_hash(2, GEOPM_REGION_HASH_UNMARKED, GEOPM_REGION_HINT_UNSET));
+    EXPECT_CALL(*m_status, set_hash(3, GEOPM_REGION_HASH_UNMARKED, GEOPM_REGION_HINT_UNSET));
 
-    // legacy
-    int shm_rank = 6;
-    std::string M_PROF_NAME = "profile_test";
-    std::string M_REPORT = "report_test";
-    int M_SHM_COMM_SIZE = 2;
-    m_ctl_msg = std::make_shared<NiceMock<MockControlMessage> >();
-    m_shm_comm = std::make_shared<NiceMock<MockComm> >();
-    ON_CALL(*m_shm_comm, rank()).WillByDefault(Return(shm_rank));
-    ON_CALL(*m_shm_comm, num_rank()).WillByDefault(Return(M_SHM_COMM_SIZE));
-    ON_CALL(*m_shm_comm, test(testing::_))
-        .WillByDefault(testing::Return(true));
-
-    m_world_comm = std::make_shared<NiceMock<MockComm> >();
-    ON_CALL(*m_world_comm, rank()).WillByDefault(Return(m_process));
-    ON_CALL(*m_world_comm, split("prof", geopm::Comm::M_COMM_SPLIT_TYPE_SHARED))
-        .WillByDefault(Return(m_shm_comm));
-    m_comm = std::make_shared<NiceMock<MockComm> >();
-    m_table = std::make_shared<MockProfileTable>();
-    ON_CALL(*m_table, name_fill(_))
-        .WillByDefault(Return(true));
+    m_scheduler = std::make_shared<MockScheduler>();
+    EXPECT_CALL(*m_scheduler, num_cpu())
+       .WillRepeatedly(Return(4));
+    EXPECT_CALL(*m_scheduler, proc_cpuset())
+       .WillRepeatedly([](){return geopm::make_cpu_set(4, {2,3});});
 
     m_profile = geopm::make_unique<ProfileImp>("profile",
-                                               "shmem_key",
                                                "report",
-                                               1,
-                                               m_world_comm,
-                                               m_ctl_msg,
                                                M_NUM_CPU,
                                                m_cpu_list,
-                                               m_table,
-                                               m_comm,
                                                m_status,
-                                               m_record_log);
-    EXPECT_CALL(*m_status, set_process(m_cpu_list, m_process));
-    m_profile->init();
+                                               m_record_log,
+                                               true,
+                                               m_service_proxy,
+                                               m_scheduler);
 }
 
 TEST_F(ProfileTest, enter_exit)
 {
-    EXPECT_CALL(*m_table, key(_)).WillOnce(Return(0xABCD));
     std::string name = "test_region";
     uint64_t hint = GEOPM_REGION_HINT_COMPUTE;
     uint64_t region_id = m_profile->region(name, hint);
@@ -129,13 +109,11 @@ TEST_F(ProfileTest, enter_exit)
 
 TEST_F(ProfileTest, enter_exit_nested)
 {
-    EXPECT_CALL(*m_table, key(_)).WillOnce(Return(0xABCD));
     std::string usr_name = "usr_test_region";
     uint64_t usr_hint = GEOPM_REGION_HINT_COMPUTE;
     uint64_t usr_region_id = m_profile->region(usr_name, usr_hint);
     uint64_t usr_hash = geopm_region_id_hash(usr_region_id);
 
-    EXPECT_CALL(*m_table, key(_)).WillOnce(Return(0x5678));
     std::string mpi_name = "mpi_test_region";
     uint64_t mpi_hint = GEOPM_REGION_HINT_NETWORK;
     uint64_t mpi_region_id = m_profile->region(mpi_name, mpi_hint);
@@ -181,7 +159,6 @@ TEST_F(ProfileTest, epoch)
 
 TEST_F(ProfileTest, progress_multithread)
 {
-    EXPECT_CALL(*m_table, key(_)).WillOnce(Return(0xABCD));
     std::string name = "test_region";
     uint64_t hint = GEOPM_REGION_HINT_COMPUTE;
     uint64_t region_id = m_profile->region(name, hint);

@@ -32,6 +32,7 @@ import fcntl
 
 from . import pio
 from . import schemas
+from . import shmem
 
 GEOPM_SERVICE_RUN_PATH = '/run/geopm-service'
 GEOPM_SERVICE_CONFIG_PATH = '/etc/geopm-service'
@@ -344,6 +345,8 @@ class ActiveSessions(object):
         self._daemon_gid = os.getgid()
         self._sessions = dict()
         self._session_schema = json.loads(schemas.GEOPM_ACTIVE_SESSIONS_SCHEMA)
+        self._profiles = dict()
+        self._region_names = dict()
         secure_make_dirs(self._RUN_PATH,
                          perm_mode=GEOPM_SERVICE_RUN_PATH_PERM)
 
@@ -461,7 +464,13 @@ class ActiveSessions(object):
         except FileNotFoundError:
             pass
         try:
-            self._sessions.pop(client_pid)
+            sess = self._sessions.pop(client_pid)
+            profile_name = sess.get('profile_name')
+            if profile_name is not None:
+                self.stop_profile(client_pid, [])
+                self._profiles[profile_name].remove(client_pid)
+                if len(self._profiles[profile_name]) == 0:
+                    self._profiles.pop(profile_name)
         except KeyError:
             pass
         return sess
@@ -728,6 +737,51 @@ class ActiveSessions(object):
             sys.stderr.write(f'Warning: {write_fifo_path} file was left over, deleting it now.\n')
             os.unlink(write_fifo_path)
 
+    def start_profile(self, client_pid, profile_name):
+        self.check_client_active(client_pid, 'start_profile')
+        uid, gid = self._pid_info(client_pid)
+        if len(self._profiles) == 0:
+            size = 64 * os.cpu_count()
+            shmem.create_prof('status', size, client_pid, uid, gid)
+        if profile_name in self._profiles:
+            self._profiles[profile_name].add(client_pid)
+        else:
+            self._profiles[profile_name] = {client_pid}
+        self._sessions[client_pid]['profile_name'] = profile_name
+        size = 57384
+        shmem.create_prof('record-log', size, client_pid, uid, gid)
+        self._update_session_file(client_pid)
+
+    def stop_profile(self, client_pid, region_names):
+        self.check_client_active(client_pid, 'stop_profile')
+        try:
+            profile_name = self._sessions[client_pid].pop('profile_name')
+        except KeyError:
+            raise RuntimeError(f'Client PID {client_pid} requested to stop profiling, but it had not been started.')
+        # TODO: store region names in file in /run/geopm-service to enable clean restart
+        if profile_name in self._region_names:
+            self._region_names[profile_name].update(region_names)
+        else:
+            self._region_names[profile_name] = set(region_names)
+        self._profiles[profile_name].remove(client_pid)
+        uid, gid = self._pid_info(client_pid)
+        os.unlink(shmem.path_prof('record-log', client_pid, uid, gid))
+        if len(self._profiles[profile_name]) == 0:
+            self._profiles.pop(profile_name)
+        if len(self._profiles) == 0:
+            uid, gid = self._pid_info(client_pid)
+            os.unlink(shmem.path_prof('status', client_pid, uid, gid))
+        self._update_session_file(client_pid)
+
+    def get_profile_pids(self, profile_name):
+        return self._profiles.get(profile_name)
+
+    def get_profile_region_names(self, profile_name):
+        result = None
+        if profile_name in self._region_names:
+            result = self._region_names.pop(profile_name)
+        return result
+
     def _get_session_path(self, client_pid):
         """Query for the session file path for client PID
 
@@ -780,6 +834,12 @@ class ActiveSessions(object):
             result = False
         return result
 
+    def _pid_info(self, pid):
+        proc = psutil.Process(pid)
+        uid = proc.uids().effective
+        gid = proc.gids().effective
+        return (uid, gid)
+
     def _load_session_file(self, sess_path):
         """Load the session file into memory
 
@@ -807,12 +867,18 @@ class ActiveSessions(object):
         file_time = sess_stat.st_ctime
         client_pid = sess['client_pid']
         batch_pid = sess.get('batch_server')
+        profile_name = sess.get('profile_name')
         if self._is_pid_valid(client_pid, file_time):
             # Valid session; verify batch server
             if batch_pid is not None and \
                self._is_pid_valid(batch_pid, file_time) == False:
                 sess.pop('batch_server')
             self._sessions[client_pid] = dict(sess)
+            if profile_name is not None:
+                if profile_name in self._profiles:
+                    self._profiles[profile_name].add(client_pid)
+                else:
+                    self._profiles[profile_name] = {client_pid}
             self._update_session_file(client_pid)
         else:
            os.rename(sess_path, renamed_path)

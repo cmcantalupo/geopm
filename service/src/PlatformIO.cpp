@@ -1417,7 +1417,6 @@ extern "C" {
             err = err < 0 ? err : GEOPM_ERROR_RUNTIME;
         }
         return err;
-
     }
 
     void geopm_pio_reset(void)
@@ -1429,4 +1428,5 @@ extern "C" {
     {
         return geopm::platform_io().is_valid_value(value) ? 0 : GEOPM_ERROR_INVALID;
     }
+
 }

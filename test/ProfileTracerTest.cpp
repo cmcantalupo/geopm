@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "config.h"
+
 #include <memory>
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
@@ -26,29 +28,35 @@ class ProfileTracerTest : public ::testing::Test
         std::string m_start_time = "Mon Sep 14 19:00:25 2020";
         std::string m_path = "test.profiletrace";
         std::string m_host_name = "myhost";
+#ifdef GEOPM_ENABLE_MPI
+        std::string m_output_path = m_path + "-" + m_host_name;
+#else
+        std::string m_output_path = m_path;
+#endif
         std::vector<record_s> m_data;
         MockApplicationSampler m_application_sampler;
 };
 
 void ProfileTracerTest::SetUp(void)
 {
+    geopm::time_zero_reset({{0, 0}});
     uint64_t region_hash = 0x00000000fa5920d6ULL;
-    double time = 10.0;
+    geopm_time_s time = {{10, 0}};
     int event = geopm::EVENT_REGION_ENTRY;
     for (int rank = 0; rank != 4; ++rank) {
         m_data.push_back({time, rank, event, region_hash});
-        time += 1.0;
+        time.t.tv_sec += 1;
     }
 
-    time += 20;
+    time.t.tv_sec += 20;
     event = geopm::EVENT_REGION_EXIT;
     for (int rank = 3; rank != -1; --rank) {
         m_data.push_back({time, rank, event, region_hash});
-        time += 1.0;
+        time.t.tv_sec += 1;
     }
 
-     m_data.push_back({40, 0, geopm::EVENT_SHORT_REGION, 88});
-     m_data.push_back({41, 1, geopm::EVENT_EPOCH_COUNT, 1});
+     m_data.push_back({{{40, 0}}, 0, geopm::EVENT_SHORT_REGION, 88});
+     m_data.push_back({{{41, 0}}, 1, geopm::EVENT_EPOCH_COUNT, 1});
 }
 
 TEST_F(ProfileTracerTest, construct_update_destruct)
@@ -61,7 +69,7 @@ TEST_F(ProfileTracerTest, construct_update_destruct)
     {
         // Test that the constructor and update methods do not throw
         std::unique_ptr<ProfileTracer> tracer = geopm::make_unique<ProfileTracerImp>(
-            m_start_time, 2, true, m_path, "", m_application_sampler);
+            m_start_time, geopm_time_s {{0, 0}}, 2, true, m_path, "", m_application_sampler);
         tracer->update(m_data);
     }
     // Test that a file was created by deleting it without error
@@ -78,12 +86,11 @@ TEST_F(ProfileTracerTest, format)
 
     {
         std::unique_ptr<ProfileTracer> tracer = geopm::make_unique<ProfileTracerImp>(
-            m_start_time, 2, true, m_path, m_host_name, m_application_sampler);
+            m_start_time, geopm_time_s {{0, 0}}, 2, true, m_path, m_host_name, m_application_sampler);
         tracer->update(m_data);
     }
 
-    std::string output_path = m_path + "-" + m_host_name;
-    std::string output = geopm::read_file(output_path);
+    std::string output = geopm::read_file(m_output_path);
     std::vector<std::string> output_lines = geopm::string_split(output, "\n");
     std::vector<std::string> expect_lines = {
         "TIME|PROCESS|EVENT|SIGNAL",
@@ -108,6 +115,6 @@ TEST_F(ProfileTracerTest, format)
         }
     }
     EXPECT_EQ(expect_lines.end(), expect_it);
-    int err = unlink(output_path.c_str());
+    int err = unlink(m_output_path.c_str());
     EXPECT_EQ(0, err);
 }

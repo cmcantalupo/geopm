@@ -53,7 +53,8 @@ namespace geopm
                       nullptr,
                       environment().report_signals(),
                       environment().policy(),
-                      environment().do_endpoint())
+                      environment().do_endpoint(),
+                      environment().timeout() != -1)
     {
 
     }
@@ -67,7 +68,8 @@ namespace geopm
                              std::shared_ptr<ProcessRegionAggregator> proc_agg,
                              const std::vector<std::pair<std::string, int> > &env_signals,
                              const std::string &policy_path,
-                             bool do_endpoint)
+                             bool do_endpoint,
+                             bool do_profile)
         : m_start_time(start_time)
         , m_report_name(report_name)
         , m_platform_io(platform_io)
@@ -80,15 +82,13 @@ namespace geopm
         , m_rank(rank)
         , m_sticker_freq(m_platform_io.read_signal("CPUINFO::FREQ_STICKER", GEOPM_DOMAIN_BOARD, 0))
         , m_epoch_count_idx(-1)
+        , m_do_profile(do_profile)
+        , m_do_init(true)
+        , m_total_time(0.0)
+        , m_overhead_time(0.0)
+        , m_sample_delay(0.0)
     {
         GEOPM_DEBUG_ASSERT(m_sample_agg != nullptr, "m_sample_agg cannot be null");
-
-        init_sync_fields();
-
-        init_environment_signals();
-
-        m_epoch_count_idx = m_platform_io.push_signal("EPOCH_COUNT", GEOPM_DOMAIN_BOARD, 0);
-
         if (!m_rank) {
             // check if report file can be created
             if (!m_report_name.empty()) {
@@ -104,19 +104,37 @@ namespace geopm
 
     void ReporterImp::init(void)
     {
-        if (m_proc_region_agg == nullptr) {
+        if (m_do_profile && m_do_init) {
             // ProcessRegionAggregator should not be constructed until
             // application connection is established.
-            m_proc_region_agg = ProcessRegionAggregator::make_unique();
+            init_sync_fields();
+            init_environment_signals();
+            m_epoch_count_idx = m_platform_io.push_signal("EPOCH_COUNT", GEOPM_DOMAIN_BOARD, 0);
+            if (m_proc_region_agg == nullptr) {
+                m_proc_region_agg = ProcessRegionAggregator::make_unique();
+            }
+            m_do_init = false;
         }
+
     }
 
     void ReporterImp::update()
     {
         m_sample_agg->update();
-        if (m_proc_region_agg != nullptr) {
+        if (m_proc_region_agg != nullptr && m_do_profile) {
             m_proc_region_agg->update();
         }
+    }
+
+    void ReporterImp::total_time(double total)
+    {
+        m_total_time = total;
+    }
+
+    void ReporterImp::overhead(double overhead_time, double sample_delay)
+    {
+        m_overhead_time = overhead_time;
+        m_sample_delay = sample_delay;
     }
 
     void ReporterImp::generate(const std::string &agent_name,
@@ -276,7 +294,7 @@ namespace geopm
         // Do not add epoch or unmarked section if no application attached
         if (!std::isnan(epoch_count)) {
             yaml_write(report, M_INDENT_UNMARKED, "Unmarked Totals:");
-            double unmarked_time = m_sample_agg->sample_application(m_sync_signal_idx["TIME"]) -
+            double unmarked_time = m_total_time -
                                    total_marked_runtime;
             yaml_write(report, M_INDENT_UNMARKED_FIELD,
                        {{"runtime (s)", unmarked_time},
@@ -297,18 +315,18 @@ namespace geopm
             auto epoch_data = get_region_data(GEOPM_REGION_HASH_EPOCH);
             yaml_write(report, M_INDENT_EPOCH_FIELD, epoch_data);
         }
-
         yaml_write(report, M_INDENT_TOTALS, "Application Totals:");
-        double total_runtime = m_sample_agg->sample_application(m_sync_signal_idx["TIME"]);
         yaml_write(report, M_INDENT_TOTALS_FIELD,
-                   {{"runtime (s)", total_runtime},
+                   {{"runtime (s)", m_total_time},
                     {"count", 0}});
         auto region_data = get_region_data(GEOPM_REGION_HASH_APP);
         yaml_write(report, M_INDENT_TOTALS_FIELD, region_data);
         // Controller overhead
         std::vector<std::pair<std::string, double> > overhead {
+            {"GEOPM overhead (s)", m_overhead_time},
+            {"GEOPM startup (s)", m_sample_delay},
             {"geopmctl memory HWM (B)", max_memory},
-            {"geopmctl network BW (B/s)", comm_overhead / total_runtime}
+            {"geopmctl network BW (B/s)", comm_overhead / m_total_time}
         };
         yaml_write(report, M_INDENT_TOTALS_FIELD, overhead);
         return report.str();

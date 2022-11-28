@@ -304,6 +304,7 @@ if test "x$enable_mpi" = "x1"; then
   AS_IF([test "x$have_CXX_mpi" == "xyes"],
          AC_MSG_NOTICE([Building with MPI C++ support]),
          AC_MSG_ERROR([Failed to determine MPI C++ build flags use --with-mpi-bin or --with-mpicxx or --disable-mpi]))
+  AC_DEFINE([GEOPM_ENABLE_MPI], [], [MPI support enabled.])
 if test "x$enable_fortran" = "x1"; then
   AS_IF([test "x$have_F_mpi" == "xyes"],
          AC_MSG_NOTICE([Building with MPI Fortran support]),
@@ -563,7 +564,7 @@ AC_SUBST([ENABLE_BETA])
 GEOPM_SOURCE_DIR=$(readlink -f $srcdir)
 AC_DEFINE_UNQUOTED([GEOPM_SOURCE_DIR], ["$GEOPM_SOURCE_DIR"], [Root of the GEOPM source directory])
 
-AC_CONFIG_FILES([Makefile specs/geopm.spec specs/geopm-dudley.spec specs/geopm-ohpc.spec specs/geopm-theta.spec scripts/geopmpy/version.py])
+AC_CONFIG_FILES([Makefile specs/geopm-runtime.spec specs/geopm-dudley.spec specs/geopm-ohpc.spec specs/geopm-theta.spec scripts/geopmpy/version.py])
 AC_CONFIG_FILES([test/geopm_test.sh], [chmod a+x test/geopm_test.sh])
 AC_CONFIG_FILES([scripts/test/geopmpy_test.sh], [chmod a+x scripts/test/geopmpy_test.sh])
 AC_OUTPUT

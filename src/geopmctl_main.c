@@ -2,6 +2,7 @@
  * Copyright (c) 2015 - 2023, Intel Corporation
  * SPDX-License-Identifier: BSD-3-Clause
  */
+#include "config.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,12 +10,13 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <errno.h>
+#include <limits.h>
+#ifdef GEOPM_ENABLE_MPI
 #include <mpi.h>
+#endif
 
 #include "geopm_version.h"
 #include "geopm_error.h"
-
-#include "config.h"
 
 enum geopmctl_const {
     GEOPMCTL_STRING_LENGTH = 128,
@@ -25,12 +27,9 @@ int geopmctl_main(void);
 int main(int argc, char **argv)
 {
     int opt;
-    int world_size = 1, my_rank = 0, i;
     int err0 = 0;
-    int err_mpi = 0;
-    char error_str[MPI_MAX_ERROR_STRING] = {0};
+    char error_str[NAME_MAX] = {0};
     char *arg_ptr = NULL;
-    MPI_Comm comm_world = MPI_COMM_NULL;
     const char *usage = "    %s [--help] [--version]\n"
                         "\n"
                         "DESCRIPTION\n"
@@ -84,6 +83,10 @@ int main(int argc, char **argv)
         err0 = EINVAL;
     }
 
+#ifdef GEOPM_ENABLE_MPI
+    int world_size = 1, my_rank = 0, i;
+    int err_mpi = 0;
+    MPI_Comm comm_world = MPI_COMM_NULL;
     if (!err0) {
         err_mpi = PMPI_Init(&argc, &argv);
         comm_world = MPI_COMM_WORLD;
@@ -95,26 +98,22 @@ int main(int argc, char **argv)
         }
     }
     if (err_mpi) {
-        i = MPI_MAX_ERROR_STRING;
+        i = NAME_MAX;
         PMPI_Error_string(err_mpi, error_str, &i);
         fprintf(stderr, "Error: %s\n", error_str);
         err0 = err_mpi;
     }
-
-
+#endif
     if (!err0) {
-        if (!my_rank) {
-            err0 = geopmctl_main();
-        }
-        else {
-            err0 = geopmctl_main();
-        }
+        err0 = geopmctl_main();
         if (err0) {
             geopm_error_message(err0, error_str, GEOPMCTL_STRING_LENGTH);
             fprintf(stderr, "Error: %s\n", error_str);
         }
     }
 
+#ifdef GEOPM_ENABLE_MPI
     PMPI_Finalize();
+#endif
     return err0;
 }

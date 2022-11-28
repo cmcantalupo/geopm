@@ -6,9 +6,12 @@
 #include "config.h"
 #include "BarrierModelRegion.hpp"
 
-#include <iostream>
 #include <mpi.h>
+#include <iostream>
+#include <thread>
+#include <chrono>
 
+#include "GEOPMBenchConfig.hpp"
 #include "geopm/Exception.hpp"
 
 namespace geopm
@@ -20,7 +23,8 @@ namespace geopm
                                            bool do_unmarked)
         : ModelRegion(verbosity)
     {
-
+        const GEOPMBenchConfig &config = geopmbench_config();
+        m_is_mpi_enabled = config.is_mpi_enabled();
     }
 
     void BarrierModelRegion::big_o(double big_o)
@@ -30,12 +34,17 @@ namespace geopm
 
     void BarrierModelRegion::run(void)
     {
-        if (m_verbosity != 0) {
-            std::cout << "Executing barrier\n";
+        if (m_is_mpi_enabled) {
+            if (m_verbosity != 0) {
+                std::cout << "Executing barrier\n";
+            }
+            int err = MPI_Barrier(MPI_COMM_WORLD);
+            if (err) {
+                throw Exception("MPI_Barrier", err, __FILE__, __LINE__);
+            }
         }
-        int err = MPI_Barrier(MPI_COMM_WORLD);
-        if (err) {
-            throw Exception("MPI_Barrier", err, __FILE__, __LINE__);
+        else {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
     }
 }

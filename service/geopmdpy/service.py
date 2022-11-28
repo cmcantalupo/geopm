@@ -675,6 +675,84 @@ class PlatformService(object):
         self._write_mode(client_pid)
         self._pio.write_control(control_name, domain, domain_idx, setting)
 
+    def start_profile(self, user, client_pid, profile_name):
+        """Begin profiling a user PID
+
+        Called by a thread to enable profiling as part of a named
+        application.
+
+        Args:
+            user (str): Unix user name that owns the client thread
+                        opening the session.
+
+            client_pid (int): Linux PID of the client thread opening
+                              the session.
+
+            profile_name (str): Name of application that PID supports
+
+        """
+        self.open_session(user, client_pid)
+        self._active_sessions.start_profile(client_pid, profile_name)
+
+    def stop_profile(self, client_pid, region_names):
+        """Stop profiling a user PID
+
+        Called by a thread to end profiling as part of a named
+        application.
+
+        Args:
+            client_pid (int): Linux PID of the client thread opening
+                              the session.
+
+            region_names (list(str)): Names of all regions entered.
+
+        """
+        self._active_sessions.check_client_active(client_pid, 'PlatformStopProfile')
+        self._active_sessions.stop_profile(client_pid, region_names)
+        self.close_session(client_pid)
+
+    def get_profile_pids(self, profile_name):
+        """Get PIDs associated with an application
+
+        Called by a profiling thread to find all PIDs associated with
+        a named application.
+
+        Args:
+            profile_name (str): Name of application that PID supports
+
+        Returns:
+            list(int): All PID associated with profile_name or empty
+                       list if profile_name is not registered.
+
+        """
+        result = []
+        pids = self._active_sessions.get_profile_pids(profile_name)
+        if pids is not None:
+            result = [pid for pid in pids if psutil.pid_exists(pid)]
+        return result
+
+    def get_profile_region_names(self, profile_name):
+        """Get region names associated with an application
+
+        Called by a profiling thread to find all region names
+        associated with a named application.
+
+        Args:
+            profile_name (str): Name of application that PID supports
+
+        Returns:
+            list(str): All region names associated with profile_name
+                       or empty list if profile_name is not
+                       registered.
+
+        """
+        result = []
+        region_names = self._active_sessions.get_profile_region_names(profile_name)
+        if region_names is not None:
+            result = list(region_names)
+            result.sort()
+        return result
+
     def _write_mode(self, client_pid):
         write_pid = client_pid
         do_open_session = False
@@ -860,6 +938,22 @@ class GEOPMService(object):
     def PlatformWriteControl(self, control_name, domain, domain_idx, setting, **call_info):
         self._platform.write_control(self._get_pid(**call_info), control_name, domain, domain_idx, setting)
 
+    @accepts_additional_arguments
+    def PlatformStartProfile(self, profile_name, **call_info):
+        return self._platform.start_profile(self._get_user(**call_info), self._get_pid(**call_info), profile_name)
+
+    @accepts_additional_arguments
+    def PlatformStopProfile(self, region_names, **call_info):
+        return self._platform.stop_profile(self._get_pid(**call_info), region_names)
+
+    # TODO: This method should check credentials
+    def PlatformGetProfilePids(self, profile_name):
+        return self._platform.get_profile_pids(profile_name)
+
+    # TODO: This method should check credentials
+    def PlatformGetProfileRegionNames(self, profile_name):
+        return self._platform.get_profile_region_names(profile_name)
+
     def _get_user(self, call_info):
         """Use DBus proxy object to derive the user name that owns the client
            process.
@@ -902,4 +996,4 @@ class GEOPMService(object):
                 if line.startswith('CapEff:'):
                     cap = int(line.split(':')[1], 16)
         if cap & cap_sys_admin == 0:
-            raise RuntimeError('Calling "io.github.geopm.{api_name}" failed, try with sudo or as "root" user (requires CAP_SYS_ADMIN)')
+            raise RuntimeError(f'Calling "io.github.geopm.{api_name}" failed, try with sudo or as "root" user (requires CAP_SYS_ADMIN)')

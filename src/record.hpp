@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <string>
+#include "geopm_time.h"
 
 namespace geopm
 {
@@ -29,31 +30,14 @@ namespace geopm
         EVENT_SHORT_REGION = 3,  /// EVENT: The application entered and exited a
                                  ///        region at least once since last update.
                                  /// SIGNAL: Handle to pass to AppliationSampler::get_short_region()
-        ///
-        /// @todo SUPPORT FOR EVENTS BELOW IS FUTURE WORK
-        ///
-        EVENT_PROFILE = 4,       /// EVENT: The application has started up and all
-                                 ///        processes associated with the
-                                 ///        application identify their profile name.
-                                 /// SIGNAL: The hash of the profile name unique to
-                                 ///         the application.
-        EVENT_REPORT = 5,        /// EVENT: The application has completed and
-                                 ///        all processes associated with the
-                                 ///        application identify their report name.
-                                 /// SIGNAL: The hash of the report name.
-        EVENT_CLAIM_CPU = 6,     /// EVENT: The application has started up.  Each
-                                 ///        process will send one "claim" event per
-                                 ///        CPU in affinity mask.
-                                 /// SIGNAL: Linux logical CPU claimed by process.
-        EVENT_RELEASE_CPU = 7,   /// EVENT: The application is shutting down.  Each
-                                 ///        process will send one "release" event for
-                                 ///        every previous "claim" event.
-        EVENT_NAME_MAP = 8,      /// EVENT: The application is shutting down and has
-                                 ///        recorded all region names.
-                                 /// SIGNAL: A unique identifier which can be used to
-                                 ///         access the map to all strings hashed
-                                 ///         by the application (get_name_map()
-                                 ///         parameter).
+        EVENT_AFFINITY = 9,      /// EVENT: The application process affinity has changed
+                                 /// SIGNAL: PID or TID of thread with the modified cpuset
+        EVENT_START_PROFILE = 10,/// EVENT: An application PID requested profiling
+                                 /// SIGNAL: Hash of the profile name
+        EVENT_STOP_PROFILE = 11, /// EVENT: An application PID requested profiling
+                                 /// SIGNAL: Hash of the profile name
+        EVENT_OVERHEAD = 12,     /// EVENT: Report overhead time due to GEOPM startup
+                                 /// SIGNAL: Time in seconds stored in double precision format
     };
 
     /// @brief Format an event_e type as a string.
@@ -75,9 +59,8 @@ namespace geopm
 
     /// @brief Record of an application event.
     struct record_s {
-        /// @brief Elapsed time since time zero when event was
-        ///        recorded.
-        double time;
+        /// @brief System time when event was recorded.
+        geopm_time_s time;
         /// @brief The process identifier where event occurred.
         int process;
         /// @brief One of the m_event_e event types.

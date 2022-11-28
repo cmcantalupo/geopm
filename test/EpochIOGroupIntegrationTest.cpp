@@ -38,12 +38,17 @@ void EpochIOGroupIntegrationTest::SetUp()
     m_num_cpu = 4;
     m_pid_0 = 33;
     m_pid_1 = 42;
-    std::vector<int> cpu_process { m_pid_0, m_pid_0, m_pid_1, m_pid_1 };
+    std::vector<int> pids {m_pid_0,  m_pid_1};
+    std::set<int> cpu_set_0 {0, 1};
+    std::set<int> cpu_set_1 {2, 3};
     ON_CALL(m_topo, num_domain(GEOPM_DOMAIN_CPU))
         .WillByDefault(Return(m_num_cpu));
-    ON_CALL(m_app, per_cpu_process())
-        .WillByDefault(Return(cpu_process));
-
+    ON_CALL(m_app, client_pids())
+        .WillByDefault(Return(pids));
+    ON_CALL(m_app, client_cpu_set(m_pid_0))
+        .WillByDefault(Return(cpu_set_0));
+    ON_CALL(m_app, client_cpu_set(m_pid_1))
+        .WillByDefault(Return(cpu_set_1));
     EXPECT_CALL(m_topo, num_domain(GEOPM_DOMAIN_CPU));
     m_group = std::make_shared<EpochIOGroup>(m_topo, m_app);
 }
@@ -57,7 +62,6 @@ enum {
 
 TEST_F(EpochIOGroupIntegrationTest, read_batch_count)
 {
-    EXPECT_CALL(m_app, per_cpu_process());
     int idx0 = -1;
     int idx1 = -1;
     // expectations for push
@@ -70,9 +74,9 @@ TEST_F(EpochIOGroupIntegrationTest, read_batch_count)
     EXPECT_NE(idx0, idx1);
 
     std::vector<record_s> records = {
-        {0.2, m_pid_0, EPOCH_COUNT, 0x1},
-        {1.2, m_pid_0, EPOCH_COUNT, 0x2},
-        {1.2, m_pid_1, EPOCH_COUNT, 0x1},
+        {{{0, 200000000}}, m_pid_0, EPOCH_COUNT, 0x1},
+        {{{1, 200000000}}, m_pid_0, EPOCH_COUNT, 0x2},
+        {{{1, 200000000}}, m_pid_1, EPOCH_COUNT, 0x1},
     };
     m_app.inject_records(records);
     m_group->read_batch();

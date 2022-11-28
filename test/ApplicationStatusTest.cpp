@@ -51,14 +51,12 @@ TEST_F(ApplicationStatusTest, hints)
     uint64_t NOHINTS = GEOPM_REGION_HINT_UNSET;
     uint64_t NETWORK = GEOPM_REGION_HINT_NETWORK;
     uint64_t COMPUTE = GEOPM_REGION_HINT_COMPUTE;
-    uint64_t INACTIVE = GEOPM_REGION_HINT_INACTIVE;
 
-    EXPECT_EQ(INACTIVE, m_status->get_hint(0));
-    EXPECT_EQ(INACTIVE, m_status->get_hint(1));
-    EXPECT_EQ(INACTIVE, m_status->get_hint(2));
-    EXPECT_EQ(INACTIVE, m_status->get_hint(3));
+    EXPECT_EQ(NOHINTS, m_status->get_hint(0));
+    EXPECT_EQ(NOHINTS, m_status->get_hint(1));
+    EXPECT_EQ(NOHINTS, m_status->get_hint(2));
+    EXPECT_EQ(NOHINTS, m_status->get_hint(3));
 
-    m_status->set_process({0, 1, 2, 3}, 123);
     m_status->update_cache();
     EXPECT_EQ(NOHINTS, m_status->get_hint(0));
     EXPECT_EQ(NOHINTS, m_status->get_hint(1));
@@ -214,56 +212,14 @@ TEST_F(ApplicationStatusTest, work_progress)
                                GEOPM_ERROR_INVALID, "invalid number of work units");
 }
 
-TEST_F(ApplicationStatusTest, process)
-{
-    EXPECT_EQ(-1, m_status->get_process(0));
-    EXPECT_EQ(-1, m_status->get_process(1));
-    EXPECT_EQ(-1, m_status->get_process(2));
-    EXPECT_EQ(-1, m_status->get_process(3));
-
-    m_status->set_process({0, 2}, 34);
-    m_status->set_process({1}, 56);
-    m_status->set_process({3}, 78);
-    m_status->update_cache();
-    EXPECT_EQ(34, m_status->get_process(0));
-    EXPECT_EQ(56, m_status->get_process(1));
-    EXPECT_EQ(34, m_status->get_process(2));
-    EXPECT_EQ(78, m_status->get_process(3));
-
-    // detach processes
-    m_status->set_process({0, 1, 2, 3}, -1);
-    m_status->update_cache();
-    EXPECT_EQ(-1, m_status->get_process(0));
-    EXPECT_EQ(-1, m_status->get_process(1));
-    EXPECT_EQ(-1, m_status->get_process(2));
-    EXPECT_EQ(-1, m_status->get_process(3));
-
-    GEOPM_EXPECT_THROW_MESSAGE(m_status->set_process({-1}, 2),
-                               GEOPM_ERROR_INVALID, "invalid CPU index");
-    GEOPM_EXPECT_THROW_MESSAGE(m_status->set_process({99}, 2),
-                               GEOPM_ERROR_INVALID, "invalid CPU index");
-    GEOPM_EXPECT_THROW_MESSAGE(m_status->get_process(-1),
-                               GEOPM_ERROR_INVALID, "invalid CPU index");
-    GEOPM_EXPECT_THROW_MESSAGE(m_status->get_process(99),
-                               GEOPM_ERROR_INVALID, "invalid CPU index");
-}
-
 TEST_F(ApplicationStatusTest, update_cache)
 {
     uint64_t hint = GEOPM_REGION_HINT_NETWORK;
     uint64_t hash = 0xABC;
-    int process = 42;
-    EXPECT_EQ(GEOPM_REGION_HINT_INACTIVE, m_status->get_hint(0));
+    EXPECT_EQ(GEOPM_REGION_HINT_UNSET, m_status->get_hint(0));
     EXPECT_EQ(GEOPM_REGION_HASH_INVALID, m_status->get_hash(0));
-    m_status->set_process({0, 1}, process);
-
-    // default values before cache update
-    EXPECT_EQ(-1, m_status->get_process(0));
-
-    m_status->update_cache();
-    // set process initializes hash for active CPUs
-    EXPECT_EQ(GEOPM_REGION_HASH_UNMARKED, m_status->get_hash(0));
-    EXPECT_EQ(GEOPM_REGION_HASH_UNMARKED, m_status->get_hash(1));
+    //EXPECT_EQ(GEOPM_REGION_HASH_UNMARKED, m_status->get_hash(0));
+    EXPECT_EQ(GEOPM_REGION_HASH_INVALID, m_status->get_hash(1));
     EXPECT_EQ(GEOPM_REGION_HASH_INVALID, m_status->get_hash(2));
     EXPECT_EQ(GEOPM_REGION_HASH_INVALID, m_status->get_hash(3));
 
@@ -272,7 +228,7 @@ TEST_F(ApplicationStatusTest, update_cache)
     m_status->increment_work_unit(0);
     // default values before cache update
     EXPECT_EQ(GEOPM_REGION_HINT_UNSET, m_status->get_hint(0));
-    EXPECT_EQ(GEOPM_REGION_HASH_UNMARKED, m_status->get_hash(0));
+    EXPECT_EQ(GEOPM_REGION_HASH_INVALID, m_status->get_hash(0));
     EXPECT_TRUE(std::isnan(m_status->get_progress_cpu(0)));
 
     // written values visible after update
@@ -280,17 +236,14 @@ TEST_F(ApplicationStatusTest, update_cache)
     EXPECT_EQ(hint, m_status->get_hint(0));
     EXPECT_EQ(hash, m_status->get_hash(0));
     EXPECT_EQ(0.25, m_status->get_progress_cpu(0));
-    EXPECT_EQ(process, m_status->get_process(0));
 
     m_status->set_hash(0, GEOPM_REGION_HASH_INVALID, GEOPM_REGION_HINT_UNSET);
     m_status->set_total_work_units(0, 8);
     m_status->increment_work_unit(0);
-    m_status->set_process({0, 1}, process);
 
     // same values until next update
     EXPECT_EQ(hint, m_status->get_hint(0));
     EXPECT_EQ(hash, m_status->get_hash(0));
     EXPECT_EQ(0.25, m_status->get_progress_cpu(0));
-    EXPECT_EQ(process, m_status->get_process(0));
 
 }
