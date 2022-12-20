@@ -105,8 +105,27 @@ int geopm_pio_format_signal(double signal,
 
 void geopm_pio_reset(void);
 
+int geopm_pio_profile_pids(const char *profile_name, int max_num_pid, int *num_pid, int *pid);
+
+enum geopm_profile_key_type_e {
+    GEOPM_PROFILE_KEY_TYPE_RECORD_LOG,
+    GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE,
+    GEOPM_PROFILE_KEY_TYPE_STATUS,
+};
+
+int geopm_pio_profile_key(const char *profile_name,
+                          int key_type,
+                          int pid,
+                          int key_path_max,
+                          char *key_path,
+                          size_t *key_size);
+
 """)
 _dl = gffi.get_dl_geopmd()
+
+GEOPM_PROFILE_KEY_TYPE_RECORD_LOG = _dl.GEOPM_PROFILE_KEY_TYPE_RECORD_LOG
+GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE = _dl.GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE
+GEOPM_PROFILE_KEY_TYPE_STATUS = _dl.GEOPM_PROFILE_KEY_TYPE_STATUS
 
 def signal_names():
     """Get all available signals.
@@ -705,3 +724,30 @@ def reset():
     """
     global _dl
     _dl.geopm_pio_reset()
+
+def profile_pids(profile_name):
+    global _dl
+    profile_name_cstr = gffi.gffi.new("char[]", profile_name.encode())
+    max_num_pid = 1024
+    result_carr = gffi.gffi.new("int[]", max_num_pid)
+    err = _dl.geopm_pio_profile_pids(profile_name_cstr, max_num_pid, result_carr, result_carr)
+    if err < 0:
+        raise RuntimeError('geopm_pio_profile_pids() failed: {}'.format(error.message(err)))
+    result = []
+    for pid in result_carr:
+        result.append(pid)
+    return result
+
+def profile_key(profile_name, key_type, pid):
+    global _dl
+    profile_name_cstr = gffi.gffi.new("char[]", profile_name.encode())
+    name_max = 1024
+    key_path_cstr = gffi.gffi.new("char[]", name_max)
+    key_size_cint = gffi.gffi.new("int[]", 1)
+    err = _dl.geopm_pio_profile_key(profile_name_cstr, key_type, pid, name_max, key_path_cstr, key_size_cint)
+    if err < 0:
+        raise RuntimeError('geopm_pio_profile_key() failed: {}'.format(error.message(err)))
+    key_path = gffi.gffi.string(key_path_cstr).decode()
+    key_size = key_size_cint[0]
+    return (key_path, key_size)
+

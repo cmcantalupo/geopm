@@ -18,8 +18,6 @@
 
 namespace geopm
 {
-    constexpr size_t ApplicationIOImp::M_SHMEM_REGION_SIZE;
-
     ApplicationIOImp::ApplicationIOImp()
         : ApplicationIOImp(ApplicationSampler::application_sampler(),
                            ServiceProxy::make_unique(),
@@ -44,7 +42,7 @@ namespace geopm
         , m_do_profile(m_timeout != -1)
     {
         if (m_do_profile && m_application_sampler.get_sampler() == nullptr) {
-            auto sampler = std::make_shared<ProfileSamplerImp>(M_SHMEM_REGION_SIZE);
+            auto sampler = std::make_shared<ProfileSamplerImp>();
             m_application_sampler.set_sampler(sampler);
         }
     }

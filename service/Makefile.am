@@ -40,6 +40,7 @@ geopminclude_HEADERS = contrib/json11/json11.hpp \
                        src/geopm/PlatformIO.hpp \
                        src/geopm/PlatformTopo.hpp \
                        src/geopm/PluginFactory.hpp \
+                       src/geopm/ProfileKey.hpp \
                        src/geopm/ServiceProxy.hpp \
                        src/geopm/SharedMemory.hpp \
                        src/geopm/SharedMemoryScopedLock.hpp \
@@ -204,6 +205,7 @@ libgeopmd_la_SOURCES = $(include_HEADERS) \
                        src/PlatformIOImp.hpp \
                        src/PlatformTopo.cpp \
                        src/PlatformTopoImp.hpp \
+                       src/ProfileKey.cpp \
                        src/POSIXSignal.cpp \
                        src/POSIXSignal.hpp \
                        src/RawMSRSignal.cpp \

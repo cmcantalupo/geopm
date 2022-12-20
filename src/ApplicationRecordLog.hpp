@@ -14,6 +14,7 @@
 
 #include "geopm_time.h"
 #include "record.hpp"
+#include "geopm/ProfileKey.hpp"
 
 namespace geopm
 {
@@ -208,7 +209,8 @@ namespace geopm
             };
             static_assert(sizeof(m_layout_s) == M_LAYOUT_SIZE,
                           "Defined layout size does not match the actual layout size");
-
+            static_assert(ProfileKey::M_RECORD_LOG_BUFFER_SIZE >= M_LAYOUT_SIZE,
+                          "ProfileKey::M_RECORD_LOG_BUFFER_SIZE is not large enough to support layout");
             struct m_region_enter_s {
                 int record_idx;
                 int region_idx;

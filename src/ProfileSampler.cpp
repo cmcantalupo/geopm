@@ -32,28 +32,32 @@
 
 namespace geopm
 {
-    ProfileSamplerImp::ProfileSamplerImp(size_t table_size)
-        : ProfileSamplerImp(platform_topo(), table_size)
+    ProfileSamplerImp::ProfileSamplerImp()
+        : ProfileSamplerImp(environment().profile(),
+                            environment().timeout(),
+                            ProfileKey::make_unique(environment().profile()))
     {
     }
 
-    ProfileSamplerImp::ProfileSamplerImp(const PlatformTopo &topo, size_t table_size)
+    ProfileSamplerImp::ProfileSamplerImp(const std::string profile_name,
+                                         double timeout,
+                                         std::shared_ptr<ProfileKey> profile_shmem)
         : m_ctl_shmem(nullptr)
         , m_ctl_msg(nullptr)
-        , m_table_size(table_size)
+        , m_profile_name(profile_name)
         , m_do_report(false)
         , m_rank_per_node(0)
+        , m_profile_shmem(profile_shmem)
     {
-        const Environment &env = environment();
-        const std::string key_base = ApplicationSampler::default_shmkey();
-        std::string sample_key = key_base + "-sample";
-        std::string sample_key_path("/dev/shm/" + sample_key);
+        int key_type = GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE;
+        std::string key_path = m_profile_shmem->key_path(key_type);
+        size_t key_size = m_profile_shmem->key_size(key_type);
         // Remove shared memory file if one already exists.
-        (void)unlink(sample_key_path.c_str());
-        m_ctl_shmem = SharedMemory::make_unique_owner(sample_key, sizeof(struct geopm_ctl_message_s));
-        m_ctl_msg = geopm::make_unique<ControlMessageImp>(*(struct geopm_ctl_message_s *)m_ctl_shmem->pointer(), true, true, env.timeout());
-
+        (void)unlink(key_path.c_str());
         errno = 0; // Ignore errors from the unlink calls.
+        m_ctl_shmem = SharedMemory::make_unique_owner(key_path, key_size);
+        auto ctl_ptr = (struct geopm_ctl_message_s *)m_ctl_shmem->pointer();
+        m_ctl_msg = geopm::make_unique<ControlMessageImp>(*ctl_ptr, true, true, timeout);
     }
 
     ProfileSamplerImp::~ProfileSamplerImp()
@@ -65,8 +69,6 @@ namespace geopm
 
     void ProfileSamplerImp::initialize(void)
     {
-        std::ostringstream shm_key;
-
         m_ctl_msg->wait(); // M_STATUS_MAP_BEGIN
         m_ctl_msg->step(); // M_STATUS_MAP_BEGIN
         m_ctl_msg->wait(); // M_STATUS_MAP_END
@@ -78,10 +80,12 @@ namespace geopm
             }
         }
 
+        int key_type = GEOPM_PROFILE_KEY_TYPE_RECORD_LOG;
+        size_t key_size = m_profile_shmem->key_size(key_type);
         for (auto it = rank_set.begin(); it != rank_set.end(); ++it) {
-            shm_key.str("");
-            shm_key << m_ctl_shmem->key() <<  "-"  << *it;
-            m_rank_sampler.push_front(geopm::make_unique<ProfileRankSamplerImp>(shm_key.str(), m_table_size));
+            std::string key_path = m_profile_shmem->key_path(key_type, *it);
+            m_rank_sampler.push_front(
+                geopm::make_unique<ProfileRankSamplerImp>(key_path, key_size));
         }
         m_rank_per_node = rank_set.size();
         if (m_rank_per_node == 0) {
@@ -192,16 +196,16 @@ namespace geopm
         m_ctl_msg->abort();
     }
 
-    ProfileRankSamplerImp::ProfileRankSamplerImp(const std::string &shm_key, size_t table_size)
+    ProfileRankSamplerImp::ProfileRankSamplerImp(const std::string &key_path, size_t key_size)
         : m_table_shmem(nullptr)
         , m_table(nullptr)
         , m_is_name_finished(false)
     {
-        std::string key_path("/dev/shm/" + shm_key);
         (void)unlink(key_path.c_str());
         errno = 0; // Ignore errors from the unlink call.
-        m_table_shmem = SharedMemory::make_unique_owner(shm_key, table_size);
-        m_table = geopm::make_unique<ProfileTableImp>(m_table_shmem->size(), m_table_shmem->pointer());
+        m_table_shmem = SharedMemory::make_unique_owner(key_path, key_size);
+        m_table = geopm::make_unique<ProfileTableImp>(m_table_shmem->size(),
+                                                      m_table_shmem->pointer());
     }
 
     ProfileRankSamplerImp::~ProfileRankSamplerImp()

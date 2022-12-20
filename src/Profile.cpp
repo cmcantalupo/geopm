@@ -199,7 +199,7 @@ namespace geopm
     void ProfileImp::init_prof_comm(std::shared_ptr<Comm> comm, int &shm_num_rank)
     {
         if (!m_shm_comm) {
-            m_process = comm->rank();
+            m_process = getpid();
             m_shm_comm = comm->split("prof", Comm::M_COMM_SPLIT_TYPE_SHARED);
             comm->tear_down();
             comm.reset();

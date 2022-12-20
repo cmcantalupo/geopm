@@ -69,7 +69,6 @@ namespace geopm
             void abort(void) override;
         private:
             std::set<int> get_profile_pids(void);
-            static constexpr size_t M_SHMEM_REGION_SIZE = 2*1024*1024;
 
             bool m_is_connected;
             ApplicationSampler &m_application_sampler;

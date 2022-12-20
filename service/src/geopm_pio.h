@@ -513,6 +513,19 @@ int geopm_pio_stop_profile(void);
 ///        the application.
 int geopm_pio_profile_pids(const char *profile_name, int max_num_pid, int *num_pid, int *pid);
 
+enum geopm_profile_key_type_e {
+    GEOPM_PROFILE_KEY_TYPE_RECORD_LOG,
+    GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE,
+    GEOPM_PROFILE_KEY_TYPE_STATUS,
+};
+
+int geopm_pio_profile_key(const char *profile_name,
+                          int key_type,
+                          int pid,
+                          int key_path_max,
+                          char *key_path,
+                          size_t *key_size);
+
 
 #ifdef __cplusplus
 }

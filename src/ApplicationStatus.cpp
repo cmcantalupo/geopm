@@ -24,11 +24,6 @@ namespace geopm
         return geopm::make_unique<ApplicationStatusImp>(num_cpu, shmem);
     }
 
-    size_t ApplicationStatus::buffer_size(int num_cpu)
-    {
-        return M_STATUS_SIZE * num_cpu;
-    }
-
     ApplicationStatusImp::ApplicationStatusImp(int num_cpu,
                                                std::shared_ptr<SharedMemory> shmem)
         : m_num_cpu(num_cpu)
@@ -38,7 +33,7 @@ namespace geopm
             throw Exception("ApplicationStatus: shared memory pointer cannot be null",
                             GEOPM_ERROR_INVALID, __FILE__, __LINE__);
         }
-        if (m_shmem->size() != buffer_size(m_num_cpu)) {
+        if (m_shmem->size() < geopm::hardware_destructive_interference_size * m_num_cpu) {
             throw Exception("ApplicationStatus: shared memory incorrectly sized",
                             GEOPM_ERROR_INVALID, __FILE__, __LINE__);
         }

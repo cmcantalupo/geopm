@@ -7,6 +7,7 @@
 #define CONTROLMESSAGE_HPP_INCLUDE
 
 #include <cstdint>
+#include "geopm/ProfileKey.hpp"
 
 enum geopm_ctl_message_e {
     GEOPM_MAX_NUM_CPU = 768
@@ -24,6 +25,10 @@ struct geopm_ctl_message_s {
     /// on the local compute node.
     int cpu_rank[GEOPM_MAX_NUM_CPU];
 };
+
+static_assert(sizeof(geopm_ctl_message_s) <
+              geopm::ProfileKey::M_CONTROL_MESSAGE_BUFFER_SIZE);
+
 
 namespace geopm
 {

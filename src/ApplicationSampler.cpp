@@ -23,6 +23,7 @@
 #include "ValidateRecord.hpp"
 #include "geopm/SharedMemory.hpp"
 #include "geopm/PlatformTopo.hpp"
+#include "geopm/ProfileKey.hpp"
 #include "Scheduler.hpp"
 #include "record.hpp"
 #include "geopm_debug.hpp"
@@ -99,7 +100,8 @@ namespace geopm
                                 environment().do_record_filter(),
                                 environment().record_filter(),
                                 {},
-                                environment().timeout() != -1)
+                                environment().timeout() != -1,
+                                ProfileKey::make_unique(environment().profile()))
     {
 
     }
@@ -110,7 +112,8 @@ namespace geopm
                                                  bool is_filtered,
                                                  const std::string &filter_name,
                                                  const std::vector<bool> &is_cpu_active,
-                                                 bool do_profile)
+                                                 bool do_profile,
+                                                 std::shared_ptr<ProfileKey> profile_shmem)
         : m_time_zero(geopm::time_zero())
         , m_status(status)
         , m_topo(platform_topo)
@@ -124,6 +127,7 @@ namespace geopm
         , m_is_first_update(true)
         , m_hint_last(m_num_cpu, GEOPM_REGION_HINT_UNSET)
         , m_do_profile(do_profile)
+        , m_profile_shmem(profile_shmem)
     {
         if (m_is_cpu_active.empty()) {
             m_is_cpu_active.resize(m_num_cpu, false);
@@ -306,9 +310,10 @@ namespace geopm
     void ApplicationSamplerImp::connect(const std::string &shm_key)
     {
         if (!m_status && m_do_profile) {
-            std::string shmem_name = shm_key + "-status";
-            m_status_shmem = SharedMemory::make_unique_owner(shmem_name,
-                                                             ApplicationStatus::buffer_size(m_num_cpu));
+            int key_type = GEOPM_PROFILE_KEY_TYPE_STATUS;
+            std::string key_path = m_profile_shmem->key_path(key_type);
+            size_t key_size = m_profile_shmem->key_size(key_type);
+            m_status_shmem = SharedMemory::make_unique_owner(key_path, key_size);
             m_status = ApplicationStatus::make_unique(m_num_cpu, m_status_shmem);
             GEOPM_DEBUG_ASSERT(m_process_map.empty(),
                                "m_process_map is not empty, but we are connecting");
@@ -324,11 +329,12 @@ namespace geopm
             }
             // For each unique process id create a record log and
             // insert it into map indexed by process id
+            key_type = GEOPM_PROFILE_KEY_TYPE_RECORD_LOG;
             for (const auto &proc_it : proc_set) {
-                std::string shmem_name = shm_key + "-record-log-" + std::to_string(proc_it);
+                std::string key_path = m_profile_shmem->key_path(key_type, proc_it);
+                size_t key_size = m_profile_shmem->key_size(key_type);
                 std::shared_ptr<SharedMemory> record_log_shmem =
-                    SharedMemory::make_unique_owner(shmem_name,
-                                                    ApplicationRecordLog::buffer_size());
+                    SharedMemory::make_unique_owner(key_path, key_size);
                 auto emplace_ret = m_process_map.emplace(proc_it, m_process_s {});
                 auto &process = emplace_ret.first->second;
                 if (m_is_filtered) {

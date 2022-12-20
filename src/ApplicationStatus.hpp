@@ -93,15 +93,9 @@ namespace geopm
             ///         object.
             static std::unique_ptr<ApplicationStatus> make_unique(int num_cpu,
                                                                   std::shared_ptr<SharedMemory> shmem);
-            /// @brief Return the required size of the shared memory
-            ///        region used by the ApplicationStatus for the
-            ///        given number of CPUs.
-            /// @return Minimum buffer size required for the
-            ///         SharedMemory used by ApplicationStatus.
-            static size_t buffer_size(int num_cpu);
-
         protected:
             static constexpr size_t M_STATUS_SIZE = geopm::hardware_destructive_interference_size;
+
     };
 
     class ApplicationStatusImp : public ApplicationStatus

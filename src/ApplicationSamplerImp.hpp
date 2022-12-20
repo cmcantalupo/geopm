@@ -17,6 +17,7 @@ namespace geopm
     class ApplicationStatus;
     class SharedMemory;
     class PlatformTopo;
+    class ProfileKey;
 
     class ApplicationSamplerImp : public ApplicationSampler
     {
@@ -36,7 +37,8 @@ namespace geopm
                                   bool is_filtered,
                                   const std::string &filter_name,
                                   const std::vector<bool> &is_cpu_active,
-                                  bool do_profile);
+                                  bool do_profile,
+                                  std::shared_ptr<ProfileKey> profile_shmem);
             virtual ~ApplicationSamplerImp();
             void time_zero(const geopm_time_s &start_time) override;
             void update(const geopm_time_s &curr_time) override;
@@ -71,6 +73,7 @@ namespace geopm
             bool m_is_first_update;
             std::vector<uint64_t> m_hint_last;
             bool m_do_profile;
+            std::shared_ptr<ProfileKey> m_profile_shmem;
     };
 }
 

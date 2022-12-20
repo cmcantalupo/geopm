@@ -99,7 +99,7 @@ namespace geopm
     class SharedMemory;
     class ControlMessage;
     class ProfileTable;
-
+    class ProfileKey;
 
     /// @brief Retrieves sample data from a single application rank through
     ///        a shared memory interface.
@@ -148,6 +148,7 @@ namespace geopm
     };
 
     class PlatformTopo;
+    class ProfileKey;
 
     /// @brief Retrieves sample data from the set of application ranks on
     ///        a single node.
@@ -167,17 +168,15 @@ namespace geopm
             ///
             /// @param [in] table_size The size of the hash table that will
             ///        be created for each application rank.
-            ProfileSamplerImp(size_t table_size);
+            ProfileSamplerImp();
             /// @brief ProfileSamplerImp constructor.
             ///
             /// Constructs a shared memory region for coordination between
             /// the geopm runtime and the MPI application.
             ///
-            /// @param [in] topo Reference to PlatformTopo singleton.
-            ///
-            /// @param [in] table_size The size of the hash table that will
-            ///        be created for each application rank.
-            ProfileSamplerImp(const PlatformTopo &topo, size_t table_size);
+            ProfileSamplerImp(const std::string profile_name,
+                              double timeout,
+                              std::shared_ptr<ProfileKey> profile_shmem);
             /// @brief ProfileSamplerImp destructor.
             virtual ~ProfileSamplerImp();
             bool do_shutdown(void) const override;
@@ -202,14 +201,12 @@ namespace geopm
             /// List of per-rank samplers for each MPI application rank running
             /// on the local compute node.
             std::forward_list<std::unique_ptr<ProfileRankSampler> > m_rank_sampler;
-            /// Size of the hash tables to create for each MPI application rank
-            /// running on the local compute node.
-            const size_t m_table_size;
             std::set<std::string> m_name_set;
             std::string m_report_name;
             std::string m_profile_name;
             bool m_do_report;
             int m_rank_per_node;
+            std::shared_ptr<ProfileKey> m_profile_shmem;
     };
 }
 
