@@ -73,7 +73,7 @@ namespace geopm
             bool m_is_first_update;
             std::vector<uint64_t> m_hint_last;
             bool m_do_profile;
-            std::shared_ptr<ProfileKey> m_profile_shmem;
+            std::shared_ptr<ProfileKey> m_profile_key;
     };
 }
 

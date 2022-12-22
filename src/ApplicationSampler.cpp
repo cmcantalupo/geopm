@@ -127,7 +127,7 @@ namespace geopm
         , m_is_first_update(true)
         , m_hint_last(m_num_cpu, GEOPM_REGION_HINT_UNSET)
         , m_do_profile(do_profile)
-        , m_profile_shmem(profile_shmem)
+        , m_profile_key(profile_shmem)
     {
         if (m_is_cpu_active.empty()) {
             m_is_cpu_active.resize(m_num_cpu, false);
@@ -311,9 +311,8 @@ namespace geopm
     {
         if (!m_status && m_do_profile) {
             int key_type = GEOPM_PROFILE_KEY_TYPE_STATUS;
-            std::string key_path = m_profile_shmem->key_path(key_type);
-            size_t key_size = m_profile_shmem->key_size(key_type);
-            m_status_shmem = SharedMemory::make_unique_owner(key_path, key_size);
+            std::string key_path = m_profile_key->key_path(key_type);
+            m_status_shmem = SharedMemory::make_unique_user(key_path, 0);
             m_status = ApplicationStatus::make_unique(m_num_cpu, m_status_shmem);
             GEOPM_DEBUG_ASSERT(m_process_map.empty(),
                                "m_process_map is not empty, but we are connecting");
@@ -331,10 +330,9 @@ namespace geopm
             // insert it into map indexed by process id
             key_type = GEOPM_PROFILE_KEY_TYPE_RECORD_LOG;
             for (const auto &proc_it : proc_set) {
-                std::string key_path = m_profile_shmem->key_path(key_type, proc_it);
-                size_t key_size = m_profile_shmem->key_size(key_type);
+                std::string key_path = m_profile_key->key_path(key_type, proc_it);
                 std::shared_ptr<SharedMemory> record_log_shmem =
-                    SharedMemory::make_unique_owner(key_path, key_size);
+                    SharedMemory::make_unique_user(key_path, 0);
                 auto emplace_ret = m_process_map.emplace(proc_it, m_process_s {});
                 auto &process = emplace_ret.first->second;
                 if (m_is_filtered) {

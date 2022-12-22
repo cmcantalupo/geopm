@@ -29,6 +29,7 @@ import uuid
 import grp
 import pwd
 import fcntl
+import mmap
 
 from . import pio
 from . import schemas
@@ -731,12 +732,17 @@ class ActiveSessions(object):
 
     def start_profile(self, client_pid, profile_name):
         self.check_client_active(client_pid, 'start_profile')
+        do_create_app_shmem = False
         if profile_name in self._profiles:
             self._profiles[profile_name].add(client_pid)
         else:
             self._profiles[profile_name] = {client_pid}
+            do_create_app_shmem = True
         self._sessions[client_pid]['profile_name'] = profile_name
         self._update_session_file(client_pid)
+        if do_create_app_shmem:
+            self._create_shmem_app(profile_name)
+        self._create_shmem_pid(profile_name, client_pid)
 
     def stop_profile(self, client_pid):
         self.check_client_active(client_pid, 'stop_profile')
@@ -744,9 +750,11 @@ class ActiveSessions(object):
             profile_name = self._sessions[client_pid].pop('profile_name')
         except KeyError:
             raise RuntimeError(f'Client PID {client_pid} requested to stop profiling, but it had not been started.')
+        self._destroy_shmem_pid(profile_name, client_pid)
         self._profiles[profile_name].remove(client_pid)
         if len(self._profiles[profile_name]) == 0:
             self._profiles.pop(profile_name)
+            self._destroy_shmem_app(profile_name)
         self._update_session_file(client_pid)
 
     def get_profile_pids(self, profile_name):
@@ -846,6 +854,42 @@ class ActiveSessions(object):
             self._update_session_file(client_pid)
         else:
            os.rename(sess_path, renamed_path)
+
+    def _create_shmem_app(self, profile_name):
+        pid = 0
+        for key_type in (pio.GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE,
+                         pio.GEOPM_PROFILE_KEY_TYPE_STATUS):
+            key_path, key_size = pio.profile_key(profile_name, key_type, pid)
+            with os.open(key_path, os.O_RDWR|os.O_CREAT|os.O_EXCL,
+                         mode=stat.S_IRUSR|stat.S_IUSR) as fid:
+                mmap.mmap(fid.fileno(), key_size, flags=MAP_SHARED,
+                          prot=mmap.PROT_WRITE|mmap.PROT_READ)
+
+    def _create_shmem_pid(self, profile_name, pid):
+        key_type = pio.GEOPM_PROFILE_KEY_TYPE_RECORD_LOG
+        key_path, key_size = pio.profile_key(profile_name, key_type, pid)
+        with os.open(key_path, os.O_RDWR|os.O_CREAT|os.O_EXCL,
+                     mode=stat.S_IRUSR|stat.S_IUSR) as fid:
+            mmap.mmap(fid.fileno(), key_size, flags=mmap.MAP_SHARED,
+                      prot=mmap.PROT_WRITE|mmap.PROT_READ)
+
+    def _destroy_shmem_app(self, profile_name):
+        pid = 0
+        for key_type in (pio.GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE,
+                         pio.GEOPM_PROFILE_KEY_TYPE_STATUS):
+            key_path, key_size = pio.profile_key(profile_name, key_type, pid)
+            try:
+                os.unlink(key_path)
+            except FileNotFoundError:
+                pass
+
+    def _destroy_shmem_pid(self, profile_name, pid):
+        key_type = pio.GEOPM_PROFILE_KEY_TYPE_RECORD_LOG
+        key_path, key_size = pio.profile_key(profile_name, key_type, pid)
+        try:
+            os.unlink(key_path)
+        except FileNotFoundError:
+            pass
 
 
 class AccessLists(object):

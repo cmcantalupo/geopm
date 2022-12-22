@@ -47,15 +47,11 @@ namespace geopm
         , m_profile_name(profile_name)
         , m_do_report(false)
         , m_rank_per_node(0)
-        , m_profile_shmem(profile_shmem)
+        , m_profile_key(profile_shmem)
     {
         int key_type = GEOPM_PROFILE_KEY_TYPE_CONTROL_MESSAGE;
-        std::string key_path = m_profile_shmem->key_path(key_type);
-        size_t key_size = m_profile_shmem->key_size(key_type);
-        // Remove shared memory file if one already exists.
-        (void)unlink(key_path.c_str());
-        errno = 0; // Ignore errors from the unlink calls.
-        m_ctl_shmem = SharedMemory::make_unique_owner(key_path, key_size);
+        std::string key_path = m_profile_key->key_path(key_type);
+        m_ctl_shmem = SharedMemory::make_unique_user(key_path, 0);
         auto ctl_ptr = (struct geopm_ctl_message_s *)m_ctl_shmem->pointer();
         m_ctl_msg = geopm::make_unique<ControlMessageImp>(*ctl_ptr, true, true, timeout);
     }
@@ -81,11 +77,10 @@ namespace geopm
         }
 
         int key_type = GEOPM_PROFILE_KEY_TYPE_RECORD_LOG;
-        size_t key_size = m_profile_shmem->key_size(key_type);
         for (auto it = rank_set.begin(); it != rank_set.end(); ++it) {
-            std::string key_path = m_profile_shmem->key_path(key_type, *it);
+            std::string key_path = m_profile_key->key_path(key_type, *it);
             m_rank_sampler.push_front(
-                geopm::make_unique<ProfileRankSamplerImp>(key_path, key_size));
+                geopm::make_unique<ProfileRankSamplerImp>(key_path));
         }
         m_rank_per_node = rank_set.size();
         if (m_rank_per_node == 0) {
@@ -196,14 +191,12 @@ namespace geopm
         m_ctl_msg->abort();
     }
 
-    ProfileRankSamplerImp::ProfileRankSamplerImp(const std::string &key_path, size_t key_size)
+    ProfileRankSamplerImp::ProfileRankSamplerImp(const std::string &key_path)
         : m_table_shmem(nullptr)
         , m_table(nullptr)
         , m_is_name_finished(false)
     {
-        (void)unlink(key_path.c_str());
-        errno = 0; // Ignore errors from the unlink call.
-        m_table_shmem = SharedMemory::make_unique_owner(key_path, key_size);
+        m_table_shmem = SharedMemory::make_unique_user(key_path, 0);
         m_table = geopm::make_unique<ProfileTableImp>(m_table_shmem->size(),
                                                       m_table_shmem->pointer());
     }

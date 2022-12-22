@@ -120,10 +120,7 @@ namespace geopm
             ///
             /// @param [in] shm_key Shared memory key unique to a
             ///        specific rank.
-            ///
-            /// @param [in] table_size Size of the hash table to create in
-            ///        the shared memory region.
-            ProfileRankSamplerImp(const std::string &shm_key, size_t table_size);
+            ProfileRankSamplerImp(const std::string &shm_key);
             /// @brief ProfileRankSamplerImp destructor.
             ///
             /// Cleans up the hash table and shared memory region.
@@ -206,7 +203,7 @@ namespace geopm
             std::string m_profile_name;
             bool m_do_report;
             int m_rank_per_node;
-            std::shared_ptr<ProfileKey> m_profile_shmem;
+            std::shared_ptr<ProfileKey> m_profile_key;
     };
 }
 

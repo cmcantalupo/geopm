@@ -743,7 +743,7 @@ def profile_key(profile_name, key_type, pid):
     profile_name_cstr = gffi.gffi.new("char[]", profile_name.encode())
     name_max = 1024
     key_path_cstr = gffi.gffi.new("char[]", name_max)
-    key_size_cint = gffi.gffi.new("int[]", 1)
+    key_size_cint = gffi.gffi.new("size_t[]", 1)
     err = _dl.geopm_pio_profile_key(profile_name_cstr, key_type, pid, name_max, key_path_cstr, key_size_cint)
     if err < 0:
         raise RuntimeError('geopm_pio_profile_key() failed: {}'.format(error.message(err)))
