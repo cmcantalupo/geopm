@@ -72,8 +72,12 @@ EXTRA_DIST = .gitignore \
              geopmdpy/__init__.py \
              geopmdpy/__main__.py \
              geopmdpy/access.py \
+             geopmdpy/client_registry.py \
              geopmdpy/dbus_xml.py \
              geopmdpy/error.py \
+             geopmdpy/grpc_service.py \
+             geopmdpy/geopm_service_pb2.py \
+             geopmdpy/geopm_service_pb2_grpc.py \
              geopmdpy/gffi.py \
              geopmdpy/pio.py \
              geopmdpy/runtime.py \
@@ -86,10 +90,12 @@ EXTRA_DIST = .gitignore \
              geopmdpy/version.py \
              geopmdpy/version.py.in \
              geopmsession \
+             geopm_service.proto \
              json_schemas/active_sessions.schema.json \
              json_schemas/const_config_io.schema.json \
              json_schemas/msrs.schema.json \
              json_schemas/saved_controls.schema.json \
+             protoc-gen.sh \
              requirements.txt \
              setup.py \
              src/geopm/json11.hpp \
@@ -168,6 +174,8 @@ libgeopmd_la_SOURCES = $(include_HEADERS) \
                        src/DomainControl.hpp \
                        src/Exception.cpp \
                        src/GEOPMHint.cpp \
+                       src/GRPCServiceProxy.cpp \
+                       src/GRPCServiceProxy.hpp \
                        src/Helper.cpp \
                        src/IOGroup.cpp \
                        src/LevelZeroGPUTopo.cpp \
@@ -239,6 +247,10 @@ libgeopmd_la_SOURCES = $(include_HEADERS) \
                        src/geopm_hash.c \
                        src/geopm_plugin.cpp \
                        src/geopm_sched.c \
+                       src/geopm_service.grpc.pb.cc \
+                       src/geopm_service.grpc.pb.h \
+                       src/geopm_service.pb.cc \
+                       src/geopm_service.pb.h \
                        src/geopm_version.c \
                        $(msr_cpp_files) \
                        # end
