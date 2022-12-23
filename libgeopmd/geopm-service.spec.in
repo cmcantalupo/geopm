@@ -196,6 +196,7 @@ ln -s -r %{buildroot}%{_sbindir}/service %{buildroot}%{_sbindir}/rcgeopm
 %{_sbindir}/rcgeopm
 %{_bindir}/geopmread
 %{_bindir}/geopmwrite
+%{_bindir}/geopmbatch
 %dir %{_datadir}/dbus-1
 %dir %{_datadir}/dbus-1/system.d
 %{_datadir}/dbus-1/system.d/io.github.geopm.conf

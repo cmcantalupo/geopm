@@ -13,3 +13,4 @@ if [ ! -e VERSION ]; then
     fi
 fi
 autoreconf -i -f
+./protoc-gen.sh

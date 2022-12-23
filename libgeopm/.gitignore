@@ -75,3 +75,7 @@ compile_commands.json
 /geopm-runtime*.buildinfo
 /geopm-runtime*.changes
 /geopm-runtime*/
+/src/geopm_service.grpc.pb.cc
+/src/geopm_service.grpc.pb.h
+/src/geopm_service.pb.cc
+/src/geopm_service.pb.h
