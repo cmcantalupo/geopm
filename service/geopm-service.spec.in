@@ -27,9 +27,6 @@ BuildRequires: systemd-devel >= 221
 BuildRequires: python3
 BuildRequires: python3-devel
 BuildRequires: python3-setuptools
-BuildRequires: level-zero
-BuildRequires: level-zero-devel
-Requires: level-zero >= 1.8.1
 %if 0%{?suse_version}
 BuildRequires: fdupes
 BuildRequires: systemd-rpm-macros
@@ -136,7 +133,6 @@ CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
             --includedir=%{_includedir} --sbindir=%{_sbindir} \
             --mandir=%{_mandir} --docdir=%{docdir} \
             --with-python=%{python_bin} \
-            --enable-levelzero \
             || ( cat config.log && false )
 
 CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
@@ -149,7 +145,7 @@ rm -f $(find %{buildroot}/%{_libdir} -name '*.a'; \
 install -Dp -m644 geopm.service %{buildroot}%{_unitdir}/geopm.service
 install -Dp -m644 io.github.geopm.conf %{buildroot}%{_datadir}/dbus-1/system.d/io.github.geopm.conf
 install -Dp -m644 io.github.geopm.xml %{buildroot}%{_datadir}/dbus-1/interfaces/io.github.geopm.xml
-mkdir -p %{buildroot}%{_sysconfdir}/geopm-service
+mkdir -p -m 711 %{buildroot}%{_sysconfdir}/geopm-service
 mkdir -p %{buildroot}%{_sbindir}
 ln -s /usr/sbin/service %{buildroot}%{_sbindir}/rcgeopm
 %if 0%{?suse_version}
