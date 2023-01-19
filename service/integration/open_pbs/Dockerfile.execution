@@ -1,0 +1,6 @@
+FROM opensuse/leap:15.3
+RUN zypper install -y curl unzip
+WORKDIR /tmp
+RUN curl -fsSLO https://vcdn.altair.com/rl/OpenPBS/openpbs_22.05.11.opensuse_leap_15.3.zip
+RUN unzip openpbs_22.05.11.opensuse_leap_15.3.zip
+RUN zypper install --allow-unsigned-rpm -y openpbs_22.05.11.opensuse_leap_15.3/openpbs-execution-22.05.11-0.x86_64.rpm
