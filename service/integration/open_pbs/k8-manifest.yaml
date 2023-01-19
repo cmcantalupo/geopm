@@ -4,11 +4,14 @@ metadata:
    name: open-pbs-server-pod
 spec:
    restartPolicy: Never
+   hostname: head-node
    containers:
    - name: open-pbs-server
      image: cmcantal/open-pbs:dockerfile
      imagePullPolicy: Always
-     hostname: head-node
      securityContext:
        privileged: true
-     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -e "s|PBS_START_MOM=.*|PBS_START_MOM=1|" -i /etc/pbs.conf; sleep 3600']
+
+
+
+     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -e "s|PBS_START_MOM=.*|PBS_START_MOM=1|" -i /etc/pbs.conf; /etc/init.d/pbs start; pid=$(/etc/init.d/pbs status | grep "^pbs_server is pid" | sed "s|pbs_server is pid \(.*\)|\1|");  while ps $pid >& /dev/null; do sleep 1; done']
