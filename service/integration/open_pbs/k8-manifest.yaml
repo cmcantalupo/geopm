@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Pod
+metadata:
+   name: open-pbs-server-pod
+   labels:
+     name: pbs
+spec:
+   restartPolicy: Never
+   hostname: head-node
+   subdomain: pbs-cluster
+   containers:
+   - name: open-pbs-server
+     image: cmcantal/open-pbs:dockerfile
+     imagePullPolicy: Always
+     securityContext:
+       privileged: true
+     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -e "s|PBS_START_MOM=.*|PBS_START_MOM=1|" -i /etc/pbs.conf; /etc/init.d/pbs start; pid=$(/etc/init.d/pbs status | grep "^pbs_server is pid" | sed "s|pbs_server is pid \(.*\)|\1|");  while ps $pid >& /dev/null; do sleep 1; done']
+---
+apiVersion: v1
+kind: Pod
+metadata:
+   name: open-pbs-execution-pod
+   labels:
+     name: pbs
+spec:
+   restartPolicy: Never
+   hostname: execution-node-0
+   subdomain: pbs-cluster
+   containers:
+   - name: open-pbs-execution
+     image: cmcantal/open-pbs-execution:dockerfile
+     imagePullPolicy: Always
+     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -i /etc/pbs.conf; /etc/init.d/pbs start; sleep 3600']
+---
+apiVersion: v1
+kind: Service
+metadata:
+   name: pbs-cluster
+spec:
+   selector:
+     name: pbs
+   ports:
+     - name: pbs-port
+       port: 15002
