@@ -3,13 +3,14 @@ kind: Pod
 metadata:
    name: open-pbs-server-pod
    labels:
-     name: pbs
+     name: pbs-server
 spec:
    restartPolicy: Never
    hostname: head-node
-   subdomain: pbs-cluster
+   subdomain: pbs-server-subdomain
+   dnsPolicy: "Default"
    containers:
-   - name: open-pbs-server
+   - name: pbs-server
      image: cmcantal/open-pbs:dockerfile
      imagePullPolicy: Always
      securityContext:
@@ -21,24 +22,27 @@ kind: Pod
 metadata:
    name: open-pbs-execution-pod
    labels:
-     name: pbs
+     name: pbs-server
 spec:
    restartPolicy: Never
    hostname: execution-node-0
-   subdomain: pbs-cluster
+   subdomain: pbs-server-subdomain
+   dnsPolicy: "Default"
    containers:
-   - name: open-pbs-execution
+   - name: pbs-server
      image: cmcantal/open-pbs-execution:dockerfile
      imagePullPolicy: Always
+     securityContext:
+       privileged: true
      command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -i /etc/pbs.conf; /etc/init.d/pbs start; sleep 3600']
 ---
 apiVersion: v1
 kind: Service
 metadata:
-   name: pbs-cluster
+   name: pbs-server-subdomain
 spec:
    selector:
-     name: pbs
+     name: pbs-server
    ports:
      - name: pbs-port
        port: 15002
