@@ -8,14 +8,16 @@ spec:
    restartPolicy: Never
    hostname: head-node
    subdomain: pbs-server-subdomain
-   dnsPolicy: "Default"
+   dnsConfig:
+     searches:
+       - pbs-server-subdomain.default.svc.cluster.local
    containers:
    - name: pbs-server
-     image: cmcantal/open-pbs:dockerfile
+     image: cmcantal/open-pbs-server:dockerfile
      imagePullPolicy: Always
      securityContext:
        privileged: true
-     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -e "s|PBS_START_MOM=.*|PBS_START_MOM=1|" -i /etc/pbs.conf; /etc/init.d/pbs start; pid=$(/etc/init.d/pbs status | grep "^pbs_server is pid" | sed "s|pbs_server is pid \(.*\)|\1|");  while ps $pid >& /dev/null; do sleep 1; done']
+     command: ['/usr/bin/sh', '-c', 'source /etc/profile.d/pbs.sh; sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -e "s|PBS_START_MOM=.*|PBS_START_MOM=1|" -i /etc/pbs.conf; useradd bob -m; /etc/init.d/pbs start; sleep 60; qmgr -c "create node execution-node-0"; sleep 3600']
 ---
 apiVersion: v1
 kind: Pod
@@ -27,14 +29,16 @@ spec:
    restartPolicy: Never
    hostname: execution-node-0
    subdomain: pbs-server-subdomain
-   dnsPolicy: "Default"
+   dnsConfig:
+     searches:
+       - pbs-server-subdomain.default.svc.cluster.local
    containers:
    - name: pbs-server
      image: cmcantal/open-pbs-execution:dockerfile
      imagePullPolicy: Always
      securityContext:
        privileged: true
-     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -i /etc/pbs.conf; /etc/init.d/pbs start; sleep 3600']
+     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -i /etc/pbs.conf; useradd bob -m; /etc/init.d/pbs start; sleep 3600']
 ---
 apiVersion: v1
 kind: Service
