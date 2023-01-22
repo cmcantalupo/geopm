@@ -139,6 +139,7 @@ CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
             --includedir=%{_includedir} --sbindir=%{_sbindir} \
             --mandir=%{_mandir} --docdir=%{docdir} \
             --with-python=%{python_bin} \
+            --enable-debug \
             || ( cat config.log && false )
 
 CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
