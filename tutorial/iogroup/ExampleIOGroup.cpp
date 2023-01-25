@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unistd.h>
 
 #include "geopm/IOGroup.hpp"
 #include "geopm/PlatformTopo.hpp"
@@ -214,6 +215,7 @@ void ExampleIOGroup::read_batch(void)
 void ExampleIOGroup::write_batch(void)
 {
     if (m_do_write[M_CONTROL_STDOUT]) {
+        std::cout << "hostname: " << geopm::hostname() << " uid: " << geteuid() << " setting: ";
         std::cout << m_control_value[M_CONTROL_STDOUT] << std::endl;
     }
     if (m_do_write[M_CONTROL_STDERR]) {
@@ -317,6 +319,7 @@ void ExampleIOGroup::write_control(const std::string &control_name, int domain_t
     int control_idx = m_control_idx_map.at(control_name);
     switch (control_idx) {
         case M_CONTROL_STDOUT:
+            std::cout << "hostname: " << geopm::hostname() << " uid: " << geteuid() << " setting: ";
             std::cout << setting << std::endl;
             break;
         case M_CONTROL_STDERR:
