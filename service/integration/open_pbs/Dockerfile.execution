@@ -4,3 +4,8 @@ WORKDIR /tmp
 RUN curl -fsSLO https://vcdn.altair.com/rl/OpenPBS/openpbs_22.05.11.opensuse_leap_15.3.zip
 RUN unzip openpbs_22.05.11.opensuse_leap_15.3.zip
 RUN zypper install --allow-unsigned-rpm -y openpbs_22.05.11.opensuse_leap_15.3/openpbs-execution-22.05.11-0.x86_64.rpm
+RUN zypper install -y curl
+RUN curl -fsSL https://download.opensuse.org/repositories/home:/geopm/15.3/repodata/repomd.xml.key > /tmp/suse-key
+RUN rpm --import /tmp/suse-key
+RUN zypper addrepo https://download.opensuse.org/repositories/home:/geopm/15.3/home:geopm.repo
+RUN zypper install -y geopm-service
