@@ -18,6 +18,13 @@ spec:
      securityContext:
        privileged: true
      command: ['/usr/bin/sh', '-c', 'source /etc/profile.d/pbs.sh; sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -e "s|PBS_START_MOM=.*|PBS_START_MOM=1|" -i /etc/pbs.conf; useradd bob -m; /etc/init.d/pbs start; sleep 60; qmgr -c "create node execution-node-0"; sleep 3600']
+     volumeMounts:
+     - name: home-mount
+       mountPath: /home
+   volumes:
+   - name: home-mount
+     hostPath:
+       path: /home/geopm/kube/home
 ---
 apiVersion: v1
 kind: Pod
@@ -38,7 +45,14 @@ spec:
      imagePullPolicy: Always
      securityContext:
        privileged: true
-     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -i /etc/pbs.conf; useradd bob -m; /etc/init.d/pbs start; sleep 3600']
+     volumeMounts:
+     - name: home-mount
+       mountPath: /home
+     command: ['/usr/bin/sh', '-c', 'sed -e "s|PBS_SERVER=.*|PBS_SERVER=head-node|" -i /etc/pbs.conf; useradd bob -m; /etc/init.d/pbs start; install -d /usr/lib64/geopm; install /home/libgeopmiogroup_example_iogroup.so.1.0.0 /usr/lib64/geopm; sleep 3600']
+   volumes:
+   - name: home-mount
+     hostPath:
+       path: /home/geopm/kube/home
 ---
 apiVersion: v1
 kind: Service
