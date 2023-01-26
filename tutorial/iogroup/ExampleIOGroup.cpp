@@ -7,9 +7,7 @@
 
 #include <cmath>
 
-#include <fstream>
 #include <iostream>
-#include <string>
 #include <unistd.h>
 
 #include "geopm/IOGroup.hpp"
@@ -50,8 +48,13 @@ ExampleIOGroup::ExampleIOGroup()
     , m_do_write(M_NUM_SIGNAL, false)
     , m_signal_value(M_NUM_SIGNAL)
     , m_control_value(M_NUM_CONTROL)
+    , m_stdout_stream(&std::cout)
 {
-
+    std::string path = geopm::get_env("EXAMPLE_IO_GROUP_STDOUT_FILE");
+    if (!path.empty()) {
+        m_stdout_file = std::make_shared<std::ofstream>(path);
+        m_stdout_stream = m_stdout_file.get();
+    }
 }
 
 // Extract the set of all signal names from the index map
@@ -215,8 +218,8 @@ void ExampleIOGroup::read_batch(void)
 void ExampleIOGroup::write_batch(void)
 {
     if (m_do_write[M_CONTROL_STDOUT]) {
-        std::cout << "hostname: " << geopm::hostname() << " uid: " << geteuid() << " setting: ";
-        std::cout << m_control_value[M_CONTROL_STDOUT] << std::endl;
+        *m_stdout_stream << "hostname: " << geopm::hostname() << " uid: " << geteuid() << " setting: ";
+        *m_stdout_stream << m_control_value[M_CONTROL_STDOUT] << std::endl;
     }
     if (m_do_write[M_CONTROL_STDERR]) {
         std::cerr << m_control_value[M_CONTROL_STDERR] << std::endl;
@@ -319,8 +322,8 @@ void ExampleIOGroup::write_control(const std::string &control_name, int domain_t
     int control_idx = m_control_idx_map.at(control_name);
     switch (control_idx) {
         case M_CONTROL_STDOUT:
-            std::cout << "hostname: " << geopm::hostname() << " uid: " << geteuid() << " setting: ";
-            std::cout << setting << std::endl;
+            *m_stdout_stream << "hostname: " << geopm::hostname() << " uid: " << geteuid() << " setting: ";
+            *m_stdout_stream << setting << std::endl;
             break;
         case M_CONTROL_STDERR:
             std::cerr << setting << std::endl;

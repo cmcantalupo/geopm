@@ -10,6 +10,8 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <fstream>
+#include <ostream>
 
 #include "geopm/PluginFactory.hpp"
 #include "geopm/IOGroup.hpp"
@@ -77,6 +79,8 @@ class ExampleIOGroup : public geopm::IOGroup
         std::vector<bool> m_do_write;
         std::vector<std::string> m_signal_value;
         std::vector<std::string> m_control_value;
+        std::shared_ptr<std::ostream> m_stdout_file;
+        std::ostream *m_stdout_stream;
 };
 
 #endif
