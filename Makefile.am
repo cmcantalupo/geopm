@@ -255,8 +255,8 @@ EXTRA_DIST = $(TUTORIAL_DIST) \
              man/geopmpy.7 \
              m4/ax_check_compile_flag.m4 \
              pull_request_template.md \
-             specs/geopm.spec \
-             specs/geopm.spec.in \
+             specs/geopm-runtime.spec \
+             specs/geopm-runtime.spec.in \
              specs/geopm-dudley.spec \
              specs/geopm-dudley.spec.in \
              specs/geopm-gcc-mvapich2-toss.spec \
@@ -660,9 +660,9 @@ rpm_topdir ?= $(HOME)/rpmbuild
 rpm: dist
 	mkdir -p $(rpm_topdir)/SOURCES
 	mkdir -p $(rpm_topdir)/SPECS
-	cp geopm-$(VERSION).tar.gz $(rpm_topdir)/SOURCES/geopm.tar.gz
-	cp specs/geopm.spec $(rpm_topdir)/SPECS/geopm.spec
-	rpmbuild $(rpmbuild_flags) -ba $(rpm_topdir)/SPECS/geopm.spec
+	cp geopm-runtime-$(VERSION).tar.gz $(rpm_topdir)/SOURCES/geopm-runtime.tar.gz
+	cp specs/geopm-runtime.spec $(rpm_topdir)/SPECS/geopm-runtime.spec
+	rpmbuild $(rpmbuild_flags) -ba $(rpm_topdir)/SPECS/geopm-runtime.spec
 
 rpm-theta: dist
 	mkdir -p $(rpm_topdir)/SOURCES
