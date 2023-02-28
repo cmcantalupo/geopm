@@ -74,11 +74,10 @@ Depends: ${python3:Depends},
          libgeopm1 (= ${binary:Version}),
          python3-cffi (>=1.15.0),
          python3-cycler (>=0.11.0),
-         python3-natsort (>=8.1.0),
+         python3-natsort (>=8.0.2),
          python3-numpy (>=1.19.5),
          python3-pandas (>=1.1.5),
          python3-psutil (>=5.9.0),
-         python3-pyyaml (>=6.0.0),
          python3-setuptools (>=59.6.0),
          python3-tables (>=3.7.0)
 Description: Python 3 package for GEOPM Runtime.  Provides the
