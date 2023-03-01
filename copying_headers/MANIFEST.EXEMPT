@@ -24,7 +24,6 @@ debian/copyright
 debian/geopm-runtime.dirs
 debian/geopm-runtime.install
 debian/libgeopm1.install
-debian/libgeopm1.symbols.in
 debian/libgeopm-dev.dirs
 debian/libgeopm-dev.install
 debian/python3-geopmpy.dirs
@@ -101,7 +100,6 @@ service/debian/geopm-service.postinst
 service/debian/libgeopmd-dev.dirs
 service/debian/libgeopmd-dev.install
 service/debian/libgeopmd1.install
-service/debian/libgeopmd1.symbols.in
 service/debian/python3-geopmdpy.install
 service/debian/rules
 service/docs/source/admin.rst

@@ -210,8 +210,6 @@ EXTRA_DIST = $(TUTORIAL_DIST) \
              debian/libgeopm-dev.dirs \
              debian/libgeopm-dev.install \
              debian/libgeopm1.install \
-             debian/libgeopm1.symbols \
-             debian/libgeopm1.symbols.in \
              debian/python3-geopmpy.dirs \
              debian/python3-geopmpy.install \
              debian/rules \
