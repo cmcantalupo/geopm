@@ -25,8 +25,8 @@ Section: hardware
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-         libgeopm1,
-         libgeopmd1
+         libgeopm1 (= ${binary:Version}),
+         libgeopmd1 (= ${binary:Version}),
 Description: The geopm runtime package provides many built-in
  features.  An advanced use case is dynamically coordinating hardware
  settings across all compute nodes used by an distributed HPC
@@ -49,7 +49,7 @@ Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-         libgeopm1
+         libgeopm1 (= ${binary:Version})
 Description: Development package for the GEOPM Runtime.  This provides
  the programming interface to libgeopm.so.  The package includes the C
  and C++ header files, maunuals for these interfaces and the
@@ -70,7 +70,7 @@ Package: python3-geopmpy
 Section: hardware
 Architecture: any
 Depends: ${python3:Depends},
-         libgeopm1
+         libgeopm1 (= ${binary:Version}),
          python3-cffi (>=1.15.0),
          python3-cycler (>=0.11.0),
          python3-natsort (>=8.0.2),
