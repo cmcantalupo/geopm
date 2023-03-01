@@ -76,6 +76,7 @@ EXTRA_DIST = .gitignore \
              debian/libgeopmd-dev.install \
              debian/libgeopmd1.install \
              debian/libgeopmd1.symbols \
+             debian/libgeopmd1.symbols.in \
              debian/python3-geopmdpy.install \
              debian/rules \
              dox/blurb.md \
