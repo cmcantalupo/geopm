@@ -1,4 +1,4 @@
-libgeopmd.so.1 libgeopmd1
+libgeopmd.so.1 libgeopmd1 #MINVER#
  _ZGVN5geopm13PluginFactoryINS_7IOGroupEE18m_empty_dictionaryB5cxx11E@Base @VERSION@-1
  _ZN12GEOPMPackage10SessionKey12InternalSwapEPS0_@Base @VERSION@-1
  _ZN12GEOPMPackage10SessionKey14_InternalParseEPKcPN6google8protobuf8internal12ParseContextE@Base @VERSION@-1

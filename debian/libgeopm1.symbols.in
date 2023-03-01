@@ -1,4 +1,4 @@
-libgeopm.so.1 libgeopm1
+libgeopm.so.1 libgeopm1 #MINVER#
  _ZGVN5geopm13PluginFactoryINS_4CommEE18m_empty_dictionaryB5cxx11E@Base @VERSION@-1
  _ZN10Imbalancer4exitEv@Base @VERSION@-1
  _ZN10Imbalancer4fracEd@Base @VERSION@-1
