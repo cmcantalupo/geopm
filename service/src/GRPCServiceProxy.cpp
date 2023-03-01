@@ -31,6 +31,12 @@ namespace geopm
             (void)close(m_pidfd);
             errno = 0;
         }
+        try {
+            platform_close_session();
+        }
+        catch (...) {
+
+        }
     }
 
     GRPCServiceProxy::GRPCServiceProxy()
@@ -46,7 +52,7 @@ namespace geopm
         m_session_key = id.str();
         // Throw at construction time if topo cache cannot be read
         try {
-            (void)topo_get_cache();
+            platform_open_session();
         }
         catch (const Exception &ex) {
             throw Exception("GRPCServiceProxy: Failed to connect with gRPC server: " +
@@ -54,7 +60,6 @@ namespace geopm
                             GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
         }
     }
-
 
     void GRPCServiceProxy::platform_get_user_access(std::vector<std::string> &signal_names,
                                                     std::vector<std::string> &control_names)
@@ -150,9 +155,6 @@ namespace geopm
 
     void GRPCServiceProxy::platform_open_session(void)
     {
-        // TODO: Until we can figure out how to get the calling PID
-        // from the server context, just trust the user to pass their
-        // uid and pid as the open request.
         GEOPMPackage::SessionKey request;
         request.set_name(m_session_key);
         grpc::ClientContext context;
