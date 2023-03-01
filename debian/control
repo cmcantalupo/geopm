@@ -26,7 +26,7 @@ Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends},
          libgeopm1 (= ${binary:Version}),
-         libgeopmd1 (= ${binary:Version}),
+         libgeopmd1 (= ${binary:Version})
 Description: The geopm runtime package provides many built-in
  features.  An advanced use case is dynamically coordinating hardware
  settings across all compute nodes used by an distributed HPC
