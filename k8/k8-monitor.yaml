@@ -7,7 +7,7 @@ spec:
    shareProcessNamespace: true
    containers:
    - name: geopm-server
-     image: cmcantal/geopm-service:ubuntu2210-server
+     image: cmcantal/geopm-service:tumbleweed-server
      imagePullPolicy: Always
      securityContext:
        privileged: true

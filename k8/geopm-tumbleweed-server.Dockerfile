@@ -1,9 +1,8 @@
-FROM ubuntu:22.10 AS env
+FROM opensuse/tumbleweed
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update -qq && apt install -yq wget gpg
 RUN mkdir -m 700 -p /etc/geopm-service; mkdir -m 700 -p /etc/geopm-service/0.DEFAULT_ACCESS; echo "TIME" > /etc/geopm-service/0.DEFAULT_ACCESS/allowed_signals; chmod 600 /etc/geopm-service/0.DEFAULT_ACCESS/allowed_signals
-RUN wget -qO- https://build.opensuse.org/projects/home:cmcantal:cloud/public_key | gpg --dearmor -o /etc/apt/keyrings/obs-home-cmcantal-cloud.gpg
-RUN echo "deb [signed-by=/etc/apt/keyrings/obs-home-cmcantal-cloud.gpg] https://download.opensuse.org/repositories/home:/cmcantal:/cloud/xUbuntu_22.10/ ./" >> /etc/apt/sources.list
-RUN apt-get update
-RUN apt install -yq geopm-service
+RUN zypper install -y curl
+RUN curl -fsSL https://download.opensuse.org/repositories/home:/cmcantal:/cloud/openSUSE_Tumbleweed/repodata/repomd.xml.key > /tmp/suse-key
+RUN rpm --import /tmp/suse-key
+RUN zypper addrepo https://download.opensuse.org/repositories/home:/cmcantal:/cloud/openSUSE_Tumbleweed/home:cmcantal:cloud.repo
+RUN zypper install -y geopm-service
