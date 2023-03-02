@@ -11,8 +11,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/src \
                # end
 
 # THINGS THAT ARE INSTALLED
-lib_LTLIBRARIES = libgeopmpolicy.la \
-                  libgeopm.la \
+lib_LTLIBRARIES = libgeopm.la \
                   libgeopmload.la \
                   # end
 
@@ -350,12 +349,9 @@ else
 endif # ENABLE_MPI
 
 
-# EXTEND FLAGS FOR NON-MPI TARGETS
-libgeopmpolicy_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(geopm_abi_version)
-
 # ADD LIBRARY DEPENDENCIES FOR EXECUTABLES
-geopmagent_LDADD = libgeopmpolicy.la
-geopmadmin_LDADD = libgeopmpolicy.la
+geopmagent_LDADD = libgeopm.la
+geopmadmin_LDADD = libgeopm.la
 if ENABLE_MPI
     geopmctl_LDADD = libgeopm.la $(MPI_CLIBS)
     geopmbench_LDADD = libgeopm.la $(MATH_LIB) $(MPI_CLIBS)
@@ -369,121 +365,121 @@ else
     libgeopmload_la_LIBADD = libgeopm.la
 endif # ENABLE_MPI
 
-libgeopmpolicy_la_SOURCES = src/Accumulator.cpp \
-                            src/Accumulator.hpp \
-                            src/Admin.cpp \
-                            src/Admin.hpp \
-                            src/Agent.cpp \
-                            src/Agent.hpp \
-                            src/ApplicationIO.cpp \
-                            src/ApplicationIO.hpp \
-                            src/ApplicationRecordLog.cpp \
-                            src/ApplicationRecordLog.hpp \
-                            src/ApplicationSampler.cpp \
-                            src/ApplicationSampler.hpp \
-                            src/ApplicationSamplerImp.hpp \
-                            src/ApplicationStatus.cpp \
-                            src/ApplicationStatus.hpp \
-                            src/Comm.cpp \
-                            src/Comm.hpp \
-                            src/Controller.cpp \
-                            src/Controller.hpp \
-                            src/CSV.cpp \
-                            src/CSV.hpp \
-                            src/DebugIOGroup.cpp \
-                            src/DebugIOGroup.hpp \
-                            src/DefaultProfile.cpp \
-                            src/EditDistPeriodicityDetector.cpp \
-                            src/EditDistPeriodicityDetector.hpp \
-                            src/EditDistEpochRecordFilter.cpp \
-                            src/EditDistEpochRecordFilter.hpp \
-                            src/ELF.cpp \
-                            src/ELF.hpp \
-                            src/Endpoint.cpp \
-                            src/Endpoint.hpp \
-                            src/EndpointImp.hpp \
-                            src/EndpointPolicyTracer.cpp \
-                            src/EndpointPolicyTracer.hpp \
-                            src/EndpointPolicyTracerImp.hpp \
-                            src/EndpointUser.cpp \
-                            src/EndpointUser.hpp \
-                            src/Environment.cpp \
-                            src/Environment.hpp \
-                            src/EpochIOGroup.cpp \
-                            src/EpochIOGroup.hpp \
-                            src/FilePolicy.cpp \
-                            src/FilePolicy.hpp \
-                            src/FrequencyGovernor.cpp \
-                            src/FrequencyGovernor.hpp \
-                            src/FrequencyGovernorImp.hpp \
-                            src/FrequencyLimitDetector.cpp \
-                            src/FrequencyLimitDetector.hpp \
-                            src/SSTFrequencyLimitDetector.cpp \
-                            src/SSTFrequencyLimitDetector.hpp \
-                            src/TRLFrequencyLimitDetector.cpp \
-                            src/TRLFrequencyLimitDetector.hpp \
-                            src/FrequencyMapAgent.cpp \
-                            src/FrequencyMapAgent.hpp \
-                            src/Imbalancer.cpp \
-                            src/ModelParse.cpp \
-                            src/ModelParse.hpp \
-                            src/MonitorAgent.cpp \
-                            src/MonitorAgent.hpp \
-                            src/OptionParser.cpp \
-                            src/OptionParser.hpp \
-                            src/PowerBalancer.cpp \
-                            src/PowerBalancer.hpp \
-                            src/PowerBalancerImp.hpp \
-                            src/PowerBalancerAgent.cpp \
-                            src/PowerBalancerAgent.hpp \
-                            src/PowerGovernor.cpp \
-                            src/PowerGovernor.hpp \
-                            src/PowerGovernorImp.hpp \
-                            src/PowerGovernorAgent.cpp \
-                            src/PowerGovernorAgent.hpp \
-                            src/PlatformIOProf.cpp \
-                            src/PlatformIOProf.hpp \
-                            src/Profile.cpp \
-                            src/Profile.hpp \
-                            src/ProfileIOGroup.cpp \
-                            src/ProfileIOGroup.hpp \
-                            src/ProfileTracer.cpp \
-                            src/ProfileTracer.hpp \
-                            src/ProfileTracerImp.hpp \
-                            src/ProxyEpochRecordFilter.cpp \
-                            src/ProxyEpochRecordFilter.hpp \
-                            src/ProcessRegionAggregator.cpp \
-                            src/ProcessRegionAggregator.hpp \
-                            src/RecordFilter.cpp \
-                            src/RecordFilter.hpp \
-                            src/Reporter.cpp \
-                            src/Reporter.hpp \
-                            src/SampleAggregator.cpp \
-                            src/SampleAggregator.hpp \
-                            src/SampleAggregatorImp.hpp \
-                            src/Scheduler.cpp \
-                            src/Scheduler.hpp \
-                            src/SSTClosGovernor.cpp \
-                            src/SSTClosGovernor.hpp \
-                            src/SSTClosGovernorImp.hpp \
-                            src/Tracer.cpp \
-                            src/Tracer.hpp \
-                            src/TreeComm.cpp \
-                            src/TreeComm.hpp \
-                            src/TreeCommLevel.cpp \
-                            src/TreeCommLevel.hpp \
-                            src/ValidateRecord.cpp \
-                            src/ValidateRecord.hpp \
-                            src/geopm_agent.h \
-                            src/geopm_daemon.h \
-                            src/geopm_endpoint.h \
-                            src/geopm_imbalancer.h \
-                            src/geopm_policystore.h \
-                            src/geopm_prof.h \
-                            src/geopm_reporter.h \
-                            src/record.cpp \
-                            src/record.hpp \
-                            # end
+libgeopm_la_SOURCES = src/Accumulator.cpp \
+                      src/Accumulator.hpp \
+                      src/Admin.cpp \
+                      src/Admin.hpp \
+                      src/Agent.cpp \
+                      src/Agent.hpp \
+                      src/ApplicationIO.cpp \
+                      src/ApplicationIO.hpp \
+                      src/ApplicationRecordLog.cpp \
+                      src/ApplicationRecordLog.hpp \
+                      src/ApplicationSampler.cpp \
+                      src/ApplicationSampler.hpp \
+                      src/ApplicationSamplerImp.hpp \
+                      src/ApplicationStatus.cpp \
+                      src/ApplicationStatus.hpp \
+                      src/Comm.cpp \
+                      src/Comm.hpp \
+                      src/Controller.cpp \
+                      src/Controller.hpp \
+                      src/CSV.cpp \
+                      src/CSV.hpp \
+                      src/DebugIOGroup.cpp \
+                      src/DebugIOGroup.hpp \
+                      src/DefaultProfile.cpp \
+                      src/EditDistPeriodicityDetector.cpp \
+                      src/EditDistPeriodicityDetector.hpp \
+                      src/EditDistEpochRecordFilter.cpp \
+                      src/EditDistEpochRecordFilter.hpp \
+                      src/ELF.cpp \
+                      src/ELF.hpp \
+                      src/Endpoint.cpp \
+                      src/Endpoint.hpp \
+                      src/EndpointImp.hpp \
+                      src/EndpointPolicyTracer.cpp \
+                      src/EndpointPolicyTracer.hpp \
+                      src/EndpointPolicyTracerImp.hpp \
+                      src/EndpointUser.cpp \
+                      src/EndpointUser.hpp \
+                      src/Environment.cpp \
+                      src/Environment.hpp \
+                      src/EpochIOGroup.cpp \
+                      src/EpochIOGroup.hpp \
+                      src/FilePolicy.cpp \
+                      src/FilePolicy.hpp \
+                      src/FrequencyGovernor.cpp \
+                      src/FrequencyGovernor.hpp \
+                      src/FrequencyGovernorImp.hpp \
+                      src/FrequencyLimitDetector.cpp \
+                      src/FrequencyLimitDetector.hpp \
+                      src/SSTFrequencyLimitDetector.cpp \
+                      src/SSTFrequencyLimitDetector.hpp \
+                      src/TRLFrequencyLimitDetector.cpp \
+                      src/TRLFrequencyLimitDetector.hpp \
+                      src/FrequencyMapAgent.cpp \
+                      src/FrequencyMapAgent.hpp \
+                      src/Imbalancer.cpp \
+                      src/ModelParse.cpp \
+                      src/ModelParse.hpp \
+                      src/MonitorAgent.cpp \
+                      src/MonitorAgent.hpp \
+                      src/OptionParser.cpp \
+                      src/OptionParser.hpp \
+                      src/PowerBalancer.cpp \
+                      src/PowerBalancer.hpp \
+                      src/PowerBalancerImp.hpp \
+                      src/PowerBalancerAgent.cpp \
+                      src/PowerBalancerAgent.hpp \
+                      src/PowerGovernor.cpp \
+                      src/PowerGovernor.hpp \
+                      src/PowerGovernorImp.hpp \
+                      src/PowerGovernorAgent.cpp \
+                      src/PowerGovernorAgent.hpp \
+                      src/PlatformIOProf.cpp \
+                      src/PlatformIOProf.hpp \
+                      src/Profile.cpp \
+                      src/Profile.hpp \
+                      src/ProfileIOGroup.cpp \
+                      src/ProfileIOGroup.hpp \
+                      src/ProfileTracer.cpp \
+                      src/ProfileTracer.hpp \
+                      src/ProfileTracerImp.hpp \
+                      src/ProxyEpochRecordFilter.cpp \
+                      src/ProxyEpochRecordFilter.hpp \
+                      src/ProcessRegionAggregator.cpp \
+                      src/ProcessRegionAggregator.hpp \
+                      src/RecordFilter.cpp \
+                      src/RecordFilter.hpp \
+                      src/Reporter.cpp \
+                      src/Reporter.hpp \
+                      src/SampleAggregator.cpp \
+                      src/SampleAggregator.hpp \
+                      src/SampleAggregatorImp.hpp \
+                      src/Scheduler.cpp \
+                      src/Scheduler.hpp \
+                      src/SSTClosGovernor.cpp \
+                      src/SSTClosGovernor.hpp \
+                      src/SSTClosGovernorImp.hpp \
+                      src/Tracer.cpp \
+                      src/Tracer.hpp \
+                      src/TreeComm.cpp \
+                      src/TreeComm.hpp \
+                      src/TreeCommLevel.cpp \
+                      src/TreeCommLevel.hpp \
+                      src/ValidateRecord.cpp \
+                      src/ValidateRecord.hpp \
+                      src/geopm_agent.h \
+                      src/geopm_daemon.h \
+                      src/geopm_endpoint.h \
+                      src/geopm_imbalancer.h \
+                      src/geopm_policystore.h \
+                      src/geopm_prof.h \
+                      src/geopm_reporter.h \
+                      src/record.cpp \
+                      src/record.hpp \
+                      # end
 
 beta_source_files = src/CPUActivityAgent.cpp \
                     src/CPUActivityAgent.hpp \
@@ -499,7 +495,7 @@ beta_source_files = src/CPUActivityAgent.cpp \
                     #end
 
 if ENABLE_BETA
-    libgeopmpolicy_la_SOURCES += $(beta_source_files)
+    libgeopm_la_SOURCES += $(beta_source_files)
 else
     EXTRA_DIST += $(beta_source_files)
 endif
@@ -528,11 +524,6 @@ fortran_source_files = src/geopm_prof.f90 \
 
 geopmctl_SOURCES = src/geopmctl_main.c
 
-# All source files that are compiled into libgeopmpolicy are also
-# compiled into libgeopm.  We either have to do this or require
-# users to link to both libgeopm and libgeopmpolicy when calling
-# into application facing APIs.
-libgeopm_la_SOURCES = $(libgeopmpolicy_la_SOURCES)
 if ENABLE_MPI
     libgeopm_la_SOURCES +=$(mpi_source_files)
 else
