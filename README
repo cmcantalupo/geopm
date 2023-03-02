@@ -13,7 +13,8 @@ Web Pages
 https://geopm.github.io <br>
 https://geopm.github.io/service.html <br>
 https://geopm.github.io/reference.html <br>
-https://geopm.slack.com
+https://geopm.slack.com <br>
+https://build.opensuse.org/package/show/hardware/geopm-service
 
 
 Summary
@@ -27,12 +28,12 @@ With GEOPM you can:
 - Interact with hardware settings and sensors using a
   platform-agnostic interface
 - Restore changes to hardware settings when configuring process
-  terminates
+  session terminates
 - Profile applications to study their power and energy behavior
-- Automatically detect MPI and OpenMP phases in an application
-- Optimize MPI applications to improve energy efficiency or reduce the
+- Optimize applications to improve energy efficiency or reduce the
   effects of work imbalance, system jitter, and manufacturing variation
   through built-in control algorithms
+- Automatically detect MPI and OpenMP phases in an application
 - Develop your own runtime control algorithms through the extensible
   plugin architecture
 
@@ -41,57 +42,44 @@ Repository Organization
 -----------------------
 
 The GEOPM repository supports two software packages: the
-`geopm-service` package and the `geopm` package.  The `geopm-service`
-package provides a Linux systemd service.  The `geopm` package
-provides a runtime for distributed HPC applications.
+`geopm-service` package and the `geopm-runtime` package.
 
 - A build of the `geopm-service` package is required to build and run
-  the `geopm` HPC runtime
+  the `geopm-runtime`
 
 - All `geopm-service` package features may be used independently of
-  the features provided by the `geopm` package
-
-- All run and build requirements of the `geopm-service` package are
-  provided by commonly used Linux distributions
-
-- The run and build requirements of the `geopm` package include
-  several additional HPC specific dependencies
+  the features provided by the `geopm-runtime` package
 
 
 GEOPM Service
 -------------
 
+GEOPM provides Hardware Configuration as a Service (HCaaS) with a high
+level interface to interact with low level hardware features.  This
+service abstracts vendor specific information, provides security and
+quality of service guarantees while executing with very high
+performance and low overhead.
+
 The files supporting the `geopm-service` package are all within the
-`service` subdirectory located in the root directory of the the GEOPM
+`service` sub-directory located in the root directory of the the GEOPM
 repository.  Please refer to the `service/README.rst` file for further
-documentation about the GEOPM Service.  Additionally a comprehensive
-overview of the GEOPM service is posted here:
+documentation about the GEOPM Service.  Additionally, an overview of
+the GEOPM service is posted in our [online
+documentation](https://geopm.github.io/service.html).
 
-https://geopm.github.io/service.html
 
+GEOPM Runtime
+-------------
 
-GEOPM HPC Runtime
------------------
+GEOPM's Hardware Tuning Runtime adjusts hardware settings achieve an
+energy efficiency goal in response to hardware metrics and application
+telemetry.  The control system can optimize for user controlled
+objective functions including maximizing global application
+performance within a power bound or minimizing energy consumption with
+marginal degradation of application performance.
 
-The `geopm` package provides many built-in features.  An advanced use
-case is dynamically coordinating hardware settings across all compute
-nodes used by an distributed HPC application in response to the
-application's behavior and resource manager requests.  The dynamic
-coordination is implemented as a hierarchical control system for
-scalable communication and decentralized control. The hierarchical
-control system can optimize for various objective functions including
-maximizing global application performance within a power bound or
-minimizing energy consumption with marginal degradation of application
-performance.  The root of the control hierarchy tree can communicate
-with the system resource manager to extend the hierarchy above the
-individual MPI application and enable the management of system power
-resources for multiple MPI jobs and multiple users by the system
-resource manager.
-
-More documentation on the GEOPM HPC Runtime is posted with our web
-documentation here:
-
-https://geopm.github.io/runtime.html
+An overview of the GEOPM Runtime is posted in our [online
+documentation](https://geopm.github.io/runtime.html
 
 
 Guide for Contributors
@@ -100,41 +88,30 @@ Guide for Contributors
 We appreciate all feedback on our project.  Please see our
 contributing guide for how some guidelines on how to participate.
 This guide is located in the root of the GEOPM repository in a file
-called `CONTRIBUTING.rst`.  This guide can also be viewed here:
-
-https://geopm.github.io/contrib.html
+called `CONTRIBUTING.rst`.  This guide can also be viewed in our
+[online documentation](https://geopm.github.io/contrib.html).
 
 
 Guide for GEOPM Developers
 --------------------------
 
 GEOPM is an open development project and we use Github to plan, review
-and test our work.  The process we follow is documented here:
-
-https://geopm.github.io/devel.html
-
-this web page provides a guide for developers wishing to modify source
-code anywhere in the GEOPM repository for both the `geopm-service` and
-the `geopm` packages.
+and test our work.  The process we follow is documented in our [online
+documentation](https://geopm.github.io/devel.html).  This web page
+provides a guide for developers wishing to modify source code anywhere
+in the GEOPM repository for both the `geopm-service` and the `geopm`
+packages.
 
 
-Status
-------
+Experimental Branch
+-------------------
 
-GEOPM version 2.0 provides a number of important changes since the
-previous tagged release v1.1.0.  Some of the most significant new
-features are the GEOPM Service, support for Intel and NVIDIA GPUs, and
-improved consistency of signal and control names provided by
-PlatformIO.  A wide range of other improvements have also been made,
-including a higher performance profiling interface to support highly
-parallel applications, and support for the ``isst_interface`` driver.
-
-This software is production quality as of version 1.0.  We will be
-enforcing [semantic versioning](https://semver.org/) for all releases
-following version 1.0. Please refer to the ChangeLog for a high level
-history of changes in each release.  The test coverage report from
-gcov as reported by gcovr for the latest release are
-[posted to our web page](http://geopm.github.io/coverage/index.html).
+This version of GEOPM is currently posted on the ``cloud`` branch and
+represents a proof of concept for applying GEOPM to cloud
+applications.  The features under development in this branch will be
+merged into the main ``dev`` branch when they are production quality,
+and eventually the ``cloud`` branch will be deleted.  This version of
+GEOPM is experimental and should not be used as a production tool.
 
 Some new features of GEOPM are still under development, and their
 interfaces may change before they are included in official releases.
@@ -147,6 +124,7 @@ The GEOPM developers are very interested in feedback from the
 community.  See the [contributing guide](CONTRIBUTING.md) to learn how
 to provide feedback.
 
+
 License
 -------
 
@@ -154,12 +132,14 @@ The GEOPM source code is distributed under the 3-clause BSD license.
 
 SEE COPYING FILE FOR LICENSE INFORMATION.
 
+
 Last Update
 -----------
-2022 August 23
+2023 March 2
 
 Christopher Cantalupo <christopher.m.cantalupo@intel.com> <br>
 Brad Geltz <brad.geltz@intel.com> <br>
+
 
 ACKNOWLEDGMENTS
 ---------------
