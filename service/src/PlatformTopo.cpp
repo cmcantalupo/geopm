@@ -119,15 +119,17 @@ namespace geopm
     std::unique_ptr<ServiceProxy> PlatformTopoImp::try_service_proxy(void)
     {
         std::unique_ptr<ServiceProxy> result;
-        try {
-            result = ServiceProxy::make_unique();
-        }
-        catch (const Exception &ex) {
-            std::string err_msg = ex.what();
-            // Check for failure messages from ServiceProxy or GRPCProxy
-            if (err_msg.find("Failed to open system bus") == std::string::npos &&
-                err_msg.find("Failed to connect with gRPC server") == std::string::npos) {
-                throw;
+        if (getuid() != 0) {
+            try {
+                result = ServiceProxy::make_unique();
+            }
+            catch (const Exception &ex) {
+                std::string err_msg = ex.what();
+                // Check for failure messages from ServiceProxy or GRPCProxy
+                if (err_msg.find("Failed to open system bus") == std::string::npos &&
+                    err_msg.find("Failed to connect with gRPC server") == std::string::npos) {
+                    throw;
+                }
             }
         }
         return result;
