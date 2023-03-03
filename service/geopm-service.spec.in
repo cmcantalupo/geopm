@@ -55,6 +55,7 @@ Requires: level-zero >= 1.8.1
 BuildRequires: fdupes
 BuildRequires: systemd-rpm-macros
 BuildRequires: python-rpm-macros
+BuildRequires: zstd
 %endif
 
 %if %{defined suse_version}
