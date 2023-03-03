@@ -6,7 +6,7 @@ if [ $# -ne 1 ]; then
 fi
 
 docker_repo=$1
-for dist in tumbleweed ubuntu2210; do
+for dist in tumbleweed ubuntu2204 ubuntu2210; do
     for role in server client; do
         docker_file=geopm-${dist}-${role}.Dockerfile
         docker build -f${docker_file} . | tee ${docker_file}.log
