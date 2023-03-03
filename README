@@ -1,15 +1,14 @@
 <img src="https://geopm.github.io/images/geopm-banner.png" alt="GEOPM logo">
 
-GEOPM - Global Extensible Open Power Manager
-============================================
+### GEOPM - Global Extensible Open Power Manager
 
 [![Build Status](https://github.com/geopm/geopm/actions/workflows/build.yml/badge.svg)](https://github.com/geopm/geopm/actions)
 [![version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/geopm/geopm/releases)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 
-Web Pages
----------
+## Web Pages
+
 https://geopm.github.io <br>
 https://geopm.github.io/service.html <br>
 https://geopm.github.io/reference.html <br>
@@ -17,8 +16,7 @@ https://geopm.slack.com <br>
 https://build.opensuse.org/package/show/hardware/geopm-service
 
 
-Summary
--------
+## Summary
 
 The Global Extensible Open Power Manager (GEOPM) is a framework for
 exploring power and energy optimizations on heterogeneous platforms.
@@ -38,8 +36,7 @@ With GEOPM you can:
   plugin architecture
 
 
-Repository Organization
------------------------
+## Repository Organization
 
 The GEOPM repository supports two software packages: the
 `geopm-service` package and the `geopm-runtime` package.
@@ -51,8 +48,7 @@ The GEOPM repository supports two software packages: the
   the features provided by the `geopm-runtime` package
 
 
-GEOPM Service
--------------
+## GEOPM Service
 
 GEOPM provides Hardware Configuration as a Service (HCaaS) with a high
 level interface to interact with low level hardware features.  This
@@ -68,8 +64,7 @@ the GEOPM service is posted in our [online
 documentation](https://geopm.github.io/service.html).
 
 
-GEOPM Runtime
--------------
+## GEOPM Runtime
 
 GEOPM's Hardware Tuning Runtime adjusts hardware settings achieve an
 energy efficiency goal in response to hardware metrics and application
@@ -82,8 +77,7 @@ An overview of the GEOPM Runtime is posted in our [online
 documentation](https://geopm.github.io/runtime.html
 
 
-Guide for Contributors
-----------------------
+## Guide for Contributors
 
 We appreciate all feedback on our project.  Please see our
 contributing guide for how some guidelines on how to participate.
@@ -92,8 +86,7 @@ called `CONTRIBUTING.rst`.  This guide can also be viewed in our
 [online documentation](https://geopm.github.io/contrib.html).
 
 
-Guide for GEOPM Developers
---------------------------
+## Guide for GEOPM Developers
 
 GEOPM is an open development project and we use Github to plan, review
 and test our work.  The process we follow is documented in our [online
@@ -103,22 +96,29 @@ in the GEOPM repository for both the `geopm-service` and the `geopm`
 packages.
 
 
-Experimental Branch
--------------------
+## Experimental Branch
 
 This version of GEOPM is currently posted on the ``cloud`` branch and
 represents a proof of concept for applying GEOPM to cloud
 applications.  The features under development in this branch will be
 merged into the main ``dev`` branch when they are production quality,
-and eventually the ``cloud`` branch will be deleted.  This version of
-GEOPM is experimental and should not be used as a production tool.
+and eventually the ``cloud`` branch will be deleted.
 
-Some new features of GEOPM are still under development, and their
-interfaces may change before they are included in official releases.
-To enable these features in the GEOPM install location, configure
-GEOPM with the `--enable-beta` configure flag.  The features currently
-considered unfinalized are the endpoint interface, and the
-`geopmendpoint` application.
+This version of GEOPM is experimental and should not be used as a
+production tool.
+
+# New Features
+
+- Runtime support for non-MPI applications
+- Runtime support for non-MPI node-local controller
+- Option to use gRPC in place of DBus communication
+- Rust front-end proxy server for gRPC API
+- Support for liburing for asynchronous kernel IO
+- Kubernetes examples for using the service and the runtime
+- Docker files for creating service and client containers
+- Packaging for Ubuntu
+- Improvements in platform topology consistency
+
 
 The GEOPM developers are very interested in feedback from the
 community.  See the [contributing guide](CONTRIBUTING.md) to learn how
