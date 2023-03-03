@@ -1,6 +1,6 @@
 <img src="https://geopm.github.io/images/geopm-banner.png" alt="GEOPM logo">
 
-### GEOPM - Global Extensible Open Power Manager
+# GEOPM - Global Extensible Open Power Manager
 
 [![Build Status](https://github.com/geopm/geopm/actions/workflows/build.yml/badge.svg)](https://github.com/geopm/geopm/actions)
 [![version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/geopm/geopm/releases)
@@ -58,9 +58,9 @@ performance and low overhead.
 
 The files supporting the `geopm-service` package are all within the
 `service` sub-directory located in the root directory of the the GEOPM
-repository.  Please refer to the `service/README.rst` file for further
-documentation about the GEOPM Service.  Additionally, an overview of
-the GEOPM service is posted in our [online
+repository.  Please refer to the [service README](service/README.rst)
+file for further documentation about the GEOPM Service.  Additionally,
+an overview of the GEOPM service is posted in our [online
 documentation](https://geopm.github.io/service.html).
 
 
@@ -74,7 +74,7 @@ performance within a power bound or minimizing energy consumption with
 marginal degradation of application performance.
 
 An overview of the GEOPM Runtime is posted in our [online
-documentation](https://geopm.github.io/runtime.html
+documentation](https://geopm.github.io/runtime.html)
 
 
 ## Guide for Contributors
@@ -82,7 +82,7 @@ documentation](https://geopm.github.io/runtime.html
 We appreciate all feedback on our project.  Please see our
 contributing guide for how some guidelines on how to participate.
 This guide is located in the root of the GEOPM repository in a file
-called `CONTRIBUTING.rst`.  This guide can also be viewed in our
+called [CONTRIBUTING.rst](CONTRIBUTING.rst).  This guide can also be viewed in our
 [online documentation](https://geopm.github.io/contrib.html).
 
 
@@ -107,7 +107,7 @@ and eventually the ``cloud`` branch will be deleted.
 This version of GEOPM is experimental and should not be used as a
 production tool.
 
-# New Features
+### New Features
 
 - Runtime support for non-MPI applications
 - Runtime support for non-MPI node-local controller
