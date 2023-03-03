@@ -370,7 +370,7 @@ EXTRA_DIST += $(geopmdrs_sources)
 
 install-rust: $(geopmdrs_sources)
 	if [ ! -d $(abs_srcdir)/geopmdrs/vendor ]; then cd $(abs_srcdir)/geopmdrs && cargo vendor; fi
-	cd $(abs_srcdir)/geopmdrs && cargo build --release --bin geopmd-proxy
+	cd $(abs_srcdir)/geopmdrs && cargo build --release --bin geopmd-proxy -Z namespaced-features
 	cargo install --path=$(abs_srcdir)/geopmdrs --bin geopmd-proxy --root=$(DESTDIR)/$(prefix)
 
 
