@@ -33,9 +33,6 @@ GTEST_TESTS = test/gtest_links/AccumulatorTest.empty \
               test/gtest_links/ApplicationRecordLogTest.bad_shmem \
               test/gtest_links/ApplicationRecordLogTest.get_sizes \
               test/gtest_links/ApplicationRecordLogTest.empty_dump \
-              test/gtest_links/ApplicationRecordLogTest.no_proc_set \
-              test/gtest_links/ApplicationRecordLogTest.no_time_zero_set \
-              test/gtest_links/ApplicationRecordLogTest.setup_only_once \
               test/gtest_links/ApplicationRecordLogTest.scoped_lock_test \
               test/gtest_links/ApplicationRecordLogTest.one_entry \
               test/gtest_links/ApplicationRecordLogTest.one_exit \
@@ -60,7 +57,6 @@ GTEST_TESTS = test/gtest_links/AccumulatorTest.empty \
               test/gtest_links/ApplicationStatusTest.bad_shmem \
               test/gtest_links/ApplicationStatusTest.hash \
               test/gtest_links/ApplicationStatusTest.hints \
-              test/gtest_links/ApplicationStatusTest.process \
               test/gtest_links/ApplicationStatusTest.update_cache \
               test/gtest_links/ApplicationStatusTest.work_progress \
               test/gtest_links/ApplicationStatusTest.wrong_buffer_size \
@@ -75,15 +71,6 @@ GTEST_TESTS = test/gtest_links/AccumulatorTest.empty \
               test/gtest_links/CommMPIImpTest.mpi_mem_ops \
               test/gtest_links/CommMPIImpTest.mpi_reduce \
               test/gtest_links/CommMPIImpTest.mpi_win_ops \
-              test/gtest_links/ControlMessageTest.cpu_rank \
-              test/gtest_links/ControlMessageTest.is_name_begin \
-              test/gtest_links/ControlMessageTest.is_sample_begin \
-              test/gtest_links/ControlMessageTest.is_sample_end \
-              test/gtest_links/ControlMessageTest.is_shutdown \
-              test/gtest_links/ControlMessageTest.loop_begin_0 \
-              test/gtest_links/ControlMessageTest.loop_begin_1 \
-              test/gtest_links/ControlMessageTest.step \
-              test/gtest_links/ControlMessageTest.wait \
               test/gtest_links/ControllerTest.construct_with_file_policy \
               test/gtest_links/ControllerTest.get_hostnames \
               test/gtest_links/ControllerTest.run_with_no_policy \
@@ -391,7 +378,6 @@ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
                           test/ApplicationSamplerTest.cpp \
                           test/ApplicationStatusTest.cpp \
                           test/CommMPIImpTest.cpp \
-                          test/ControlMessageTest.cpp \
                           test/ControllerTest.cpp \
                           test/CSVTest.cpp \
                           test/DebugIOGroupTest.cpp \
@@ -413,7 +399,6 @@ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
                           test/MockApplicationSampler.hpp \
                           test/MockApplicationStatus.hpp \
                           test/MockComm.hpp \
-                          test/MockControlMessage.hpp \
                           test/MockEndpoint.hpp \
                           test/MockEndpointPolicyTracer.hpp \
                           test/MockEndpointUser.hpp \
