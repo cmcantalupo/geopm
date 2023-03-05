@@ -33,7 +33,6 @@ Group: System/Daemons
 %endif
 URL: https://geopm.github.io
 Source0: geopm-service.tar.gz
-Source1: vendor.tar.zst
 BuildRoot: %{_tmppath}/geopm-service-%{version}-%{release}-root
 Prefix: %{_prefix}
 BuildRequires: gcc-c++
