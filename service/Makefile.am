@@ -359,19 +359,27 @@ install-python: setup.py $(abs_srcdir)/geopmdpy/version.py
 clean-local-python: setup.py
 	$(PYTHON) ./setup.py clean --all
 
+clean-local-vendor:
+	rm -rf geopmdrs/vendor
+
 # Rust build
 geopmdrs_sources = geopmdrs/Cargo.toml.in \
                    geopmdrs/src/geopmd-proxy.rs \
                    geopmdrs/build.rs \
                    geopmdrs/.cargo/config.toml \
+                   vendor.tar.zst \
                    # end
 
 EXTRA_DIST += $(geopmdrs_sources)
 
+vendor.tar.zst:
+	cd geopmdrs && cargo vendor
+	tar --zstd -cf $@ geopmdrs/vendor
+
 install-rust: $(geopmdrs_sources)
-	if [ ! -d $(abs_srcdir)/geopmdrs/vendor ]; then cd $(abs_srcdir)/geopmdrs && cargo vendor; fi
-	cd $(abs_srcdir)/geopmdrs && cargo build --release --bin geopmd-proxy -Z namespaced-features
-	cargo install --path=$(abs_srcdir)/geopmdrs --bin geopmd-proxy --root=$(DESTDIR)/$(prefix)
+	if [ ! -d geopmdrs/vendor ]; then tar xvf $(abs_srcdir)/vendor.tar.zst; fi
+	cd geopmdrs && cargo build --release --bin geopmd-proxy -Z namespaced-features
+	cargo install --path=geopmdrs --bin geopmd-proxy --root=$(DESTDIR)/$(prefix)
 
 
 # RPM TARGET
@@ -389,7 +397,7 @@ all-local: $(all_local)
 
 all_local =
 
-CLEAN_LOCAL_TARGETS = clean-local-python
+CLEAN_LOCAL_TARGETS = clean-local-python clean-local-vendor
 
 clean-local: $(CLEAN_LOCAL_TARGETS)
 
@@ -402,7 +410,7 @@ check_PROGRAMS =
 check_LTLIBRARIES =
 TESTS =
 BUILT_SOURCES =
-DISTCLEANFILES =
+DISTCLEANFILES = vendor.tar.zst
 CLEANFILES = $(msr_cpp_files)
 
 include test/Makefile.mk
