@@ -156,7 +156,7 @@ configuring the service.
 
 # Steps for all packages
 %prep
-%setup -a 1
+%setup
 
 %build
 
