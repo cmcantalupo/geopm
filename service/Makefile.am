@@ -376,9 +376,11 @@ vendor.tar.zst:
 	cd geopmdrs && cargo vendor
 	tar --zstd -cf $@ geopmdrs/vendor
 
-install-rust: $(geopmdrs_sources)
+build-rust: $(geopmdrs_sources)
 	if [ ! -d geopmdrs/vendor ]; then tar xvf $(abs_srcdir)/vendor.tar.zst; fi
 	cd geopmdrs && cargo build --release --bin geopmd-proxy -Z namespaced-features
+
+install-rust:
 	cargo install --path=geopmdrs --bin geopmd-proxy --root=$(DESTDIR)/$(prefix)
 
 
@@ -395,7 +397,7 @@ checkprogs: gtest-checkprogs geopmdpy-checkprogs $(check_PROGRAMS) $(check_LTLIB
 
 all-local: $(all_local)
 
-all_local =
+all_local = build-rust
 
 CLEAN_LOCAL_TARGETS = clean-local-python clean-local-vendor
 
