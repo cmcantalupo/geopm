@@ -1,5 +1,5 @@
 Source: geopm-service
-Section: hardware
+Section: utils
 Priority: optional
 Maintainer: Christopher M. Cantalupo <christopher.m.cantalupo@intel.com>
 Build-Depends: debhelper-compat (=13),
@@ -28,7 +28,7 @@ Vcs-Git: https://github.com/geopm/geopm.git
 Vcs-Browser: https://github.com/geopm/geopm.git
 
 Package: geopm-service
-Section: hardware
+Section: utils
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends},
@@ -56,6 +56,7 @@ Description: Development package for the GEOPM Service.  This provides
  library.
 
 Package: libgeopmd1
+Section: libs
 Architecture: any
 Multi-Arch: same
 Pre-Depends: ${misc:Pre-Depends}
@@ -66,7 +67,7 @@ Description: Library supporting the GEOPM Service.  This provides the
  This package contains the shared library.
 
 Package: python3-geopmdpy
-Section: hardware
+Section: python
 Architecture: any
 Depends: ${python3:Depends},
          libgeopmd1 (= ${binary:Version}),

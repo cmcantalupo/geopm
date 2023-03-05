@@ -1,5 +1,5 @@
 Source: geopm-runtime
-Section: hardware
+Section: utils
 Priority: optional
 Maintainer: Christopher M. Cantalupo <christopher.m.cantalupo@intel.com>
 Build-Depends: debhelper-compat (=13),
@@ -21,7 +21,7 @@ Vcs-Git: https://github.com/geopm/geopm.git
 Vcs-Browser: https://github.com/geopm/geopm.git
 
 Package: geopm-runtime
-Section: hardware
+Section: utils
 Architecture: any
 Depends: ${misc:Depends},
          ${shlibs:Depends},
@@ -57,6 +57,7 @@ Description: Development package for the GEOPM Runtime.  This provides
  library.
 
 Package: libgeopm1
+Section: libs
 Architecture: any
 Multi-Arch: same
 Pre-Depends: ${misc:Pre-Depends}
@@ -67,7 +68,7 @@ Description: Library supporting the GEOPM Runtime.  This provides the
  This package contains the shared library.
 
 Package: python3-geopmpy
-Section: hardware
+Section: python
 Architecture: any
 Depends: ${python3:Depends},
          libgeopm1 (= ${binary:Version}),
