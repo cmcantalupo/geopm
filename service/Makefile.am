@@ -378,7 +378,7 @@ vendor.tar.zst:
 
 build-rust: $(geopmdrs_sources)
 	if [ ! -d geopmdrs/vendor ]; then tar xvf $(abs_srcdir)/vendor.tar.zst; fi
-	cd geopmdrs && cargo build --release --bin geopmd-proxy -Z namespaced-features
+	cd geopmdrs && cargo build --release --bin geopmd-proxy
 
 install-rust:
 	cargo install --path=geopmdrs --bin geopmd-proxy --root=$(DESTDIR)/$(prefix)
