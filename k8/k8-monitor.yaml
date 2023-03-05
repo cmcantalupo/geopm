@@ -7,7 +7,7 @@ spec:
    shareProcessNamespace: true
    containers:
    - name: geopm-server
-     image: cmcantal/geopm-service:tumbleweed-server
+     image: cmcantal/geopm-service:ubuntu2204-server
      imagePullPolicy: Always
      securityContext:
        privileged: true
@@ -18,7 +18,7 @@ spec:
        mountPath: /dev
      command: ['/usr/bin/sh', '-c', 'chmod 711 /run/geopm-service; geopmread >> /etc/geopm-service/0.DEFAULT_ACCESS/allowed_signals; groupadd -g 10001 client; useradd -g 10001 -u 10001 client; geopmd --grpc']
    - name: geopm-ctl
-     image: cmcantal/geopm-service:ubuntu2210-client
+     image: cmcantal/geopm-service:ubuntu2204-client
      imagePullPolicy: Always
      securityContext:
        privileged: false
@@ -34,7 +34,7 @@ spec:
        mountPath: /tmp
      command: ['/usr/bin/sh', '-c', 'export GEOPM_PROFILE=monitor; export GEOPM_REPORT_SIGNALS=CPU_FREQUENCY_STATUS@core; err=0; while [ $err -eq 0 ]; do export GEOPM_REPORT=$(mktemp -t geopm-report-XXXXXXXX.yaml); geopmctl; err=$?; if [ $err -eq 0 ]; then echo "{"; cat ${GEOPM_REPORT}; echo "}"; fi; rm -f ${GEOPM_REPORT}; sleep 1; done;']
    - name: test-application
-     image: cmcantal/geopm-service:ubuntu2210-client
+     image: cmcantal/geopm-service:ubuntu2204-client
      imagePullPolicy: Always
      securityContext:
        privileged: false
