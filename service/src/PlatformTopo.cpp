@@ -30,7 +30,6 @@
 #include "geopm/Exception.hpp"
 #include "geopm/Helper.hpp"
 #include "GPUTopo.hpp"
-#include "geopm/ServiceProxy.hpp"
 
 
 int geopm_read_cpuid(void)
@@ -111,34 +110,13 @@ namespace geopm
     }
 
     PlatformTopoImp::PlatformTopoImp()
-        : PlatformTopoImp("", try_service_proxy())
+        : PlatformTopoImp("")
     {
 
     }
 
-    std::unique_ptr<ServiceProxy> PlatformTopoImp::try_service_proxy(void)
-    {
-        std::unique_ptr<ServiceProxy> result;
-        if (getuid() != 0) {
-            try {
-                result = ServiceProxy::make_unique();
-            }
-            catch (const Exception &ex) {
-                std::string err_msg = ex.what();
-                // Check for failure messages from ServiceProxy or GRPCProxy
-                if (err_msg.find("Failed to open system bus") == std::string::npos &&
-                    err_msg.find("Failed to connect with gRPC server") == std::string::npos) {
-                    throw;
-                }
-            }
-        }
-        return result;
-    }
-
-    PlatformTopoImp::PlatformTopoImp(const std::string &test_cache_file_name,
-                                     std::shared_ptr<ServiceProxy> service_proxy)
+    PlatformTopoImp::PlatformTopoImp(const std::string &test_cache_file_name)
         : M_TEST_CACHE_FILE_NAME(test_cache_file_name)
-        , m_service_proxy(service_proxy)
     {
         std::map<std::string, std::string> lscpu_map;
         lscpu(lscpu_map);
@@ -715,33 +693,21 @@ namespace geopm
     std::string PlatformTopoImp::read_lscpu(void)
     {
         std::string result;
-        // Early return for mocked file in test case
         if (M_TEST_CACHE_FILE_NAME.size()) {
             create_cache(M_TEST_CACHE_FILE_NAME);
-            return geopm::read_file(M_TEST_CACHE_FILE_NAME);
+            result = geopm::read_file(M_TEST_CACHE_FILE_NAME);
         }
-        // Early return for root user
-        if (getuid() == 0) {
-            create_cache(M_SERVICE_CACHE_FILE_NAME);
-            return geopm::read_file(M_SERVICE_CACHE_FILE_NAME);
-        }
-        // Early return for getting cache from service
-        if (m_service_proxy != nullptr) {
-            try {
-                return m_service_proxy->topo_get_cache();
+        else {
+            if (getuid() == 0) {
+                create_cache(M_SERVICE_CACHE_FILE_NAME);
+                result = geopm::read_file(M_SERVICE_CACHE_FILE_NAME);
             }
-            catch (const Exception &ex) {
-                std::string err_msg = ex.what();
-                std::string key = "Failed to call sd-bus function TopoGetCache";
-                if (err_msg.find(key) == std::string::npos) {
-                    throw;
-                }
-                m_service_proxy.reset();
+            else {
+                create_cache(M_CACHE_FILE_NAME);
+                result = geopm::read_file(M_CACHE_FILE_NAME);
             }
         }
-        // In all other cases create a cache in /tmp
-        create_cache(M_CACHE_FILE_NAME);
-        return geopm::read_file(M_CACHE_FILE_NAME);
+        return result;
     }
 
     void PlatformTopoImp::lscpu(std::map<std::string, std::string> &lscpu_map)
