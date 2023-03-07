@@ -136,8 +136,8 @@ production tool.
     and [a runtime example](k8/k8-monitor.yaml)
 - Docker files for creating service and client containers
   + Topic does not currently have supporting Github issues or pull requests
-  + The cloud branch provides (a GEOPM Service Dockerfile)[service/Dockerfile]
-    and several examples in the (k8)[k8] directory for client and service
+  + The cloud branch provides [a GEOPM Service Dockerfile](service/Dockerfile)
+    and several examples in the [k8](k8) directory for client and service
     docker containers.
 - Packaging for Ubuntu
   + Topic does not currently have supporting Github issues or pull requests
