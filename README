@@ -122,7 +122,8 @@ production tool.
   + Status: Merged into cloud branch, but integration tests are failing:
     python gRPC server hangs and never creates either Unix domain socket.
     This is a regression introduced into the cloud branch since the feature
-    was first implemented.
+    was first implemented. This seems to be related to an upstream issue with
+    gRPC: https://github.com/grpc/grpc/issues/31885
 - Rust front-end proxy server for gRPC API
   + Implemented as part of https://github.com/geopm/geopm/pull/2779
   + Status: See above, gRPC integration tests are failing, but not root caused
