@@ -151,6 +151,12 @@ production tool.
   + Some gRPC features added to support passing the platform topology are
     still in the cloud branch and may be related to issues in the gRPC support
     in the cloud branch
+- User controlled loop period
+  + Feature issue https://github.com/geopm/geopm/issues/1065
+  + Pull request https://github.com/geopm/geopm/pull/2867
+  + Feature is merged into cloud branch
+  + Status: needs clean up (better handling of invalid input and unit tests)
+    but otherwise appears functional
 
 
 The GEOPM developers are very interested in feedback from the
