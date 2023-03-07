@@ -8,3 +8,5 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/obs-home-cmcantal-cloud.gpg] https://
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10format=h" skipcache
 RUN apt-get update
 RUN apt install -yq geopm-service
+RUN apt install -yq python3-pip
+RUN python3 -m pip install --ignore-installed grpcio==1.47.5

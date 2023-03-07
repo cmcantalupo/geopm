@@ -7,3 +7,5 @@ RUN rpm --import /tmp/suse-key
 RUN zypper addrepo https://download.opensuse.org/repositories/home:/cmcantal:/cloud/openSUSE_Tumbleweed/home:cmcantal:cloud.repo
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10format=h" skipcache
 RUN zypper install -y geopm-service
+RUN zypper install -y python3-pip
+RUN python3 -m pip install --ignore-installed grpcio==1.47.5
