@@ -119,11 +119,12 @@ production tool.
 - Option to use gRPC in place of DBus communication
   + Feature issue https://github.com/geopm/geopm/issues/2775
   + Pull request https://github.com/geopm/geopm/pull/2779
-  + Status: Merged into cloud branch, but integration tests are failing:
-    python gRPC server hangs and never creates either Unix domain socket.
-    This is a regression introduced into the cloud branch since the feature
-    was first implemented. This seems to be related to an upstream issue with
-    gRPC: https://github.com/grpc/grpc/issues/31885
+  + Status: Merged into cloud branch.  Requires python grpcio version
+    1.47.5 or 1.25.0.  All other recent releases have bugs that impact
+    the python grpc server.  Python grpcio version 1.30.2 is now
+    shipping with Ubuntu 20.04 and Tumbleweed.  This version hangs on
+    server creation.  The Docker containers use pip to upgrade to
+    1.47.5 in the server images.
 - Rust front-end proxy server for gRPC API
   + Implemented as part of https://github.com/geopm/geopm/pull/2779
   + Status: See above, gRPC integration tests are failing, but not root caused
@@ -147,11 +148,7 @@ production tool.
 - Improvements in platform topology consistency
   + Issue https://github.com/geopm/geopm/issues/2832
   + Pull request https://github.com/geopm/geopm/pull/2845
-  + Feature was in the cloud branch, but has been partially reverted due to
-    regressions
-  + Some gRPC features added to support passing the platform topology are
-    still in the cloud branch and may be related to issues in the gRPC support
-    in the cloud branch
+  + Feature is in the cloud branch
 - User controlled loop period
   + Feature issue https://github.com/geopm/geopm/issues/1065
   + Pull request https://github.com/geopm/geopm/pull/2867
