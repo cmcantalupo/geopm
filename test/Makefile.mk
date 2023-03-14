@@ -225,19 +225,10 @@ GTEST_TESTS = test/gtest_links/AccumulatorTest.empty \
               test/gtest_links/ProfileIOGroupTest.batch_signal_thread_progress \
               test/gtest_links/ProfileIOGroupTest.batch_signal_hint_time \
               test/gtest_links/ProfileIOGroupTest.errors \
-              test/gtest_links/ProfileTableTest.hello \
-              test/gtest_links/ProfileTableTest.name_set_fill_long \
-              test/gtest_links/ProfileTableTest.name_set_fill_short \
-              test/gtest_links/ProfileTableTest.overfill \
               test/gtest_links/ProfileTest.enter_exit \
               test/gtest_links/ProfileTest.enter_exit_nested \
               test/gtest_links/ProfileTest.epoch \
               test/gtest_links/ProfileTest.progress_multithread \
-              test/gtest_links/ProfileTestIntegration.enter_exit \
-              test/gtest_links/ProfileTestIntegration.enter_exit_short \
-              test/gtest_links/ProfileTestIntegration.enter_exit_nested \
-              test/gtest_links/ProfileTestIntegration.epoch \
-              test/gtest_links/ProfileTestIntegration.progress_multithread \
               test/gtest_links/ProfileTracerTest.construct_update_destruct \
               test/gtest_links/ProfileTracerTest.format \
               test/gtest_links/ProxyEpochRecordFilterTest.simple_conversion \
@@ -412,7 +403,6 @@ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
                           test/MockPowerGovernor.hpp \
                           test/MockProcessRegionAggregator.hpp \
                           test/MockProfileSampler.hpp \
-                          test/MockProfileTable.hpp \
                           test/MockProfileTracer.hpp \
                           test/MockRecordFilter.hpp \
                           test/MockReporter.hpp \
@@ -431,9 +421,7 @@ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
                           test/PowerGovernorAgentTest.cpp \
                           test/PowerGovernorTest.cpp \
                           test/ProfileIOGroupTest.cpp \
-                          test/ProfileTableTest.cpp \
                           test/ProfileTest.cpp \
-                          test/ProfileTestIntegration.cpp \
                           test/ProfileTracerTest.cpp \
                           test/ProxyEpochRecordFilterTest.cpp \
                           test/ProcessRegionAggregatorTest.cpp \
