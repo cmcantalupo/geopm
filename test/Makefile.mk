@@ -402,7 +402,6 @@ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
                           test/MockPowerBalancer.hpp \
                           test/MockPowerGovernor.hpp \
                           test/MockProcessRegionAggregator.hpp \
-                          test/MockProfileSampler.hpp \
                           test/MockProfileTracer.hpp \
                           test/MockRecordFilter.hpp \
                           test/MockReporter.hpp \
