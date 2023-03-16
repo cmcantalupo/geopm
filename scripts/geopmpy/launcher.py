@@ -814,7 +814,7 @@ Warning: <geopm> geopmpy.launcher: Incompatible CPU frequency governor
     def preload_option(self):
         if self.config and self.config.get_preload():
             self.environ_ext['LD_PRELOAD'] = ':'.join((ll for ll in
-                                                       ('libgeopmload.so', os.getenv('LD_PRELOAD'))
+                                                       ('libgeopmload.so.1.0.0', os.getenv('LD_PRELOAD'))
                                                        if ll is not None))
         return []
 
@@ -1131,7 +1131,7 @@ class SrunLauncher(Launcher):
         result = []
         if self.config and self.config.get_preload():
             value = ':'.join((ll for ll in
-                              ('libgeopmload.so', os.getenv('LD_PRELOAD'))
+                              ('libgeopmload.so.1.0.0', os.getenv('LD_PRELOAD'))
                               if ll is not None))
             result = ["--export=LD_PRELOAD={},ALL".format(value)]
         return result
@@ -1680,7 +1680,7 @@ class AprunLauncher(Launcher):
         result = []
         if self.config and self.config.get_preload():
             value = ':'.join((ll for ll in
-                              ('libgeopmload.so', os.getenv('LD_PRELOAD'))
+                              ('libgeopmload.so.1.0.0', os.getenv('LD_PRELOAD'))
                               if ll is not None))
             result = ['-e',  'LD_PRELOAD={}'.format(value)]
         return result
