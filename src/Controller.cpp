@@ -30,7 +30,7 @@
 #include "ApplicationSampler.hpp"
 #include "record.hpp"
 #include "PlatformIOProf.hpp"
-
+#include "EpochIOGroup.hpp"
 #include "ProfileIOGroup.hpp"
 
 extern "C"
@@ -323,6 +323,7 @@ namespace geopm
     {
         m_application_io->connect();
         m_application_sampler.connect();
+        m_platform_io.register_iogroup(EpochIOGroup::make_plugin());
         geopm_time_s curr_time;
         geopm_time(&curr_time);
         m_application_sampler.update(curr_time);
