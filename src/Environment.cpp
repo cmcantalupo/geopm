@@ -80,7 +80,7 @@ namespace geopm
                            "GEOPM_TRACE_PROFILE",
                            "GEOPM_CTL"})
         , m_name_value_map ({{"GEOPM_AGENT", "monitor"},
-#ifdef ENABLE_MPI
+#ifdef GEOPM_ENABLE_MPI
                              {"GEOPM_COMM" ,"MPIComm"},
 #else
                              {"GEOPM_COMM" ,"NullComm"},
