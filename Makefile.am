@@ -321,8 +321,6 @@ endif
 
 # EXTEND FLAGS FOR MPI TARGETS
 if ENABLE_MPI
-    MPI_CFLAGS += -DGEOPM_ENABLE_MPI
-    MPI_FCFLAGS += -DGEOPM_ENABLE_MPI
     libgeopm_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_CLDFLAGS) -version-info $(geopm_abi_version)
     libgeopm_la_CFLAGS = $(AM_CFLAGS) $(MPI_CFLAGS)
     libgeopm_la_CXXFLAGS = $(AM_CXXFLAGS) $(MPI_CFLAGS)
