@@ -335,7 +335,6 @@ namespace geopm
         m_platform_io.read_batch();
         m_reporter->update();
         m_tracer->update(m_trace_sample);
-        auto records = m_application_sampler.get_records();
         m_profile_tracer->update(m_application_sampler.get_records());
         m_reporter->update();
         while (!m_application_io->do_shutdown()) {
