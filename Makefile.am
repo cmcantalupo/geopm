@@ -560,6 +560,8 @@ model_source_files = src/All2allModelRegion.cpp \
                      src/BarrierModelRegion.hpp \
                      src/DGEMMModelRegion.cpp \
                      src/DGEMMModelRegion.hpp \
+                     src/GEOPMBenchConfig.cpp \
+                     src/GEOPMBenchConfig.hpp \
                      src/IgnoreModelRegion.cpp \
                      src/IgnoreModelRegion.hpp \
                      src/ModelApplication.cpp \
