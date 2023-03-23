@@ -71,6 +71,22 @@ GTEST_TESTS = test/gtest_links/AccumulatorTest.empty \
               test/gtest_links/CommMPIImpTest.mpi_mem_ops \
               test/gtest_links/CommMPIImpTest.mpi_reduce \
               test/gtest_links/CommMPIImpTest.mpi_win_ops \
+              test/gtest_links/CommNullImpTest.split \
+              test/gtest_links/CommNullImpTest.comm_supported \
+              test/gtest_links/CommNullImpTest.ranks \
+              test/gtest_links/CommNullImpTest.dimension_create \
+              test/gtest_links/CommNullImpTest.read_back_memory_writes \
+              test/gtest_links/CommNullImpTest.window_creation_and_destruction \
+              test/gtest_links/CommNullImpTest.window_lock \
+              test/gtest_links/CommNullImpTest.coordinate \
+              test/gtest_links/CommNullImpTest.barrier \
+              test/gtest_links/CommNullImpTest.broadcast \
+              test/gtest_links/CommNullImpTest.test \
+              test/gtest_links/CommNullImpTest.reduce_max \
+              test/gtest_links/CommNullImpTest.gather \
+              test/gtest_links/CommNullImpTest.gatherv \
+              test/gtest_links/CommNullImpTest.window_put \
+              test/gtest_links/CommNullImpTest.tear_down \
               test/gtest_links/ControllerTest.construct_with_file_policy \
               test/gtest_links/ControllerTest.get_hostnames \
               test/gtest_links/ControllerTest.run_with_no_policy \
@@ -369,6 +385,7 @@ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
                           test/ApplicationSamplerTest.cpp \
                           test/ApplicationStatusTest.cpp \
                           test/CommMPIImpTest.cpp \
+                          test/CommNullImpTest.cpp \
                           test/ControllerTest.cpp \
                           test/CSVTest.cpp \
                           test/DebugIOGroupTest.cpp \
