@@ -50,10 +50,8 @@ GTEST_TESTS = test/gtest_links/AccumulatorTest.empty \
               test/gtest_links/ApplicationSamplerTest.hash \
               test/gtest_links/ApplicationSamplerTest.hint \
               test/gtest_links/ApplicationSamplerTest.hint_time \
-              test/gtest_links/ApplicationSamplerTest.cpu_process \
               test/gtest_links/ApplicationSamplerTest.cpu_progress \
               test/gtest_links/ApplicationSamplerTest.sampler_cpu \
-              test/gtest_links/ApplicationSamplerTest.per_cpu_process_no_sampler \
               test/gtest_links/ApplicationStatusTest.bad_shmem \
               test/gtest_links/ApplicationStatusTest.hash \
               test/gtest_links/ApplicationStatusTest.hints \
