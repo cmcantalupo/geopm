@@ -421,6 +421,7 @@ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
                           test/MockRecordFilter.hpp \
                           test/MockReporter.hpp \
                           test/MockSampleAggregator.hpp \
+                          test/MockScheduler.hpp \
                           test/MockServiceProxy.hpp \
                           test/MockSharedMemory.hpp \
                           test/MockSSTClosGovernor.hpp \
