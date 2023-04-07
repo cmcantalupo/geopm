@@ -10,7 +10,10 @@ AM_CPPFLAGS += -I$(top_srcdir)/src \
                -DOMPI_SKIP_MPICXX
 
 # THINGS THAT ARE INSTALLED
-lib_LTLIBRARIES = libgeopmpolicy.la
+lib_LTLIBRARIES = libgeopmpolicy.la \
+                  libgeopmnosetsid.la \
+                  # end
+
 bin_PROGRAMS = geopmadmin \
                geopmagent \
                #end
@@ -358,6 +361,8 @@ if ENABLE_FORTRAN
     libgeopmfort_la_LIBADD = libgeopm.la $(MPI_FLIBS)
 endif
 endif
+
+libgeopmnosetsid_la_SOURCES = src/setsid_noop.c
 
 libgeopmpolicy_la_SOURCES = src/Accumulator.cpp \
                             src/Accumulator.hpp \
