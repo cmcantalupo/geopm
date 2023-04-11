@@ -30,6 +30,8 @@
 #include "geopm_hint.h"
 #include "geopm_shmem.h"
 #include "Scheduler.hpp"
+#include "geopm_sched.h"
+#include "geopm_time.h"
 
 namespace geopm
 {
@@ -136,11 +138,6 @@ namespace geopm
         if (m_is_cpu_active.empty()) {
             m_is_cpu_active.resize(m_num_cpu, false);
         }
-    }
-
-    void ApplicationSamplerImp::time_zero(const geopm_time_s &start_time)
-    {
-        m_time_zero = start_time;
     }
 
     void ApplicationSamplerImp::update(const geopm_time_s &curr_time)
