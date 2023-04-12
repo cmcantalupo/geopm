@@ -35,9 +35,7 @@ void ApplicationRecordLogTest::SetUp()
 {
     size_t buffer_size = ApplicationRecordLog::buffer_size();
     m_mock_shared_memory = std::make_shared<MockSharedMemory>(buffer_size);
-    m_record_log.reset(new ApplicationRecordLogImp(m_mock_shared_memory, M_PROC_ID, M_TIME_ZERO));
-    //m_record_log = ApplicationRecordLog::make_unique(m_mock_shared_memory);
-
+    m_record_log.reset(new ApplicationRecordLogImp(m_mock_shared_memory, M_PROC_ID));
     EXPECT_CALL(*m_mock_shared_memory, get_scoped_lock()).Times(AtLeast(0));
 }
 
@@ -110,7 +108,7 @@ TEST_F(ApplicationRecordLogTest, one_entry)
     int M_PROC_ID = 123;
     uint64_t hash = 0x1234abcd;
     geopm_time_s time = {{2, 0}};
-
+    m_record_log->start_profile(M_TIME_ZERO);
     m_record_log->enter(hash, time);
     m_record_log->dump(records, short_regions);
     EXPECT_EQ(0ULL, short_regions.size());

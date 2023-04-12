@@ -48,6 +48,12 @@ class ApplicationSamplerTest : public ::testing::Test
         std::unique_ptr<MockPlatformTopo> m_mock_topo;
         std::shared_ptr<MockScheduler> m_scheduler;
         std::map<int, std::set<int> > m_client_cpu_map;
+        std::string m_profile_name;
+        uint64_t m_profile_hash;
+        std::vector<record_s> m_start_message_buffer_0;
+        std::vector<record_s> m_start_message_buffer_1;
+        std::vector<record_s> m_stop_message_buffer_0;
+        std::vector<record_s> m_stop_message_buffer_1;
 };
 
 void ApplicationSamplerTest::SetUp()
@@ -61,6 +67,8 @@ void ApplicationSamplerTest::SetUp()
     m_scheduler = std::make_shared<MockScheduler>();
     m_client_cpu_map[0] = {0};
     m_client_cpu_map[234] = {1};
+    m_profile_name = "profile_name";
+    m_profile_hash = geopm_crc32_str(m_profile_name.c_str());
     EXPECT_CALL(*m_scheduler, num_cpu())
        .WillRepeatedly(Return(m_num_cpu));
     EXPECT_CALL(*m_scheduler, proc_cpuset(0))
@@ -72,6 +80,18 @@ void ApplicationSamplerTest::SetUp()
     m_process_map[0].record_log = m_record_log_0;
     m_process_map[234].filter = m_filter_1;
     m_process_map[234].record_log = m_record_log_1;
+    m_start_message_buffer_0 = {{0.0, 0,
+                                geopm::EVENT_START_PROFILE,
+                                m_profile_hash}};
+    m_start_message_buffer_1 = {{0.0, 234,
+                                 geopm::EVENT_START_PROFILE,
+                                 m_profile_hash}};
+    m_stop_message_buffer_0 = {{0.0, 0,
+                                geopm::EVENT_STOP_PROFILE,
+                                m_profile_hash}};
+    m_stop_message_buffer_1 = {{0.0, 234,
+                                geopm::EVENT_STOP_PROFILE,
+                                m_profile_hash}};
     std::vector<bool> is_active {true, true, false, false};
     m_mock_topo = geopm::make_unique<MockPlatformTopo>();
     EXPECT_CALL(*m_mock_topo, num_domain(GEOPM_DOMAIN_CPU))
@@ -84,10 +104,17 @@ void ApplicationSamplerTest::SetUp()
                                                             "",
                                                             is_active,
                                                             true,
-                                                            "profile_name",
+                                                            m_profile_name,
                                                             m_client_cpu_map,
                                                             m_scheduler);
-    m_app_sampler->time_zero(geopm_time_s {{0,0}});
+    std::vector<short_region_s> empty_short_region_buffer;
+    EXPECT_CALL(*m_record_log_0, dump(_, _))
+        .WillOnce(DoAll(SetArgReferee<0>(m_start_message_buffer_0),
+                        SetArgReferee<1>(empty_short_region_buffer)));
+    EXPECT_CALL(*m_record_log_1, dump(_, _))
+        .WillOnce(DoAll(SetArgReferee<0>(m_start_message_buffer_1),
+                        SetArgReferee<1>(empty_short_region_buffer)));
+    m_app_sampler->update({{0, 0}});
 }
 
 TEST_F(ApplicationSamplerTest, one_enter_exit)
