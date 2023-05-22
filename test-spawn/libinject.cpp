@@ -2,6 +2,11 @@
 #include <fstream>
 #include <unistd.h>
 
+void libinject_link(void)
+{
+
+}
+
 static void __attribute__((constructor)) hello(void)
 {
    std::fstream log_file("libinject.log", std::ios::app);
