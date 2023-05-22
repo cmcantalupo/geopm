@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <spawn.h>
 
-char **environ;
+extern char **environ;
 
 int main(int argc, char **argv)
 {

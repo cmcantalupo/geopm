@@ -6,6 +6,8 @@
 Description=Global Extensible Open Power Manager Service
 StartLimitIntervalSec=0
 StartLimitBurst=3
+After=systemd-sysctl.service dbus.service
+Requires=dbus.service
 
 [Service]
 Environment=PYTHONUNBUFFERED=true

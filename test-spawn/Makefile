@@ -12,10 +12,10 @@ main_spawn: main_spawn.cpp
 check: check_fork check_spawn
 
 check_fork:
-	grep $$(sh -c "LD_PRELOAD=libinject.so ./main_fork /proc/self/status" | grep '^Pid:' | sed -e 's|Pid:||') libinject.log
+	grep $$(sh -c "LD_LIBRARY_PATH=:$$LD_LIBRARY_PATH LD_PRELOAD=libinject.so ./main_fork /proc/self/status" | grep '^Pid:' | sed -e 's|Pid:||') libinject.log
 	rm libinject.log
 
 check_spawn:
-	grep $$(sh -c "LD_PRELOAD=libinject.so ./main_spawn /proc/self/status" | grep '^Pid:' | sed -e 's|Pid:||') libinject.log
+	grep $$(sh -c "LD_LIBRARY_PATH=:$$LD_LIBRARY_PATH LD_PRELOAD=libinject.so ./main_spawn /proc/self/status" | grep '^Pid:' | sed -e 's|Pid:||') libinject.log
 	rm libinject.log
 
