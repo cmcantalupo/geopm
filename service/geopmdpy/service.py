@@ -563,7 +563,22 @@ class PlatformService(object):
         batch_pid = self._active_sessions.get_batch_server(client_pid)
         if batch_pid is not None:
             raise RuntimeError(f'Client {client_pid} has already started a batch server: {batch_pid}')
-        batch_pid , batch_key = self._pio.start_batch_server(client_pid, signal_config, control_config)
+        config = []
+        config_stream = StringIO()
+        for domain_type, domain_idx, domain_name in signal_config:
+            config.append((domain_type, domain_idx, domain_name, False))
+        for domain_type, domain_idx, domain_name in control_config:
+            config.append((domain_type, domain_idx, domain_name, True))
+        config_stream = StringIO(json.dumps(config))
+        proc = subprocess.Popen(["geopmbatch", str(client_pid)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=config_stream);
+        out, err = proc.communicate();
+        if proc.retval != 0:
+            raise RuntimeError('Failed to start batch server: ' + err)
+        out_arr = out.split()
+        if len(out_arr) != 2:
+            raise RuntimeError('Output from geopmbatch does not match "PID KEY" pattern: ' + out)
+        batch_pid = int(out_arr[0])
+        batch_key = out_arr[1]
         self._active_sessions.set_batch_server(client_pid, batch_pid)
         return batch_pid, batch_key
 
