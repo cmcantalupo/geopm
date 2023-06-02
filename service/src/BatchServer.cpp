@@ -35,21 +35,6 @@ static void action_sigterm(int signo, siginfo_t *siginfo, void *context)
     }
 }
 
-static void action_sigchld(int signo, siginfo_t *siginfo, void *context)
-{
-    int child_status = 0;
-    int child_pid = 0;
-    child_pid = wait(&child_status);
-    if (child_pid == -1) {
-        g_wait_status = errno ? errno : GEOPM_ERROR_RUNTIME;
-        g_sigchld_status = GEOPM_ERROR_RUNTIME;
-    }
-    else if (child_status != 0) {
-        g_sigchld_status = child_status;
-    }
-    ++g_sigchld_count;
-}
-
 namespace geopm
 {
     std::unique_ptr<BatchServer>
@@ -82,7 +67,6 @@ namespace geopm
     {
         // Fork the server when calling real constructor.
         auto setup = [this]() {
-            this->child_register_handler();
             this->create_shmem();
             return BatchStatus::M_MESSAGE_CONTINUE;
         };
@@ -162,25 +146,6 @@ namespace geopm
     std::string BatchServerImp::server_key(void) const
     {
         return m_server_key;
-    }
-
-    void BatchServerImp::stop_batch(void)
-    {
-        if (m_server_pid == 0) {
-            throw Exception("BatchServerImp::stop_batch(): must be called from parent process, not child process",
-                            GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
-        }
-        if (is_active()) {
-            try {
-                m_posix_signal->sig_queue(m_server_pid, SIGTERM, BatchStatus::M_MESSAGE_TERMINATE);
-            }
-            catch (const Exception &ex) {
-                if (ex.err_value() != ESRCH) {
-                    throw;
-                }
-            }
-            m_is_active = false;
-        }
     }
 
     char BatchServerImp::read_message(void)
@@ -396,40 +361,21 @@ namespace geopm
     int BatchServerImp::fork_with_setup(std::function<char(void)> setup,
                                         std::function<void(void)> run)
     {
-        int pipe_fd[2];
-        check_return(pipe(pipe_fd), "pipe(2)");
-        int forked_pid = fork();
-        check_return(forked_pid, "fork(2)");
-        if (forked_pid == 0) {
-            try {
-                check_return(close(pipe_fd[0]), "close(2)");
-                char msg = setup();  // BatchStatus::M_MESSAGE_CONTINUE
-                check_return(write(pipe_fd[1], &msg, 1), "write(2)");
-                check_return(close(pipe_fd[1]), "close(2)");
-                run();
-                m_signal_shmem.reset();
-                m_control_shmem.reset();
-            }
-            catch (const std::runtime_error &ex) {
-                std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
-                          << " Batch server was terminated with exception: "
-                          << ex.what() << "\n";
-            }
-            catch (...) {
-                std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
-                          << " Batch server was terminated with unknown exception\n";
-            }
-            _Exit(0);
+        try {
+            char msg = setup();  // BatchStatus::M_MESSAGE_CONTINUE
+            run();
+            m_signal_shmem.reset();
+            m_control_shmem.reset();
         }
-        check_return(close(pipe_fd[1]), "close(2)");
-        char msg = '\0';
-        check_return(read(pipe_fd[0], &msg, 1), "read(2)");
-        if (msg != BatchStatus::M_MESSAGE_CONTINUE) {
-            throw Exception("BatchServerImp: Receivied unexpected message from batch server at startup: \"" +
-                            std::to_string(msg) + "\"", GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+        catch (const std::runtime_error &ex) {
+            std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
+                      << " Batch server was terminated with exception: "
+                      << ex.what() << "\n";
         }
-        check_return(close(pipe_fd[0]), "close(2)");
-        return forked_pid;
+        catch (...) {
+            std::cerr << "Warning: <geopm>: " << __FILE__ << ":" << __LINE__
+                      << " Batch server was terminated with unknown exception\n";
+        }
     }
 
     void BatchServerImp::check_return(int ret, const std::string &func_name) const
