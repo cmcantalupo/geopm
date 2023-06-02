@@ -13,6 +13,7 @@ lib_LTLIBRARIES = libgeopmd.la
 
 bin_PROGRAMS = geopmread \
                geopmwrite \
+               geopmbatch \
                # end
 
 include_HEADERS = src/geopm_debug.hpp \
@@ -108,6 +109,9 @@ geopmread_LDADD = libgeopmd.la
 geopmwrite_SOURCES = src/geopmwrite_main.cpp
 geopmwrite_CXXFLAGS = $(AM_CXXFLAGS) -std=c++17
 geopmwrite_LDADD = libgeopmd.la
+geopmbatch_SOURCES = src/geopmbatch_main.cpp
+geopmbatch_CXXFLAGS = $(AM_CXXFLAGS) -std=c++17
+geopmbatch_LDADD = libgeopmd.la
 
 # Add ABI version
 libgeopmd_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(geopm_abi_version)
