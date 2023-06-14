@@ -1,4 +1,3 @@
-usr/bin/geopmd-proxy
 usr/bin/geopmread
 usr/bin/geopmwrite
 usr/lib/systemd/system/geopm.service
