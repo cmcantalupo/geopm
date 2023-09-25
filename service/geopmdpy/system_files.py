@@ -168,6 +168,9 @@ def secure_make_file(path, contents):
     file located in the specified path.  The permissions on the output
     file are mode 0o600 with uid and gid matching the process values.
 
+    The temporary file has the prefix `tmp.`. This file may persist if
+    the program exits abruptly.
+
     Args:
         path (str): The path where the file is created
 
@@ -176,7 +179,7 @@ def secure_make_file(path, contents):
     """
     old_mask = os.umask(0o477)
     try:
-        with tempfile.NamedTemporaryFile(mode="w+", dir=os.path.dirname(path), delete=False) as file:
+        with tempfile.NamedTemporaryFile(mode="w+", prefix="tmp.", dir=os.path.dirname(path), delete=False) as file:
             file.write(contents)
         os.rename(file.name, path)
     finally:
