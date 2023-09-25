@@ -177,6 +177,7 @@ def secure_make_file(path, contents):
         contents (str): The contents of the created file
 
     """
+    path = os.path.abspath(path)
     old_mask = os.umask(0o477)
     try:
         with tempfile.NamedTemporaryFile(mode="w+", prefix="tmp.", dir=os.path.dirname(path), delete=False) as file:
