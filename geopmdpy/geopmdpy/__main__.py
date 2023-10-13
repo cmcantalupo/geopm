@@ -38,8 +38,6 @@ def stop():
 def main_dbus():
     signal(SIGTERM, term_handler)
     global _bus, _loop
-    system_files.secure_make_dirs(system_files.GEOPM_SERVICE_RUN_PATH,
-                                  perm_mode=system_files.GEOPM_SERVICE_RUN_PATH_PERM)
     _loop = EventLoop()
     _bus = SystemMessageBus()
     with RestorableFileWriter(
@@ -64,6 +62,8 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == '--version':
         print(__version_str__)
         return 0
+    system_files.secure_make_dirs(system_files.GEOPM_SERVICE_RUN_PATH,
+                                  perm_mode=system_files.GEOPM_SERVICE_RUN_PATH_PERM)
     if len(sys.argv) > 1 and sys.argv[1] == '--grpc':
         main_grpc()
     else:
