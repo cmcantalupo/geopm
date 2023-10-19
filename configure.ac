@@ -580,7 +580,7 @@ AX_CHECK_COMPILE_FLAG([-fp-model="precise"], [NO_FASTMATH="-fp-model=precise"], 
 
 [EXTRA_CFLAGS="$EXTRA_CFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
 [EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
-[EXTRA_FFLAGS="$EXTRA_FFLAGS $NO_FASTMATH -z noexecstack -fPIC -FPIE -flto -Wl,-z,relro,-z,now"]
+[EXTRA_FFLAGS="$EXTRA_FFLAGS $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
 if test ! -z "$FC" && $FC --version | grep "GNU Fortran" > /dev/null; then
 [EXTRA_FFLAGS="$EXTRA_FFLAGS -fno-range-check"]
 [EXTRA_FCFLAGS="$EXTRA_FCFLAGS -fno-range-check"]

@@ -421,8 +421,8 @@ AX_CHECK_COMPILE_FLAG([-fp-model="fast"], [FASTMATH="-fp-model=fast"], [FASTMATH
 AX_CHECK_COMPILE_FLAG([-fp-model="precise"], [NO_FASTMATH="-fp-model=precise"], [NO_FASTMATH="-fno-fast-math"], [], [])
 
 [EXTRA_CFLAGS="$EXTRA_CFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
-[EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -flto -Wl,-z,relro,-z,now"]
-
+[EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
+[EXTRA_LDFLAGS="$EXTRA_LDFLAGS -pie"]
 
 [AM_CFLAGS="$EXTRA_CFLAGS $AM_CFLAGS"]
 [AM_CXXFLAGS="$EXTRA_CXXFLAGS $AM_CXXFLAGS"]
