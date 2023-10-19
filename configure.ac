@@ -204,8 +204,12 @@ fi
 
 if test "x$enable_debug" = "x1" ; then
   AC_DEFINE([GEOPM_DEBUG], [ ], [Enables code for debugging])
-  CFLAGS="$CFLAGS -O0 -g"
-  CXXFLAGS="$CXXFLAGS -O0 -g"
+  CFLAGS="$CFLAGS -Og -g"
+  CXXFLAGS="$CXXFLAGS -Og -g"
+else
+  CFLAGS="$CFLAGS -O2"
+  CXXFLAGS="$CXXFLAGS -O2"
+  EXTRA_CPP_FLAGS="-D_FORTIFY_SOURCE=2"
 fi
 AC_SUBST([enable_debug])
 
@@ -403,7 +407,7 @@ AC_SUBST([MPI_FLIBS])
 [EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS $OPENMP_CXXFLAGS -std=c++17 -msse4.2"]
 [EXTRA_FFLAGS="$EXTRA_FFLAGS $OPENMP_CXXFLAGS -msse4.2"]
 [EXTRA_FCFLAGS="$EXTRA_FCFLAGS $OPENMP_CXXFLAGS -msse4.2"]
-[EXTRA_LDFLAGS="$EXTRA_LDFLAGS $OPENMP_CXXFLAGS"]
+[EXTRA_LDFLAGS="$EXTRA_LDFLAGS $OPENMP_CXXFLAGS -pie"]
 
 
 [LDFLAGS_SAVE="$LDFLAGS"]
@@ -570,21 +574,17 @@ AC_COMPILE_IFELSE([
 [CXXFLAGS="$CXXFLAGS_SAVE"]
 [CPPFLAGS="$CPPFLAGS_SAVE"]
 
-[EXTRA_CFLAGS="$EXTRA_CFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wformat -Wformat-security"]
-[EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wformat -Wformat-security"]
-if test ! -z "$FC" && $FC --version | grep "GNU Fortran" > /dev/null; then
-[EXTRA_FFLAGS="$EXTRA_FFLAGS -fno-range-check"]
-[EXTRA_FCFLAGS="$EXTRA_FCFLAGS -fno-range-check"]
-fi
-
 m4_include([m4/ax_check_compile_flag.m4])
 AX_CHECK_COMPILE_FLAG([-fp-model="fast"], [FASTMATH="-fp-model=fast"], [FASTMATH="-ffast-math"], [], [])
 AX_CHECK_COMPILE_FLAG([-fp-model="precise"], [NO_FASTMATH="-fp-model=precise"], [NO_FASTMATH="-fno-fast-math"], [], [])
 
-[EXTRA_CFLAGS="$EXTRA_CFLAGS  $NO_FASTMATH -fPIC"]
-[EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS $NO_FASTMATH -fPIC"]
-[EXTRA_LDFLAGS="$EXTRA_LDFLAGS"]
-[EXTRA_CPPFLAGS="$EXTRA_CPPFLAGS -D_FORTIFY_SOURCE=2"]
+[EXTRA_CFLAGS="$EXTRA_CFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
+[EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
+[EXTRA_FFLAGS="$EXTRA_FFLAGS $NO_FASTMATH -z noexecstack -fPIC -FPIE -flto -Wl,-z,relro,-z,now"]
+if test ! -z "$FC" && $FC --version | grep "GNU Fortran" > /dev/null; then
+[EXTRA_FFLAGS="$EXTRA_FFLAGS -fno-range-check"]
+[EXTRA_FCFLAGS="$EXTRA_FCFLAGS -fno-range-check"]
+fi
 
 [AM_CFLAGS="$EXTRA_CFLAGS $AM_CFLAGS"]
 [AM_CXXFLAGS="$EXTRA_CXXFLAGS $AM_CXXFLAGS"]
