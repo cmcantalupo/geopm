@@ -407,8 +407,7 @@ AC_SUBST([MPI_FLIBS])
 [EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS $OPENMP_CXXFLAGS -std=c++17 -msse4.2"]
 [EXTRA_FFLAGS="$EXTRA_FFLAGS $OPENMP_CXXFLAGS -msse4.2"]
 [EXTRA_FCFLAGS="$EXTRA_FCFLAGS $OPENMP_CXXFLAGS -msse4.2"]
-[EXTRA_LDFLAGS="$EXTRA_LDFLAGS $OPENMP_CXXFLAGS -pie"]
-[EXTRA_FC_LIBRARY_LDFLAGS="$EXTRA_FC_LIBRARY_LDFLAGS -pie"]
+[EXTRA_LDFLAGS="$EXTRA_LDFLAGS $OPENMP_CXXFLAGS"]
 
 [LDFLAGS_SAVE="$LDFLAGS"]
 [LDFLAGS="$EXTRA_LDFLAGS $LDFLAGS"]
@@ -578,10 +577,10 @@ m4_include([m4/ax_check_compile_flag.m4])
 AX_CHECK_COMPILE_FLAG([-fp-model="fast"], [FASTMATH="-fp-model=fast"], [FASTMATH="-ffast-math"], [], [])
 AX_CHECK_COMPILE_FLAG([-fp-model="precise"], [NO_FASTMATH="-fp-model=precise"], [NO_FASTMATH="-fno-fast-math"], [], [])
 
-[EXTRA_CFLAGS="$EXTRA_CFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
-[EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
-[EXTRA_FFLAGS="$EXTRA_FFLAGS $NO_FASTMATH -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
-[EXTRA_FC_LIBRARY_LDFLAGS="$EXTRA_FC_LIBRARY_LDFLAGS -z noexecstack -fPIC -fPIE -flto -Wl,-z,relro,-z,now"]
+[EXTRA_CFLAGS="$EXTRA_CFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -flto -Wl,-z,relro,-z,now"]
+[EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-command-line-argument -Wformat -Wformat-security $NO_FASTMATH -z noexecstack -fPIC -flto -Wl,-z,relro,-z,now"]
+[EXTRA_FFLAGS="$EXTRA_FFLAGS $NO_FASTMATH -z noexecstack -fPIC -flto -Wl,-z,relro,-z,now"]
+[EXTRA_FC_LIBRARY_LDFLAGS="$EXTRA_FC_LIBRARY_LDFLAGS -z noexecstack -fPIC -flto -Wl,-z,relro,-z,now"]
 if test ! -z "$FC" && $FC --version | grep "GNU Fortran" > /dev/null; then
 [EXTRA_FFLAGS="$EXTRA_FFLAGS -fno-range-check"]
 [EXTRA_FCFLAGS="$EXTRA_FCFLAGS -fno-range-check"]
