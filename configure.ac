@@ -224,6 +224,9 @@ AC_SUBST([enable_coverage])
 if test "x$enable_asan" = "x1" ; then
   EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -fsanitize=address -fno-omit-frame-pointer -mllvm -asan-use-private-alias=1"
   EXTRA_CFLAGS="$EXTRA_CFLAGS -fsanitize=address -fno-omit-frame-pointer -mllvm -asan-use-private-alias=1"
+else
+  EXTRA_CFLAGS="$EXTRA_CFLAGS -fsanitize=cfi"
+  EXTRA_CXXFLAGS="$EXTRA_CXXFLAGS -fsanitize=cfi"
 fi
 
 if test "x$enable_overhead" = "x1" ; then
