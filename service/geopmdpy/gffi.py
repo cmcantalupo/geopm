@@ -22,6 +22,16 @@ import os
 '''
 gffi = cffi.FFI()
 
+class DLManager:
+    def __init__(self):
+        self._dl_geopmd = get_dl_geopmd()
+        self._dl_geopm = get_dl_geopm()
+    def __del__(self):
+        cffi.dlclose(self._dl_geompm)
+        cffi.dlclose(self._dl_geompmd)
+
+_dl_manager = DLManager()
+
 def get_dl_geopmd():
     '''Get the FFILibrary instance for libgeopmd.so
 
