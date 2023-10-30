@@ -986,33 +986,6 @@ class ActiveSessions(object):
         else:
            os.rename(sess_path, renamed_path)
 
-def _get_names(exec_name, quiet=True):
-    try:
-        stdout_encoding = sys.stdout.encoding
-        stderr_encoding = sys.stderr.encoding
-    except AttributeError:
-        stdout_encoding = None
-        stderr_encoding = None
-    if stdout_encoding is None:
-        stdout_encoding = locale.getpreferredencoding()
-    if stderr_encoding is None:
-        stderr_encoding = locale.getpreferredencoding()
-
-    try:
-        stderr_encoding = sys.stderr.encoding
-    except AttributeError:
-        stderr_encoding = None
-    if stderr_encoding is None:
-        stderr_encoding = locale.getpreferredencoding()
-    signals_pid = subprocess.Popen(exec_name,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-    stdout_bytes, stderr_bytes = signals_pid.communicate()
-    if not quiet:
-        sys.stderr.write(stderr_bytes.decode(encoding=stderr_encoding))
-    return stdout_bytes.decode(encoding=stdout_encoding).split()
-
-
 class AccessLists(object):
     """Class that manages the access list files
 
