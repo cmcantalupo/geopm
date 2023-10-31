@@ -17,6 +17,7 @@ import uuid
 import gi
 from gi.repository import GLib
 import math
+import subprocess # nosec
 
 from . import pio
 from . import topo
@@ -603,7 +604,17 @@ class PlatformService(object):
         batch_pid = self._active_sessions.get_batch_server(client_pid)
         if batch_pid is not None:
             raise RuntimeError(f'Client {client_pid} has already started a batch server: {batch_pid}')
-        batch_pid , batch_key = self._pio.start_batch_server(client_pid, signal_config, control_config)
+        subp = subprocess.Popen(["geopmbatch", str(client_pid)],
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                text=True, bufsize=0)
+        for sr in signal_config:
+            subp.stdin.write(f'read {sr[2]} {sr[0]} {sr[1]}\n')
+        for cr in control_config:
+            subp.stdin.write(f'write {cr[2]} {cr[0]} {cr[1]}\n')
+        subp.stdin.write('\n')
+        subp.stdin.flush()
+        batch_key = subp.stdout.readline().strip()
+        batch_pid = subp.pid
         self._active_sessions.set_batch_server(client_pid, batch_pid)
         return batch_pid, batch_key
 
