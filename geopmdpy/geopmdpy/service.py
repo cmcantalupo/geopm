@@ -917,8 +917,7 @@ class PlatformService(object):
     def close_inactive_clients(self):
         """Close all sessions with inactive clients."""
         for pid in self._active_sessions.get_clients():
-            if not self._active_sessions.is_client_active(pid):
-                self._close_session_completely(pid)
+            self._is_client_active(pid)
 
     def watch_interval(self):
         """Return the PID polling interval, in seconds."""
