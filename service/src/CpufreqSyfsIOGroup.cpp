@@ -8,8 +8,7 @@
 namespace geopm
 {
     CpufreqSysfsIOGroup::CpufreqSysfsIOGroup()
-        : m_sysfsio(std::make_shared<CpufreqSysfsIO>())
-	, SysfsIOGroup()
+	: SysfsIOGroup(std::make_shared<CpufreqSysfsIO>())
     {
 
     }

@@ -15,7 +15,8 @@ namespace geopm
     class SysfsIOGroup : public IOGroup
     {
         public:
-            SysfsIOGroup() = default;
+            SysfsIOGroup() = delete;
+            SysfsIOGroup(std::shared_ptr<SysfsIO> syfsio);
             virtual ~SysfsIOGroup() = default;
             std::set<std::string> signal_names(void) const override;
             std::set<std::string> control_names(void) const override;
@@ -51,7 +52,7 @@ namespace geopm
             void save_control(const std::string &save_path) override;
             void restore_control(const std::string &save_path) override;
             std::string name(void) const override;
-        protected:
+        private:
             std::shared_ptr<SysfsIO> m_sysfsio; // Populated by derived class in constructor
     };
 }

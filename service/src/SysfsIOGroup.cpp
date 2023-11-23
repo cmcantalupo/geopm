@@ -9,9 +9,10 @@
 
 namespace geopm
 {
-    SysfsIOGroup::SysfsIOGroup()
+    SysfsIOGroup::SysfsIOGroup(std::shared_ptr<SysfsIO> sysfsio)
+        : m_sysfsio(std::move(sysfsio))
     {
-        // assert(m_sysfsio != nullptr);
+
     }
 
     // TODO: implement an IOGroup around the sysfsio interface.
