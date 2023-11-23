@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef SYSFSIOGROUP_HPP_INCLUDE
-#define SYSFSIOGROUP_HPP_INCLUDE
+#ifndef CPUFREQSYSFSIOGROUP_HPP_INCLUDE
+#define CPUFREQSYSFSIOGROUP_HPP_INCLUDE
 
 #include <map>
 
@@ -12,11 +12,11 @@
 
 namespace geopm
 {
-    class SysfsIOGroup : public IOGroup
+    class CpufreqSysfsIOGroup : public SysfsIOGroup
     {
         public:
-            SysfsIOGroup() = default;
-            virtual ~SysfsIOGroup() = default;
+            CpufreqSysfsIOGroup();
+            virtual ~CpufreqSysfsIOGroup() = default;
             std::set<std::string> signal_names(void) const override;
             std::set<std::string> control_names(void) const override;
             bool is_valid_signal(const std::string &signal_name) const override;

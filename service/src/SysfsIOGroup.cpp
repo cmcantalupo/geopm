@@ -10,17 +10,11 @@
 namespace geopm
 {
     SysfsIOGroup::SysfsIOGroup()
-        : SysfsIOGroup(driver(), description_json())
     {
-
+        // assert(m_sysfsio != nullptr);
     }
 
-    SysfsIOGroup(const std::string &driver, const std::string &description_json)
-        : m_sysfsio(SysfsIO::make_unique(driver))
-        , m_description(parse_json(description_json))
-    {
-
-    }
+    // TODO: implement an IOGroup around the sysfsio interface.
 }
 
 #endif
