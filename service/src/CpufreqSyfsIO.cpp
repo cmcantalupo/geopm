@@ -18,8 +18,6 @@ namespace geopm
             virtual ~CpufreqSysfsIO() = default;
             std::vector<std::string> signal_names(void) override;
             std::vector<std::string> control_names(void) override;
-            int signal_domain_type(const std::string &signal_name) const override;
-            int control_domain_type(const std::string &control_name) const override;
             std::string signal_path(const std::string &signal_name,
                                     int domain_type,
                                     int domain_idx) const override;
@@ -34,11 +32,15 @@ namespace geopm
                                     int domain_type,
                                     int domain_idx,
                                     double setting) const override;
+            std::string driver(void) const;
+            struct metadata_s metadata(const std::string &name) const;
+            struct std::string metadata_json(void) const;
         private:
             const std::string m_base_path;
             const std::string m_signal_prefix;
             const std::vector<std::string> m_signal_paths;
             const double m_factor;
+            const std::map<std::string, m_metadata> m_metadata;
 
             std::string key_to_name(std::string key);
             std::string name_to_key(std::string name);
@@ -52,7 +54,7 @@ namespace geopm
 
     CpufreqSysfsIO::CpufreqSysfsIO(const std::string base_path)
         : m_base_path(base_path)
-        , m_signal_prefix("CPUFREQSYFS::")
+        , m_signal_prefix("CPUFREQ::")
         , m_signal_paths {"base_frequency",
                           "cpuinfo_max_freq",
                           "cpuinfo_min_freq",
@@ -62,6 +64,34 @@ namespace geopm
                           "scaling_min_freq",
                           "scaling_setspeed"}
         , m_factor(1e3) // in units of kHz
+        , m_metadata {{"CPUFREQ::BASE_FREQUENCY",
+                           {GEOPM_DOMAIN_CPU,
+                            IOGroup::M_UNITS_HERTZ,
+                            IOGroup::M_SIGNAL_BEHAVIOR_CONSTANT,
+                            Agg:M_EXPECT_SAME,
+                            "CPU base frequency",
+                            "CPU_FREQUENCY_STICKER"}},
+                      {"CPUFREQ::CPUINFO_MAX_FREQ",
+                           {GEOPM_DOMAIN_CPU,
+                            IOGroup::M_UNITS_HERTZ,
+                            IOGroup::M_SIGNAL_BEHAVIOR_CONSTANT,
+                            Agg:M_EXPECT_SAME,
+                            "CPU maximum frequency",
+                            "CPU_FREQUENCY_MAX_AVAIL"}},
+                      {"CPUFREQ::CPUINFO_MIN_FREQ",
+                           {GEOPM_DOMAIN_CPU,
+                            IOGroup::M_UNITS_HERTZ,
+                            IOGroup::M_SIGNAL_BEHAVIOR_CONSTANT,
+                            Agg:M_EXPECT_SAME,
+                            "CPU minimum frequency",
+                            "CPU_FREQUENCY_MIN_AVAIL"}},
+                      {"CPUFREQ::CPUINFO_TRANSITION_LATENCY",
+                           {GEOPM_DOMAIN_CPU,
+                            IOGroup::M_UNITS_SECONDS,
+                            IOGroup::M_SIGNAL_BEHAVIOR_CONSTANT,
+                            Agg:M_EXPECT_SAME,
+                            "CPU frequency control transition latency",
+                            ""}}} // TODO: Finish filling in the metadata
     {
 
     }
@@ -97,16 +127,6 @@ namespace geopm
         return {};
     }
 
-    int CpufreqSysfsIO::signal_domain_type(const std::string &signal_name) const
-    {
-        return GEOPM_DOMAIN_CPU;
-    }
-
-    int CpufreqSysfsIO::control_domain_type(const std::string &signal_name) const
-    {
-        return GEOPM_DOMAIN_CPU;
-    }
-
     std::string CpufreqSysfsIO::signal_path(const std::string &signal_name,
                                              int domain_type,
                                              int domain_idx)
@@ -138,6 +158,15 @@ namespace geopm
                                             double setting) const
     {
         return std::to_string((long(setting / m_factor));
+    }
+
+    struct metadata_s metadata(const std::string &name) const
+    {
+        auto meta_it = m_metadata.find(name);
+        if (meta_id == m_metadata.end()) {
+            throw Exception();
+        }
+        return meta_it.second
     }
 }
 

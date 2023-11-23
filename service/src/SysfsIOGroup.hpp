@@ -15,8 +15,7 @@ namespace geopm
     class SysfsIOGroup : public IOGroup
     {
         public:
-            SysfsIOGroup();
-            SysfsIOGroup(const std::string &driver, const std::string &description_json);
+            SysfsIOGroup() = default;
             virtual ~SysfsIOGroup() = default;
             std::set<std::string> signal_names(void) const override;
             std::set<std::string> control_names(void) const override;
@@ -52,8 +51,6 @@ namespace geopm
             void save_control(const std::string &save_path) override;
             void restore_control(const std::string &save_path) override;
             std::string name(void) const override;
-            virtual std::string driver() = 0;
-            virtual std::string description_json() = 0;
     };
 }
 
