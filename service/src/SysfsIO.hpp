@@ -15,6 +15,7 @@ namespace geopm
     {
         public:
             struct metadata_s {
+                int id, // Unique identifier
                 int domain, // native domain geopm_domain_e
                 int units, // IOGroup::m_units_e
                 int behavior, // IOGroup::m_signal_behavior_e
@@ -34,24 +35,12 @@ namespace geopm
                                              int domain_type,
                                              int domain_idx) const = 0;
             virtual double signal_parse(const std::string &signal_name,
-                                        int domain_type,
-                                        int domain_idx,
                                         const std::string &content) const = 0;
             virtual std::string control_gen(const std::string &control_name,
-                                            int domain_type,
-                                            int domain_idx,
                                             double setting) const = 0;
-            virtual void push_signal(const std::string &signal_name,
-                                     int domain_type,
-                                     int domain_idx,
-                                     int iogroup_idx) = 0;
-            virtual void push_control(const std::string &control_name,
-                                      int domain_type,
-                                      int domain_idx,
-                                      int iogroup_idx) = 0;
-            virtual double signal_parse(int iogroup_idx,
+            virtual double signal_parse(int metadata_id,
                                         const std::string &content) const = 0;
-            virtual std::string control_gen(int iogroup_idx,
+            virtual std::string control_gen(int metadata_id,
                                             double setting) const = 0;
             virtual std::string driver(void) const = 0;
             virtual struct metadata_s metadata(const std::string &name) const = 0;

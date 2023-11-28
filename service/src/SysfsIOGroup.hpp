@@ -15,7 +15,9 @@ namespace geopm
     class SysfsIOGroup : public IOGroup
     {
         public:
+            /// Cannot be instantiated without a sysfsio implementation
             SysfsIOGroup() = delete;
+            /// Derived class calls this constructor
             SysfsIOGroup(std::shared_ptr<SysfsIO> syfsio);
             virtual ~SysfsIOGroup() = default;
             std::set<std::string> signal_names(void) const override;
