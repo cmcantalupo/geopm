@@ -15,12 +15,13 @@ namespace geopm
     {
         public:
             struct metadata_s {
-                int native_domain, // geopm_domain_e
+                int domain, // native domain geopm_domain_e
                 int units, // IOGroup::m_units_e
                 int behavior, // IOGroup::m_signal_behavior_e
                 int aggregation, // Agg::m_type_e
-                std::string descrption,
-                std::string alias,
+                double factor, // SI unit conversion factor
+                std::string descrption, // Long description
+                std::string alias, // Either empty string or name of high level alias
             };
             SysfsIO() = default;
             virtual ~SysfsIO() = default;
@@ -36,9 +37,21 @@ namespace geopm
                                         int domain_type,
                                         int domain_idx,
                                         const std::string &content) const = 0;
-            virtual std::string control_gen(const std::string &signal_name,
+            virtual std::string control_gen(const std::string &control_name,
                                             int domain_type,
                                             int domain_idx,
+                                            double setting) const = 0;
+            virtual void push_signal(const std::string &signal_name,
+                                     int domain_type,
+                                     int domain_idx,
+                                     int iogroup_idx) = 0;
+            virtual void push_control(const std::string &control_name,
+                                      int domain_type,
+                                      int domain_idx,
+                                      int iogroup_idx) = 0;
+            virtual double signal_parse(int iogroup_idx,
+                                        const std::string &content) const = 0;
+            virtual std::string control_gen(int iogroup_idx,
                                             double setting) const = 0;
             virtual std::string driver(void) const = 0;
             virtual struct metadata_s metadata(const std::string &name) const = 0;
