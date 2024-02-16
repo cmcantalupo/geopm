@@ -69,7 +69,15 @@ namespace geopm
                     m_profile_pids.erase(ctl_it);
                 }
             }
-            if (m_profile_pids.size() >= (size_t)m_num_proc) {
+            size_t num_children;
+            for (const auto &pid_it : m_profile_pids) {
+                int ppid = geopm::getppid(pid_it); // Implement using /proc/[pid]/stat column 4 
+                const auto ppid_it = m_profile_pids.find(ppid);
+                if (ppid_it != m_profile_pids.end()) {
+                    ++num_children;
+                }
+            }
+            if (m_profile_pids.size()  - num_children >= (size_t)m_num_proc) {
                 m_is_connected = true;
                 break;
             }
