@@ -10,7 +10,6 @@
 #include <unistd.h>
 #include <limits.h>
 #include <dirent.h>
-#include <string.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -21,6 +20,7 @@
 #include <sys/syscall.h>
 #endif
 
+#include <cstring>
 #include <cmath>
 #include <climits>
 #include <cinttypes>
@@ -293,6 +293,30 @@ namespace geopm
         }
         return stat_struct.st_gid;
     };
+
+    uint64_t get_proc_column(unsigned int pid, unsigned int column_idx)
+    {
+        uint64_t result;
+        std::ostringstream proc_path;
+        proc_path << "/proc/" << pid << "/stat";
+        const std::string stat_buffer = read_file(proc_path.str());
+        auto split_buffer = geopm::string_split(stat_buffer, " ");
+        geopm::Exception parse_ex("geopm::pid_to_gid(): Unable to parse " + proc_path.str(),
+                                  GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+        if (split_buffer.size() <= column_idx) {
+            throw parse_ex;
+        }
+        try {
+            result = std::stoull(split_buffer[column_idx]);
+        }
+        catch (std::invalid_argument const &ex) {
+            throw parse_ex;
+        }
+        catch (std::out_of_range const &ex) {
+            throw parse_ex;
+        }
+        return result;
+    }
 
     std::unique_ptr<cpu_set_t, std::function<void(cpu_set_t *)> >
         make_cpu_set(int num_cpu, const std::set<int> &cpu_enabled)

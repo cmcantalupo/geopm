@@ -145,6 +145,12 @@ namespace geopm
     /// @return The group id.
     unsigned int pid_to_gid(const int pid);
 
+    /// @brief Read a number out of /proc/[pid]/stat
+    /// @param [in] pid The Linux PID to query.
+    /// @param [in] column_idx Zero based index of the column from the file to be read
+    /// @return Integer read from column_idx from /proc/[pid]/stat
+    uint64_t get_proc_column(unsigned int pid, unsigned int column_idx);
+
     /// @brief Wrapper around CPU_ALLOC and CPU_FREE
     /// @param [in] num_cpu The number of CPUs to allocate the CPU set
     /// @param [in] cpu_enabled The CPUs to be included in the CPU set

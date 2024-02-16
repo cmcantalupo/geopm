@@ -70,11 +70,29 @@ namespace geopm
                 }
             }
             size_t num_children;
-            for (const auto &pid_it : m_profile_pids) {
-                int ppid = geopm::getppid(pid_it); // Implement using /proc/[pid]/stat column 4 
-                const auto ppid_it = m_profile_pids.find(ppid);
-                if (ppid_it != m_profile_pids.end()) {
-                    ++num_children;
+            std::map<int, int> child_count;
+            for (auto pid_it = m_profile_pids.rbegin(); pid_it != m_profile_pids.rend(); ++pid_it) {
+                // (4) ppid  %d: The PID off the parent of this process.
+                int ppid = geopm::get_proc_column(*pid_it, 4);
+                auto res = child_count.try_emplace(ppid, 0);
+                ++(res.first->second);
+            }
+            auto pid_it = m_profile_pids.begin();
+            auto child_count_it = child_count.begin();
+            int num_children = 0;
+            while (pid_it != m_profile_pids.end() &&
+                   child_count_it != child_count.end()) {
+                if (*pid_it == child_count_it->first) {
+                    // Ignore children of registered PIDs
+                    num_children += child_count_it->second;
+                    ++pid_it;
+                    ++child_count_it;
+                }
+                else if (pid_it < child_count_it->first) {
+                    ++pid_it;
+                }
+                else {
+                    ++child_count_it;
                 }
             }
             if (m_profile_pids.size()  - num_children >= (size_t)m_num_proc) {
