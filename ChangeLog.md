@@ -101,7 +101,7 @@ Address some OpenSSF scorecard issues
 - https://securityscorecards.dev/viewer/?uri=github.com/geopm/geopm - Address Token-Permissions issues. - Address CI-Tests issues. This will require follow-up in the GH repo configuration for geopm/geopm ...
     https://github.com/geopm/geopm/pull/3367
 
-Address ABI compatability issues between dev and 3.0.1.
+Address ABI compatibility issues between dev and 3.0.1.
 - Fixes #3361.
     https://github.com/geopm/geopm/pull/3368
 
@@ -260,7 +260,7 @@ Fix CPU-CA integration tests
 - Modify the minife appconf to use a configuration with better baseline performance. - Merge the integration suites that create input data for the CPU-CA and tests that evaluate the CPU-CA. This avoids ...
     https://github.com/geopm/geopm/pull/3437
 
-Encode mutiple commands to be wrapped by cov-build
+Encode multiple commands to be wrapped by cov-build
     https://github.com/geopm/geopm/pull/3441
 
 Move logic for update_data.sh into Makefile targets
@@ -1369,7 +1369,7 @@ Add CLI demo videos to overview.rst
 - Fixed big-o scaling for all2all ModelRegion.
 - Fixed integration tests for unmarked regions.
 - Fixed test_progress_exit integration test.
-- Fixed standard directory specificiation in the spec file
+- Fixed standard directory specification in the spec file
 - Fixed test_sample_rate integration test.
 - Fixed check_run issue in scaling integration test.
 - Fixed integration tests and unit tests to handle the new node-combined report with header format.
