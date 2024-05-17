@@ -1,3 +1,349 @@
+* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
+
+Revert PR https://github.com/geopm/geopm/pull/3286
+- That PR was the cause of issue https://github.com/geopm/geopm/pull/3291. - Resolves #3291.
+    https://github.com/geopm/geopm/pull/3293
+
+Two fixes for the spec files
+- Use liburing on non-SUSE linux builds - Do not make python3-geopmdpy a requirement for the geopm-service package - These are both required to enable Rocky Linux
+    https://github.com/geopm/geopm/pull/3294
+
+Bring back reverted MSRIOGroup change with fix bug
+- Load either the IOGroup for raw msr or msr-safe, but not both. - Relates to #3291
+    https://github.com/geopm/geopm/pull/3295
+
+Fixup integration test that used hash of enum
+https://geopm.slack.com/archives/CA7MS8324/p1704302118052859
+
+Use libz crc32 implementation to replace direct call to intrinsic
+This pull request enables users to build on non-x86 architectures. - Fixes #3290
+    https://github.com/geopm/geopm/pull/3296
+
+Make use of cpuid.h optional at configure time
+merge after #3296 because this PR removes the ExclusiveArch flag from the spec files.
+    https://github.com/geopm/geopm/pull/3297
+
+Add a cpufreq IOGroup
+Related #3258
+    https://github.com/geopm/geopm/pull/3271
+
+Fix issue with save/restore and writing in general
+- Fixes #3311
+    https://github.com/geopm/geopm/pull/3312
+
+Fix filter for invalid request so that it only applies to writes
+- Relates to #3311 - The change to fix #3311 resulted in a new bug: Warning: geopm Failed to load SERVICE IOGroup. GEOPM may not work properly unless an alternate IOGroup plugin is loaded to provide ...
+bug
+    https://github.com/geopm/geopm/pull/3315
+
+Address RPM issues on rocky and centos
+- Fixes #3313. - Disable iouring support on CentOS 8. The version available from the powertools repo has configure time errors within liburing.h.
+    https://github.com/geopm/geopm/pull/3314
+
+Add upstream openmp.m4 macro from fossies
+- Origin: https://fossies.org/linux/R/m4/openmp.m4 - Intel requires -fiopenmp and warns when -fopenmp is provided. - Fixes build issue with the following signature: icpx: error: Use of -qopenmp ...
+
+Fix restore for CpufreqDriver when using JSON
+- The NAN values get represented as null in the JSON. - When the files are parsed back in null is represented as 0 rather than NaN. - Avoid this issue by not writing NaN values to JSON and change ...
+    https://github.com/geopm/geopm/pull/3316
+
+Fix the overview README to be clear about GEOPM_PROGRAM_FILTER
+    https://github.com/geopm/geopm/pull/3319
+
+Fix Cpuid.hpp include issue
+- Make it an installed GEOPM header so it can be used by the runtime - Fixes broken GEOPM Runtime build when building out of tree. - Fixes #3321
+    https://github.com/geopm/geopm/pull/3320
+
+Move pio dependency out of Environment class
+    https://github.com/geopm/geopm/pull/3330
+
+Resolve issues around profiling unexpected processes
+- Resolves #3332. - Resolves #3334. - Resolves #3335.
+    https://github.com/geopm/geopm/pull/3333
+
+Give better warning message when controller does not connect
+- Do not call restore_control in destructor when connection fails - Resolves #2987 - Remove work around for negative timeout values - Profiling only occurs when the GEOPM_PROGRAM_FILTER matches, ...
+    https://github.com/geopm/geopm/pull/3337
+
+Fixup EnvironmentTest
+- Fix build of base directory when configured with --disable-mpi
+    https://github.com/geopm/geopm/pull/3338
+
+Remove the topo cache when service starts up
+- Since environment variables can impact how LevelZero reports topology, make sure to clear off any topo file when the service starts up - Set environment variables in service file, not in lib ...
+    https://github.com/geopm/geopm/pull/3340
+
+Handle SDBusNull exception in PlatformTopo
+- Allows PlatformTopo to be constructed when configured with --disable-systemd. - Fixes #3289.
+    https://github.com/geopm/geopm/pull/3347
+
+Update test_batch_perf.sh to work with sudo
+- Previous implementation required direct sudo usage.
+    https://github.com/geopm/geopm/pull/3350
+
+Update copyright year to 2024
+- Fixes #3310.
+    https://github.com/geopm/geopm/pull/3342
+
+Add a performance test for the batch interface of PlatformIO
+- Measure performance of the batch interface and print metrics to files - The script does not enforce a performance target
+    https://github.com/geopm/geopm/pull/3343
+
+Fix scipy dependency of seaborn
+    https://github.com/geopm/geopm/pull/3351
+
+Adding support for LevelZero RAS signals
+- Relates to #3155 feature from GitHub issues Adds support for new LevelZero RAS signals #3341
+
+    https://github.com/geopm/geopm/pull/3359
+
+Address some OpenSSF scorecard issues
+- https://securityscorecards.dev/viewer/?uri=github.com/geopm/geopm - Address Token-Permissions issues. - Address CI-Tests issues. This will require follow-up in the GH repo configuration for geopm/geopm ...
+    https://github.com/geopm/geopm/pull/3367
+
+Address ABI compatability issues between dev and 3.0.1.
+- Fixes #3361.
+    https://github.com/geopm/geopm/pull/3368
+
+Allow push_signal/control() for previous requests after read/write_batch()
+- Relates to #3362
+    https://github.com/geopm/geopm/pull/3377
+
+Remove GEOPM ALCF version information
+- Fixes #3309
+    https://github.com/geopm/geopm/pull/3376
+
+Add Fall 2023 entries to the publications web page
+Add Fall 2023 entries to the publications web page
+    https://github.com/geopm/geopm/pull/3268
+
+Fix test_pio_reset
+- Broken since #3377.
+    https://github.com/geopm/geopm/pull/3387
+
+Address issues running geopmctl as root
+- Fixes #3352.
+    https://github.com/geopm/geopm/pull/3375
+
+Do not check RAS signals at LevelZero startup
+- These signals can take 0.5 seconds each to read - Errors will be delayed until user tries to read signal.
+    https://github.com/geopm/geopm/pull/3382
+
+Update packaging to comply with standards
+    https://github.com/geopm/geopm/pull/3230
+
+Fix obs issues
+- Relates to #3386.
+    on Apr 15
+    ·
+    https://github.com/geopm/geopm/pull/3395
+
+Add obs packaging for docs RPMs
+- Clean up dist target to create spec file
+    https://github.com/geopm/geopm/pull/3394
+
+Fixup obs workflow for docs build
+    https://github.com/geopm/geopm/pull/3396
+
+Pip install geopmdpy and geopmpy to get python dependencies
+    https://github.com/geopm/geopm/pull/3397
+
+Add doxygen deps
+    https://github.com/geopm/geopm/pull/3398
+
+Move doxygen dependency to right section of build.yml
+    https://github.com/geopm/geopm/pull/3400
+
+Fixup doc tar file location
+    https://github.com/geopm/geopm/pull/3401
+
+Generate VERSION in setup.py
+- Relates to #3386.
+    https://github.com/geopm/geopm/pull/3403
+
+Change all package names from -docs to -doc
+- Note OBS repo must be renamed.
+    https://github.com/geopm/geopm/pull/3404
+
+Update configure.ac scripts for the new directory layout
+- Initialize compilers before saving cxxflags in configure.ac - Related to #3256 - Ensures that the default CXXFLAGS set by autoconf are not ignored by save/restore - Set CFLAGS for libgeopmd ...
+    https://github.com/geopm/geopm/pull/3408
+
+Hard code package name in setup.py
+- Fixes build failure when doing debian packaging
+    https://github.com/geopm/geopm/pull/3407
+
+Enable user to specify options to dpkg_buildpackage
+Enables upload to launchpad
+    https://github.com/geopm/geopm/pull/3409
+
+Address integration test and build issues
+- Relates to #3386.
+    https://github.com/geopm/geopm/pull/3406
+
+Add a DRM Sysfs IOGroup
+- Resolves #3369
+    https://github.com/geopm/geopm/pull/3378
+
+Return 0 instead of NAN for example controls
+- Fixes #3405
+    https://github.com/geopm/geopm/pull/3410
+
+Update documentation for web page
+- Relates to #3385 - [x] Read through all existing documentation and re-word/re-flow as necessary to match the new directory structure of the source repository. - [x] Documentation about things ...
+    https://github.com/geopm/geopm/pull/3411
+
+Fix make deb targets
+Fix issue of quotes in Makefile.am that breaks the default make deb target
+    23 days ago
+    ·
+    https://github.com/geopm/geopm/pull/3412
+
+Fix SysfsIOGroup batch write
+- Relates to #3388. - IOGroup was initializing IOUring during batch_write(), and on certain systems this resulted in an exception being thrown.
+    https://github.com/geopm/geopm/pull/3416
+
+Ensure that the msr module is loaded before running the batch perf test
+- Also ensure that the msr module is only removed after running the test if it was not present prior to running the test.
+    https://github.com/geopm/geopm/pull/3417
+
+Add missing virtual destructor for SSTIO
+    https://github.com/geopm/geopm/pull/3418
+
+Move third-party-programs file into .github directory
+- Without this change, github is confused about how to present the license in the auto-generated links.
+    https://github.com/geopm/geopm/pull/3419
+
+Update main web page and copyright housekeeping
+- Update copyright file for docs debian directory - Relates to #3419 - Missed the docs directory update in above PR
+    https://github.com/geopm/geopm/pull/3420
+
+Fix geopmd args check
+- Fails with IndexError otherwise. - Introduced in #3411.
+    https://github.com/geopm/geopm/pull/3421
+
+Name our license and link to spdx
+    https://github.com/geopm/geopm/pull/3422
+
+Add visibility annotations to public headers
+- Adds annotations to export free functions, classes, and structs that are part of our public header interface. - Adds annotations to hide private member functions that are members of classes in our ...
+    https://github.com/geopm/geopm/pull/3429
+
+Switch example control over to a temporary file rather than stdout/stderr
+The existing tutorial was never properly adapted to have the requirements for all controls to have a save/restore method. This PR addresses this by making the control more realistic. - Relates to #1071 ...
+    https://github.com/geopm/geopm/pull/3430
+
+Increase the problem size for test_cpu_characterization and run in process mode
+- The current problem size is too small for our integration testbed, so several runs finish too quickly to measure any energy differences. - The larger suite this integration executes within runs ...
+    https://github.com/geopm/geopm/pull/3426
+
+Add coverity GH CI workflow
+- Relates to #3390.
+    https://github.com/geopm/geopm/pull/3433
+
+Address issues discovered during RC integration testing
+- Relates to #3388.
+    https://github.com/geopm/geopm/pull/3432
+
+Fix make dist
+- Relates to #3390.
+    https://github.com/geopm/geopm/pull/3436
+
+Fix static analysis issues
+- Fixes race condition for error reporting - Fixes dereference of invalid pointer
+    https://github.com/geopm/geopm/pull/3438
+
+Refactor coverity.yml to avoid two uses of the scan action
+    https://github.com/geopm/geopm/pull/3440
+
+Fix CPU-CA integration tests
+- Modify the minife appconf to use a configuration with better baseline performance. - Merge the integration suites that create input data for the CPU-CA and tests that evaluate the CPU-CA. This avoids ...
+    https://github.com/geopm/geopm/pull/3437
+
+Encode mutiple commands to be wrapped by cov-build
+    https://github.com/geopm/geopm/pull/3441
+
+Move logic for update_data.sh into Makefile targets
+    https://github.com/geopm/geopm/pull/3442
+
+Remove remaining support for non-linux systems (darwin)
+    https://github.com/geopm/geopm/pull/3444
+
+Adjust coverity scan schedule
+- 6AM UTC is 11PM PST. - Previous schedule was 11AM UTC is 4AM PST. - Relates to #3390.
+    https://github.com/geopm/geopm/pull/3445
+
+Fix broken package builds
+- Resolves a race where builds from tarballs may fail to create some of the generated files. - Adds GH automation to test that deb builds succeed in each of the subprojects
+    https://github.com/geopm/geopm/pull/3454
+
+Use static_assert for geopm_field function preconditions
+    https://github.com/geopm/geopm/pull/3443
+
+Avoid use of auto that causes object copies
+- Resolves several issues found by static analysis where auto was being used in a way that resulted in copies of non-primitive data types. - Resolution: use const references instead of copies. ...
+    https://github.com/geopm/geopm/pull/3456
+
+Avoid unneeded copies
+    https://github.com/geopm/geopm/pull/3458
+
+Use the gen-src directory as a order-only prerequisite
+- Fixes #3455 - Avoids unnecessary rebuilds of files in gen-src
+    https://github.com/geopm/geopm/pull/3457
+
+Avoid use of auto that causes object copies
+    https://github.com/geopm/geopm/pull/3459
+
+Avoid makefile variables in paths to source files
+- Variables in paths to source files are unsupported when using include detection in older versions of automake: https://debbugs.gnu.org/cgi/bugreport.cgi?bug=13928
+    https://github.com/geopm/geopm/pull/3460
+
+Update license to match exact BSD-3 clause text
+- Change name to match SPDX license identifier
+    https://github.com/geopm/geopm/pull/3461
+
+Create MANIFEST from git log and generated man pages also remove MSRIOGroup.hpp from public headers
+- Avoid pulling in unwanted files into the docs archive. - Also remove MSRIOGroup.hpp from public interface, class was never intended to be publicly used
+    https://github.com/geopm/geopm/pull/3462
+
+Bump ABI version to 2.1.0 and make plugin load backward compatible
+Addresses a number of issues besides: - Add C++ interfaces for getting version string and ABI numbers. - Do not include config.h explicitly, use compile time flag - Get rid of public mark up from ...
+    https://github.com/geopm/geopm/pull/3463
+
+Address some issues with test_cpu_characterization.py
+- Relates to #3464. - Address issues with using --skip-launch on the head node where the service is not running. - Update integration/experiments to always use pinning. - Note that the test assertions ...
+    https://github.com/geopm/geopm/pull/3465
+
+Update authors file
+    https://github.com/geopm/geopm/pull/3466
+
+Do not use mavx flag, it breaks non-x86 builds and is not needed
+    https://github.com/geopm/geopm/pull/3468
+
+Add more badges
+- Add coverity, OpenSSF scorecard and bumps version badge to 3.1.0
+    https://github.com/geopm/geopm/pull/3467
+
+Locate new man pages in spec file
+Fixes change introduced here: https://github.com/geopm/geopm/pull/3462/files#diff-008dcb3426febd767787b1521f1fe33086313b927ea37eaab86df5fa88a51698R214-R215
+    https://github.com/geopm/geopm/pull/3470
+
+Specify the exact sized integer types in structures for inter-process memory sharing
+- Fix for broken build for armv7l arch - Existing static assert is not required for correct behavior
+    https://github.com/geopm/geopm/pull/3469
+
+Fix possible signed/unsigned comparison
+https://en.cppreference.com/w/cpp/algorithm/count count_if returns a std::difference_type. https://en.cppreference.com/w/cpp/iterator/iterator_traits It may or may not be signed with auto?
+    https://github.com/geopm/geopm/pull/3472
+
+Add automation to update web page in github actions
+    https://github.com/geopm/geopm/pull/3471
+
+Add CLI demo videos to overview.rst
+    https://github.com/geopm/geopm/pull/3474
+
+
+
 * Wed Dec 06 2023 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.0.1
 - Hotfix for v3.0.0 release.
 - Fix missing systemd dependency on the msr-safe systemd service.  This bug could cause MSRs to be unavailable from the GEOPM Service if load order is incorrect.
