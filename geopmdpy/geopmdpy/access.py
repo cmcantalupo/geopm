@@ -19,6 +19,7 @@ from . import error
 from . import __version_str__
 
 gffi.gffi.cdef("""
+// TODO: Need to make part of a public header or drop from this interface.
 int geopm_allowlist(size_t result_max,
                     char *result);
 """)

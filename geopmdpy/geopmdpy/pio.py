@@ -10,103 +10,9 @@ signals and writing controls from system components.
 """
 
 
-from . import gffi
 from . import topo
 from . import error
-
-gffi.gffi.cdef("""
-
-struct geopm_request_s {
-    int domain;
-    int domain_idx;
-    char name[255];
-};
-
-int geopm_pio_num_signal_name(void);
-
-int geopm_pio_signal_name(int name_idx,
-                          size_t result_max,
-                          char *result);
-
-int geopm_pio_num_control_name(void);
-
-int geopm_pio_control_name(int name_index,
-                           size_t result_max,
-                           char *result);
-
-int geopm_pio_signal_domain_type(const char *signal_name);
-
-int geopm_pio_control_domain_type(const char *control_name);
-
-int geopm_pio_read_signal(const char *signal_name,
-                          int domain_type,
-                          int domain_idx,
-                          double *result);
-
-int geopm_pio_write_control(const char *control_name,
-                            int domain_type,
-                            int domain_idx,
-                            double setting);
-
-int geopm_pio_push_signal(const char *signal_name,
-                          int domain_type,
-                          int domain_idx);
-
-int geopm_pio_push_control(const char *control_name,
-                           int domain_type,
-                           int domain_idx);
-
-int geopm_pio_sample(int signal_idx,
-                     double *result);
-
-int geopm_pio_adjust(int control_idx,
-                     double setting);
-
-int geopm_pio_read_batch(void);
-
-int geopm_pio_write_batch(void);
-
-int geopm_pio_save_control(void);
-
-int geopm_pio_save_control_dir(const char *save_dir);
-
-int geopm_pio_restore_control(void);
-
-int geopm_pio_restore_control_dir(const char *save_dir);
-
-int geopm_pio_signal_description(const char *signal_name,
-                                 size_t description_max,
-                                 char *description);
-
-int geopm_pio_control_description(const char *control_name,
-                                  size_t description_max,
-                                  char *description);
-
-int geopm_pio_signal_info(const char *signal_name,
-                          int *aggregation_type,
-                          int *format_type,
-                          int *behavior_type);
-
-int geopm_pio_start_batch_server(int client_pid,
-                                 int num_signal,
-                                 const struct geopm_request_s *signal_config,
-                                 int num_control,
-                                 const struct geopm_request_s *control_config,
-                                 int *server_pid,
-                                 int key_size,
-                                 char *server_key);
-
-int geopm_pio_stop_batch_server(int server_pid);
-
-int geopm_pio_format_signal(double signal,
-                            int format_type,
-                            size_t result_max,
-                            char *result);
-
-void geopm_pio_reset(void);
-
-""")
-_dl = gffi.get_dl_geopmd()
+from geopmdpy._libgeopmd import ffi, lib
 
 def signal_names():
     """Get all available signals.
@@ -119,19 +25,17 @@ def signal_names():
         list(str): All available signal names in sorted order.
 
     """
-    global _dl
-
     result = []
-    num_signal = _dl.geopm_pio_num_signal_name()
+    num_signal = lib.geopm_pio_num_signal_name()
     if num_signal < 0:
         raise RuntimeError('geopm_pio_num_signal_name() failed: {}'.format(error.message(num_signal)))
     name_max = 255
-    signal_name_cstr = gffi.gffi.new("char[]", name_max)
+    signal_name_cstr = ffi.new("char[]", name_max)
     for signal_idx in range(num_signal):
-        err = _dl.geopm_pio_signal_name(signal_idx, name_max, signal_name_cstr)
+        err = lib.geopm_pio_signal_name(signal_idx, name_max, signal_name_cstr)
         if err < 0:
             raise RuntimeError('geopm_pio_signal_name() failed: {}'.format(error.message(err)))
-        result.append(gffi.gffi.string(signal_name_cstr).decode())
+        result.append(ffi.string(signal_name_cstr).decode())
     return sorted(result)
 
 def control_names():
@@ -145,18 +49,17 @@ def control_names():
         list(str): All available control names in sorted order.
 
     """
-    global _dl
     result = []
-    num_control = _dl.geopm_pio_num_control_name()
+    num_control = lib.geopm_pio_num_control_name()
     if num_control < 0:
         raise RuntimeError('geopm_pio_num_control_name() failed: {}'.format(error.message(num_control)))
     name_max = 255
-    control_name_cstr = gffi.gffi.new("char[]", name_max)
+    control_name_cstr = ffi.new("char[]", name_max)
     for control_idx in range(num_control):
-        err = _dl.geopm_pio_control_name(control_idx, name_max, control_name_cstr)
+        err = lib.geopm_pio_control_name(control_idx, name_max, control_name_cstr)
         if err < 0:
             raise RuntimeError('geopm_pio_control_name() failed: {}'.format(error.message(err)))
-        result.append(gffi.gffi.string(control_name_cstr).decode())
+        result.append(ffi.string(control_name_cstr).decode())
     return sorted(result)
 
 def signal_domain_type(signal_name):
@@ -178,9 +81,8 @@ def signal_domain_type(signal_name):
             to a domain type.
 
     """
-    global _dl
-    signal_name_cstr = gffi.gffi.new("char[]", signal_name.encode())
-    result = _dl.geopm_pio_signal_domain_type(signal_name_cstr)
+    signal_name_cstr = ffi.new("char[]", signal_name.encode())
+    result = lib.geopm_pio_signal_domain_type(signal_name_cstr)
     if result < 0:
         raise RuntimeError('geopm_pio_signal_domain_type() failed: {}'.format(error.message(result)))
     return result
@@ -203,9 +105,8 @@ def control_domain_type(control_name):
             name with the geopmdpy.topo.domain_name() function.
 
     """
-    global _dl
-    control_name_cstr = gffi.gffi.new("char[]", control_name.encode())
-    result = _dl.geopm_pio_control_domain_type(control_name_cstr)
+    control_name_cstr = ffi.new("char[]", control_name.encode())
+    result = lib.geopm_pio_control_domain_type(control_name_cstr)
     if result < 0:
         raise RuntimeError('geopm_pio_control_domain_type() failed: {}'.format(error.message(result)))
     return result
@@ -229,11 +130,10 @@ def read_signal(signal_name, domain_type, domain_idx):
         float: The value of the signal read in SI units.
 
     """
-    global _dl
-    result_cdbl = gffi.gffi.new("double*")
-    signal_name_cstr = gffi.gffi.new("char[]", signal_name.encode())
+    result_cdbl = ffi.new("double*")
+    signal_name_cstr = ffi.new("char[]", signal_name.encode())
     domain_type = topo.domain_type(domain_type)
-    err = _dl.geopm_pio_read_signal(signal_name_cstr, domain_type, domain_idx, result_cdbl)
+    err = lib.geopm_pio_read_signal(signal_name_cstr, domain_type, domain_idx, result_cdbl)
     if err < 0:
         raise RuntimeError('geopm_pio_read_signal() failed: {}'.format(error.message(err)))
     return result_cdbl[0]
@@ -255,10 +155,9 @@ def write_control(control_name, domain_type, domain_idx, setting):
         setting (float): Value of the control to be written.
 
     """
-    global _dl
-    control_name_cstr = gffi.gffi.new("char[]", control_name.encode())
+    control_name_cstr = ffi.new("char[]", control_name.encode())
     domain_type = topo.domain_type(domain_type)
-    err = _dl.geopm_pio_write_control(control_name_cstr, domain_type, domain_idx, setting)
+    err = lib.geopm_pio_write_control(control_name_cstr, domain_type, domain_idx, setting)
     if err < 0:
         raise RuntimeError('geopm_pio_write_control() failed: {}'.format(error.message(err)))
 
@@ -292,10 +191,9 @@ def push_signal(signal_name, domain_type, domain_idx):
             after the read_batch() function has been called.
 
     """
-    global _dl
-    signal_name_cstr = gffi.gffi.new("char[]", signal_name.encode())
+    signal_name_cstr = ffi.new("char[]", signal_name.encode())
     domain_type = topo.domain_type(domain_type)
-    result = _dl.geopm_pio_push_signal(signal_name_cstr, domain_type, domain_idx)
+    result = lib.geopm_pio_push_signal(signal_name_cstr, domain_type, domain_idx)
     if result < 0:
         raise RuntimeError('geopm_pio_push_signal() failed: {}'.format(error.message(result)))
     return result
@@ -331,10 +229,9 @@ def push_control(control_name, domain_type, domain_idx):
         function prior to a call to the write_batch() function.
 
     """
-    global _dl
-    control_name_cstr = gffi.gffi.new("char[]", control_name.encode())
+    control_name_cstr = ffi.new("char[]", control_name.encode())
     domain_type = topo.domain_type(domain_type)
-    result = _dl.geopm_pio_push_control(control_name_cstr, domain_type, domain_idx)
+    result = lib.geopm_pio_push_control(control_name_cstr, domain_type, domain_idx)
     if result < 0:
         raise RuntimeError('geopm_pio_push_control() failed: {}'.format(error.message(result)))
     return result
@@ -356,9 +253,8 @@ def sample(signal_idx):
             last called.
 
     """
-    global _dl
-    result_cdbl = gffi.gffi.new("double*")
-    err = _dl.geopm_pio_sample(signal_idx, result_cdbl)
+    result_cdbl = ffi.new("double*")
+    err = lib.geopm_pio_sample(signal_idx, result_cdbl)
     if err < 0:
         raise RuntimeError('geopm_pio_sample() failed: {}'.format(error.message(err)))
     return result_cdbl[0]
@@ -380,8 +276,7 @@ def adjust(control_idx, setting):
                          write_batch().
 
     """
-    global _dl
-    err = _dl.geopm_pio_adjust(control_idx, setting)
+    err = lib.geopm_pio_adjust(control_idx, setting)
     if err < 0:
         raise RuntimeError('geopm_pio_adjust() failed: {}'.format(error.message(err)))
 
@@ -391,8 +286,7 @@ def read_batch():
     The next calls to sample() will reflect the updated data.
 
     """
-    global _dl
-    err = _dl.geopm_pio_read_batch()
+    err = lib.geopm_pio_read_batch()
     if err < 0:
         raise RuntimeError('geopm_pio_read_batch() failed: {}'.format(error.message(err)))
 
@@ -403,8 +297,7 @@ def write_batch():
     the platform.
 
     """
-    global _dl
-    err = _dl.geopm_pio_write_batch()
+    err = lib.geopm_pio_write_batch()
     if err < 0:
         raise RuntimeError('geopm_pio_write_batch() failed: {}'.format(error.message(err)))
 
@@ -419,8 +312,7 @@ def save_control():
         RuntimeError:  Failure to save all control values.
 
     """
-    global _dl
-    err = _dl.geopm_pio_save_control()
+    err = lib.geopm_pio_save_control()
     if err < 0:
         raise RuntimeError('geopm_pio_save_control() failed: {}'.format(error.message(err)))
 
@@ -435,8 +327,7 @@ def restore_control():
 
     """
 
-    global _dl
-    err = _dl.geopm_pio_restore_control()
+    err = lib.geopm_pio_restore_control()
     if err < 0:
         raise RuntimeError('geopm_pio_restore_control() failed: {}'.format(error.message(err)))
 
@@ -454,14 +345,13 @@ def signal_description(signal_name):
         str: Signal description string.
 
     """
-    global _dl
     name_max = 1024
-    signal_name_cstr = gffi.gffi.new("char[]", signal_name.encode())
-    result_cstr = gffi.gffi.new("char[]", name_max)
-    err = _dl.geopm_pio_signal_description(signal_name_cstr, name_max, result_cstr)
+    signal_name_cstr = ffi.new("char[]", signal_name.encode())
+    result_cstr = ffi.new("char[]", name_max)
+    err = lib.geopm_pio_signal_description(signal_name_cstr, name_max, result_cstr)
     if err < 0:
         raise RuntimeError('geopm_pio_signal_description() failed: {}'.format(error.message(err)))
-    return gffi.gffi.string(result_cstr).decode()
+    return ffi.string(result_cstr).decode()
 
 def control_description(control_name):
     """Get a description of a control.
@@ -477,14 +367,13 @@ def control_description(control_name):
         str: Control description string.
 
     """
-    global _dl
     name_max = 1024
-    control_name_cstr = gffi.gffi.new("char[]", control_name.encode())
-    result_cstr = gffi.gffi.new("char[]", name_max)
-    err = _dl.geopm_pio_control_description(control_name_cstr, name_max, result_cstr)
+    control_name_cstr = ffi.new("char[]", control_name.encode())
+    result_cstr = ffi.new("char[]", name_max)
+    err = lib.geopm_pio_control_description(control_name_cstr, name_max, result_cstr)
     if err < 0:
         raise RuntimeError('geopm_pio_control_description() failed: {}'.format(error.message(err)))
-    return gffi.gffi.string(result_cstr).decode()
+    return ffi.string(result_cstr).decode()
 
 def save_control_dir(save_dir):
     """Save the state of all controls to files in the save directory.
@@ -502,9 +391,8 @@ def save_control_dir(save_dir):
         RuntimeError:  Failure to save all control values.
 
     """
-    global _dl
-    save_dir_cstr = gffi.gffi.new("char[]", save_dir.encode())
-    err = _dl.geopm_pio_save_control_dir(save_dir_cstr)
+    save_dir_cstr = ffi.new("char[]", save_dir.encode())
+    err = lib.geopm_pio_save_control_dir(save_dir_cstr)
     if err < 0:
         raise RuntimeError('geopm_pio_save_control_dir() failed: {}'.format(error.message(err)))
 
@@ -524,9 +412,8 @@ def restore_control_dir(save_dir):
         RuntimeError:  Failure to restore all control values.
 
     """
-    global _dl
-    save_dir_cstr = gffi.gffi.new("char[]", save_dir.encode())
-    err = _dl.geopm_pio_restore_control_dir(save_dir_cstr)
+    save_dir_cstr = ffi.new("char[]", save_dir.encode())
+    err = lib.geopm_pio_restore_control_dir(save_dir_cstr)
     if err < 0:
         raise RuntimeError('geopm_pio_restore_control() failed: {}'.format(error.message(err)))
 
@@ -556,12 +443,11 @@ def signal_info(signal_name):
         RuntimeError: Query of signal name failed.
 
     """
-    global _dl
-    signal_name_cstr = gffi.gffi.new("char[]", signal_name.encode())
-    aggregation_type = gffi.gffi.new("int*")
-    format_type = gffi.gffi.new("int*")
-    behavior_type = gffi.gffi.new("int*")
-    err = _dl.geopm_pio_signal_info(signal_name_cstr, aggregation_type, format_type, behavior_type)
+    signal_name_cstr = ffi.new("char[]", signal_name.encode())
+    aggregation_type = ffi.new("int*")
+    format_type = ffi.new("int*")
+    behavior_type = ffi.new("int*")
+    err = lib.geopm_pio_signal_info(signal_name_cstr, aggregation_type, format_type, behavior_type)
     if err < 0:
         raise RuntimeError('geopm_pio_signal_info() failed: {}'.format(error.message(err)))
     return (aggregation_type[0], format_type[0], behavior_type[0])
@@ -604,27 +490,27 @@ def start_batch_server(client_pid, signal_config, control_config):
     num_signal = len(signal_config)
     num_control = len(control_config)
     if num_signal != 0:
-        signal_config_carr = gffi.gffi.new(f'struct geopm_request_s[{num_signal}]')
+        signal_config_carr = ffi.new(f'struct geopm_request_s[{num_signal}]')
     else:
-        signal_config_carr = gffi.gffi.NULL
+        signal_config_carr = ffi.NULL
     if num_control != 0:
-        control_config_carr = gffi.gffi.new(f'struct geopm_request_s[{num_control}]')
+        control_config_carr = ffi.new(f'struct geopm_request_s[{num_control}]')
     else:
-        control_config_carr = gffi.gffi.NULL
+        control_config_carr = ffi.NULL
 
     for idx, req in enumerate(signal_config):
-        signal_config_carr[idx].domain = req[0]
+        signal_config_carr[idx].domain_type = req[0]
         signal_config_carr[idx].domain_idx = req[1]
         signal_config_carr[idx].name = req[2].encode()
 
     for idx, req in enumerate(control_config):
-        control_config_carr[idx].domain = req[0]
+        control_config_carr[idx].domain_type = req[0]
         control_config_carr[idx].domain_idx = req[1]
         control_config_carr[idx].name = req[2].encode()
 
-    server_pid_c = gffi.gffi.new('int *')
-    server_key_cstr = gffi.gffi.new('char [255]')
-    err = _dl.geopm_pio_start_batch_server(client_pid,
+    server_pid_c = ffi.new('int *')
+    server_key_cstr = ffi.new('char [255]')
+    err = lib.geopm_pio_start_batch_server(client_pid,
                                            num_signal,
                                            signal_config_carr,
                                            num_control,
@@ -635,7 +521,7 @@ def start_batch_server(client_pid, signal_config, control_config):
     if err < 0:
         raise RuntimeError('geopm_pio_start_batch_server() failed: {}'.format(error.message(err)))
     server_pid = server_pid_c[0]
-    server_key = gffi.gffi.string(server_key_cstr).decode()
+    server_key = ffi.string(server_key_cstr).decode()
     return server_pid, server_key
 
 def stop_batch_server(server_pid):
@@ -656,7 +542,7 @@ def stop_batch_server(server_pid):
         RuntimeError: Failure to stop the batch server.
 
     """
-    err = _dl.geopm_pio_stop_batch_server(server_pid)
+    err = lib.geopm_pio_stop_batch_server(server_pid)
     if err < 0:
         raise RuntimeError('geopm_pio_stop_batch_server() failed: {}'.format(error.message(err)))
 
@@ -681,15 +567,14 @@ def format_signal(signal, format_type):
         RuntimeError: Unable to format the value.
 
     """
-    global _dl
 
     result = ''
     name_max = 1024
-    result_cstr = gffi.gffi.new("char[]", name_max)
-    err = _dl.geopm_pio_format_signal(signal, format_type, name_max, result_cstr)
+    result_cstr = ffi.new("char[]", name_max)
+    err = lib.geopm_pio_format_signal(signal, format_type, name_max, result_cstr)
     if err < 0:
         raise RuntimeError('geopm_pio_format_signal() failed: {}'.format(error.message(err)))
-    return gffi.gffi.string(result_cstr).decode()
+    return ffi.string(result_cstr).decode()
 
 def reset():
     """Reset the GEOPM platform interface.
@@ -700,8 +585,7 @@ def reset():
     cleared, any batch servers that had been started will be stopped,
     and all registered IOGroups will be reset.
     """
-    global _dl
-    _dl.geopm_pio_reset()
+    lib.geopm_pio_reset()
 
 def enable_fixed_counters():
     """Enable MSR fixed counter signals.
@@ -731,3 +615,4 @@ def enable_fixed_counters():
     write_control('MSR::PERF_GLOBAL_OVF_CTRL:CLEAR_OVF_FIXED_CTR0', 'board', 0, 0)
     write_control('MSR::PERF_GLOBAL_OVF_CTRL:CLEAR_OVF_FIXED_CTR1', 'board', 0, 0)
     write_control('MSR::PERF_GLOBAL_OVF_CTRL:CLEAR_OVF_FIXED_CTR2', 'board', 0, 0)
+

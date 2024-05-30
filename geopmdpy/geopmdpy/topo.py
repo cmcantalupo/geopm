@@ -3,65 +3,22 @@
 #  SPDX-License-Identifier: BSD-3-Clause
 #
 
-
-from . import gffi
+from geopmdpy._libgeopmd import ffi, lib
 from . import error
 
-
-gffi.gffi.cdef("""
-enum geopm_domain_e {
-    GEOPM_DOMAIN_INVALID = -1,
-    GEOPM_DOMAIN_BOARD = 0,
-    GEOPM_DOMAIN_PACKAGE = 1,
-    GEOPM_DOMAIN_CORE = 2,
-    GEOPM_DOMAIN_CPU = 3,
-    GEOPM_DOMAIN_MEMORY = 4,
-    GEOPM_DOMAIN_PACKAGE_INTEGRATED_MEMORY = 5,
-    GEOPM_DOMAIN_NIC = 6,
-    GEOPM_DOMAIN_PACKAGE_INTEGRATED_NIC = 7,
-    GEOPM_DOMAIN_GPU = 8,
-    GEOPM_DOMAIN_PACKAGE_INTEGRATED_GPU = 9,
-    GEOPM_DOMAIN_GPU_CHIP = 10,
-    GEOPM_NUM_DOMAIN = 11,
-};
-
-int geopm_topo_num_domain(int domain_type);
-
-int geopm_topo_domain_idx(int domain_type,
-                          int cpu_idx);
-
-int geopm_topo_num_domain_nested(int inner_domain,
-                                 int outer_domain);
-
-int geopm_topo_domain_nested(int inner_domain,
-                             int outer_domain,
-                             int outer_idx,
-                             size_t num_domain_nested,
-                             int *domain_nested);
-
-int geopm_topo_domain_name(int domain_type,
-                           size_t domain_name_max,
-                           char *domain_name);
-
-int geopm_topo_domain_type(const char *domain_name);
-
-int geopm_topo_create_cache(void);
-""")
-_dl = gffi.get_dl_geopmd()
-
-DOMAIN_INVALID = _dl.GEOPM_DOMAIN_INVALID
-DOMAIN_BOARD = _dl.GEOPM_DOMAIN_BOARD
-DOMAIN_PACKAGE = _dl.GEOPM_DOMAIN_PACKAGE
-DOMAIN_CORE = _dl.GEOPM_DOMAIN_CORE
-DOMAIN_CPU = _dl.GEOPM_DOMAIN_CPU
-DOMAIN_MEMORY = _dl.GEOPM_DOMAIN_MEMORY
-DOMAIN_PACKAGE_INTEGRATED_MEMORY = _dl.GEOPM_DOMAIN_PACKAGE_INTEGRATED_MEMORY
-DOMAIN_NIC = _dl.GEOPM_DOMAIN_NIC
-DOMAIN_PACKAGE_INTEGRATED_NIC = _dl.GEOPM_DOMAIN_PACKAGE_INTEGRATED_NIC
-DOMAIN_GPU = _dl.GEOPM_DOMAIN_GPU
-DOMAIN_PACKAGE_INTEGRATED_GPU = _dl.GEOPM_DOMAIN_PACKAGE_INTEGRATED_GPU
-DOMAIN_GPU_CHIP = _dl.GEOPM_DOMAIN_GPU_CHIP
-NUM_DOMAIN = _dl.GEOPM_NUM_DOMAIN
+DOMAIN_INVALID = lib.GEOPM_DOMAIN_INVALID
+DOMAIN_BOARD = lib.GEOPM_DOMAIN_BOARD
+DOMAIN_PACKAGE = lib.GEOPM_DOMAIN_PACKAGE
+DOMAIN_CORE = lib.GEOPM_DOMAIN_CORE
+DOMAIN_CPU = lib.GEOPM_DOMAIN_CPU
+DOMAIN_MEMORY = lib.GEOPM_DOMAIN_MEMORY
+DOMAIN_PACKAGE_INTEGRATED_MEMORY = lib.GEOPM_DOMAIN_PACKAGE_INTEGRATED_MEMORY
+DOMAIN_NIC = lib.GEOPM_DOMAIN_NIC
+DOMAIN_PACKAGE_INTEGRATED_NIC = lib.GEOPM_DOMAIN_PACKAGE_INTEGRATED_NIC
+DOMAIN_GPU = lib.GEOPM_DOMAIN_GPU
+DOMAIN_PACKAGE_INTEGRATED_GPU = lib.GEOPM_DOMAIN_PACKAGE_INTEGRATED_GPU
+DOMAIN_GPU_CHIP = lib.GEOPM_DOMAIN_GPU_CHIP
+NUM_DOMAIN = lib.GEOPM_NUM_DOMAIN
 
 def num_domain(domain):
     """Get the number of domains available on the system of a specific
@@ -78,9 +35,8 @@ def num_domain(domain):
             the system.
 
     """
-    global _dl
     domain = domain_type(domain)
-    result = _dl.geopm_topo_num_domain(domain)
+    result = lib.geopm_topo_num_domain(domain)
     if result < 0:
         raise RuntimeError("geopm_topo_num_domain() failed: {}".format(
             error.message(result)))
@@ -102,9 +58,8 @@ def domain_idx(domain, cpu_idx):
         int: Domain index associated with the specified logical CPU.
 
     """
-    global _dl
     domain = domain_type(domain)
-    result = _dl.geopm_topo_domain_idx(domain, cpu_idx)
+    result = lib.geopm_topo_domain_idx(domain, cpu_idx)
     if result < 0:
         raise RuntimeError("geopm_topo_domain_idx() failed: {}".format(
             error.message(result)))
@@ -127,15 +82,14 @@ def domain_nested(inner_domain, outer_domain, outer_idx):
             within the specified outer domain.
 
     """
-    global _dl
     inner_domain = domain_type(inner_domain)
     outer_domain = domain_type(outer_domain)
-    num_domain_nested = _dl.geopm_topo_num_domain_nested(inner_domain, outer_domain)
+    num_domain_nested = lib.geopm_topo_num_domain_nested(inner_domain, outer_domain)
     if (num_domain_nested < 0):
         raise RuntimeError("geopm_topo_num_domain_nested() failed: {}".format(
             error.message(num_domain_nested)))
-    domain_nested_carr = gffi.gffi.new("int[]", num_domain_nested)
-    _dl.geopm_topo_domain_nested(inner_domain, outer_domain, outer_idx,
+    domain_nested_carr = ffi.new("int[]", num_domain_nested)
+    lib.geopm_topo_domain_nested(inner_domain, outer_domain, outer_idx,
                                  num_domain_nested, domain_nested_carr)
     result = []
     for dom in domain_nested_carr:
@@ -156,15 +110,14 @@ def domain_name(domain):
         str: Domain name string associated with input.
 
     """
-    global _dl
     domain = domain_type(domain)
     name_max = 1024
-    result_cstr = gffi.gffi.new("char[]", name_max)
-    err = _dl.geopm_topo_domain_name(domain, name_max, result_cstr)
+    result_cstr = ffi.new("char[]", name_max)
+    err = lib.geopm_topo_domain_name(domain, name_max, result_cstr)
     if err < 0:
         raise RuntimeError("geopm_topo_domain_name() failed: {}".format(
                            error.message(err)))
-    return gffi.gffi.string(result_cstr).decode()
+    return ffi.string(result_cstr).decode()
 
 def domain_type(domain):
     """Returns the domain type that is associated with the provided domain
@@ -189,9 +142,8 @@ def domain_type(domain):
         else:
             raise RuntimeError("domain_type is out of range: {}".format(domain))
     else:
-        global _dl
-        domain_cstr = gffi.gffi.new("char[]", domain.encode())
-        result = _dl.geopm_topo_domain_type(domain_cstr)
+        domain_cstr = ffi.new("char[]", domain.encode())
+        result = lib.geopm_topo_domain_type(domain_cstr)
         if result < 0:
             raise RuntimeError("geopm_topo_domain_type() failed: {}".format(
                 error.message(result)))
@@ -212,8 +164,7 @@ def create_cache():
     to calling this function.
 
     """
-    global _dl
-    err = _dl.geopm_topo_create_cache()
+    err = lib.geopm_topo_create_cache()
     if err < 0:
         raise RuntimeError("geopm_topo_create_cache() failed: {}".format(
             error.message(err)))

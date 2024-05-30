@@ -5,3 +5,4 @@
 /make_sdist.log
 /geopmdpy-*/
 /debian/changelog
+geopmdpy/_libgeopmd.*
