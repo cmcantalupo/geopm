@@ -5,14 +5,19 @@
 
 set -xe
 
-./make_sdist.sh
+./autogen.sh
 
-PACKAGE_NAME=geopmdpy
-VERSION=$(cat ${PACKAGE_NAME}/VERSION)
+PACKAGE_NAME=geopm-service
+VERSION=$(cat VERSION)
 RPM_TOPDIR=${RPM_TOPDIR:-${HOME}/rpmbuild}
 mkdir -p ${RPM_TOPDIR}/SOURCES
 mkdir -p ${RPM_TOPDIR}/SPECS
 sed -e "s|@VERSION@|$VERSION|g" ${PACKAGE_NAME}.spec.in > ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
 cd ..
 git archive --format=tar.gz -o ${RPM_TOPDIR}/SOURCES/geopm-${VERSION}.tar.gz --prefix=geopm-${VERSION}/ HEAD
-rpmbuild -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
+
+if grep -q 'VERSION="15-SP2"' /etc/os-release; then
+    rpmbuild ${rpmbuild_flags} --define "disable_io_uring 1" -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
+else
+    rpmbuild ${rpmbuild_flags} -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
+fi

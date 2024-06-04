@@ -28,9 +28,17 @@ Group: System Environment/Daemons
 Group: System/Daemons
 %endif
 URL: https://geopm.github.io
-Source0: geopm-doc-%{version}.tar.gz
+# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
+Source0: geopm-%{version}.tar.gz
 BuildRoot: %{_tmppath}/geopm-doc-%{version}-%{release}-root
 Prefix: %{_prefix}
+BuildRequires: python3-sphinx >= 4.5.0
+BuildRequires: python3-sphinx_rtd_theme >= 1.0.0
+BuildRequires: python3-sphinxemoji >= 0.2.0
+BuildRequires: python3-pygments >= 2.13.0
+BuildRequires: python3-sphinx-tabs >= 3.3.1
+BuildRequires: doxygen
+BuildRequires: graphviz
 Requires: geopm-service-doc
 Requires: libgeopmd-doc
 Requires: python3-geopmdpy-doc
@@ -92,11 +100,15 @@ Group: Documentation
 Man pages for python3-geopmpy package
 
 %prep
-%setup
+%setup -n geopm-%{version}
 
 %build
+cd docs
+echo %{version} > VERSION
+%{__make} man
 
 %install
+cd docs
 %{__make} DESTDIR=%{buildroot} prefix=%{_prefix} datarootdir=%{_datarootdir} mandir=%{_mandir} install_man
 %if 0%{?fedora} <= 40
 %{__make} DESTDIR=%{buildroot} prefix=%{_prefix} datarootdir=%{_datarootdir} mandir=%{_mandir} completionsdir=%{completionsdir} install_completion
@@ -188,3 +200,7 @@ Man pages for python3-geopmpy package
 %if 0%{?fedora} <= 40
 %doc %{completionsdir}/geopmlaunch
 %endif
+
+%changelog
+* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
+- Official v3.1.0 release tag

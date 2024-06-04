@@ -32,7 +32,6 @@ nodist_include_HEADERS =
 EXTRA_DIST =
 
 install-exec-hook: install-fortran
-dist: dist-googletest
 
 
 include_HEADERS = include/geopm_agent.h \
@@ -394,7 +393,6 @@ DISTCLEANFILES = VERSION MANIFEST
 
 CLEAN_LOCAL_TARGETS= clean-local-coverage \
                      clean-local-fortran \
-                     clean-local-googletest \
                      # end
 
 clean-local: $(CLEAN_LOCAL_TARGETS)
@@ -423,11 +421,7 @@ endif # ENABLE_MPI
 # RPM TARGET
 rpm_topdir ?= $(HOME)/rpmbuild
 rpm: dist
-	mkdir -p $(rpm_topdir)/SOURCES
-	mkdir -p $(rpm_topdir)/SPECS
-	cp geopm-runtime-$(VERSION).tar.gz $(rpm_topdir)/SOURCES
-	cp geopm-runtime.spec $(rpm_topdir)/SPECS
-	rpmbuild $(rpmbuild_flags) -ba $(rpm_topdir)/SPECS/geopm-runtime.spec
+	./make_rpm.sh
 
 DPKG_BUILDPACKAGE_OPTIONS ?= -us -uc
 deb: dist

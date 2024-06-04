@@ -16,7 +16,8 @@ Group: System Environment/Libraries
 Group: Development/Libraries/Python
 %endif
 URL: https://geopm.github.io
-Source0: @ARCHIVE@
+# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
+Source0: geopm-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildRequires: python3-devel
 BuildRequires: python3-setuptools
@@ -46,14 +47,23 @@ BuildRequires: marshalparser
 Python3 package for GEOPM runtime.  Provides the implementation for
 the runtime launcher and post-processing tools.
 
-# Steps for all packages
 %prep
-%setup -n geopmpy-%{version}
+%setup -n geopm-%{version}
+cd geopmpy
+echo %{version} > geopmpy/VERSION
 
 %build
+cd geopmpy
 %py3_build
 
+%if 0%{?fedora}
+%check
+cd geopmdpy
+python3 test
+%endif
+
 %install
+cd geopmpy
 %py3_install
 
 # Installed files
@@ -62,4 +72,6 @@ the runtime launcher and post-processing tools.
 %{python3_sitelib}/*
 %{_bindir}/geopmlaunch
 
-
+%changelog
+* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
+- Official v3.1.0 release tag

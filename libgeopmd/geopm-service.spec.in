@@ -28,7 +28,8 @@ Group: System Environment/Daemons
 Group: System/Daemons
 %endif
 URL: https://geopm.github.io
-Source0: geopm-service-%{version}.tar.gz
+# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
+Source0: geopm-%{version}.tar.gz
 BuildRoot: %{_tmppath}/geopm-service-%{version}-%{release}-root
 Prefix: %{_prefix}
 BuildRequires: gcc-c++
@@ -37,6 +38,10 @@ BuildRequires: libtool
 BuildRequires: libcap-devel
 BuildRequires: systemd-devel >= 221
 BuildRequires: zlib-devel
+%if 0%{?fedora}
+BuildRequires: gtest-devel >= 1.12.1
+BuildRequires: gmock-devel >= 1.12.1
+%endif
 %if %{defined enable_level_zero}
 BuildRequires: level-zero
 BuildRequires: level-zero-devel
@@ -109,17 +114,21 @@ BuildRequires: liburing-devel
 %define cpuid_option --disable-cpuid
 %endif
 
+%if 0%{?fedora}
+%define gtest_option --disable-build-gtest
+%endif
+
 %description -n libgeopmd2
 
 Library supporting the GEOPM Service.  This provides the libgeopmd
 library which provides C and C++ interfaces.
 
 # Steps for all packages
-%global debug_package %{nil}
 %prep
-%setup
+%setup -n geopm-%{version}
 
 %build
+cd libgeopmd
 
 %if %{defined with_level_zero}
 # Disable libze_loader as an explicit dependency for installing the RPM
@@ -135,6 +144,7 @@ library which provides C and C++ interfaces.
 %define relro_flags LDFLAGS=-Wl,-z,norelro
 %endif
 
+echo %{version} > VERSION
 ./autogen.sh
 unset CFLAGS CXXFLAGS
 CC=gcc CXX=g++ %{?relro_flags} \
@@ -144,12 +154,21 @@ CC=gcc CXX=g++ %{?relro_flags} \
             %{?level_zero_option} \
             %{?io_uring_option} \
             %{?cpuid_option} \
+            %{?gtest_option} \
             || ( cat config.log && false )
 
 CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
 %{__make} %{?_smp_mflags}
 
+%if 0%{?fedora}
+%check
+cd libgeopmd
+CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
+%{__make} %{?_smp_mflags} check
+%endif
+
 %install
+cd libgeopmd
 %{__make} DESTDIR=%{buildroot} install
 rm -f $(find %{buildroot}/%{_libdir} -name '*.a'; \
         find %{buildroot}/%{_libdir} -name '*.la')
@@ -164,11 +183,13 @@ ln -s -r %{buildroot}%{_sbindir}/service %{buildroot}%{_sbindir}/rcgeopm
 %clean
 
 %if 0%{?suse_version}
+cd libgeopmd
 %pre -n geopm-service
 %service_add_pre geopm.service
 %endif
 
 %post -n geopm-service
+cd libgeopmd
 %if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
 %systemd_post geopm.service
 %else
@@ -176,6 +197,7 @@ ln -s -r %{buildroot}%{_sbindir}/service %{buildroot}%{_sbindir}/rcgeopm
 %endif
 
 %preun -n geopm-service
+cd libgeopmd
 %if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
 %systemd_preun geopm.service
 %else
@@ -183,6 +205,7 @@ ln -s -r %{buildroot}%{_sbindir}/service %{buildroot}%{_sbindir}/rcgeopm
 %endif
 
 %postun -n geopm-service
+cd libgeopmd
 %if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
 %systemd_postun_with_restart geopm.service
 %else
@@ -244,3 +267,7 @@ ln -s -r %{buildroot}%{_sbindir}/service %{buildroot}%{_sbindir}/rcgeopm
 %{_includedir}/geopm_topo.h
 %{_includedir}/geopm_version.h
 %{_libdir}/libgeopmd.so
+
+%changelog
+* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
+- Official v3.1.0 release tag

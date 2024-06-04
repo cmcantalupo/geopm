@@ -9,7 +9,8 @@ License: BSD-3-Clause
 Group: System Environment/Libraries
 Vendor: Intel Corporation
 URL: https://geopm.github.io
-Source0: geopm-runtime-%{version}.tar.gz
+# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
+Source0: geopm-%{version}.tar.gz
 BuildRoot: %{_tmppath}/geopm-runtime-%{version}-%{release}-root
 Prefix: %{_prefix}
 BuildRequires: gcc-c++
@@ -28,12 +29,21 @@ BuildRequires: gdb-headless
 %if 0%{?suse_version}
 BuildRequires: systemd-rpm-macros
 %endif
+%if 0%{?fedora}
+BuildRequires: gtest-devel >= 1.12.1
+BuildRequires: gmock-devel >= 1.12.1
+%endif
+
 Recommends: geopm-runtime-doc
 
 %if %{defined suse_version}
 %define docdir %{_defaultdocdir}/geopm
 %else
 %define docdir %{_defaultdocdir}/geopm-%{version}
+%endif
+
+%if 0%{!fedora}
+%define gtest_option --disable-build-gtest
 %endif
 
 Requires: libgeopm2 = %{version}
@@ -47,7 +57,8 @@ algorithms.
 
 %prep
 
-%setup -n geopm-runtime-%{version}
+%setup -n geopm-%{version}
+cd libgeopm
 
 %package devel
 Summary: Global Extensible Open Power Manager - development
@@ -73,17 +84,25 @@ Library supportingthe GEOPM Runtime.  This provides the libgeopm
 library which provides C and C++ interfaces.
 
 %build
-test -f configure || ./autogen.sh
 
+./autogen.sh
 ./configure --prefix=%{_prefix} --libdir=%{_libdir} --libexecdir=%{_libexecdir} \
             --includedir=%{_includedir} --sbindir=%{_sbindir} \
             --docdir=%{docdir} \
             --disable-mpi --disable-openmp \
             --disable-fortran \
             --disable-geopmd-local \
+            %{?gtest_option} \
             || ( cat config.log && false )
 
 %{__make} %{?_smp_mflags}
+
+%if 0%{?fedora}
+%check
+cd libgeopm
+CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
+%{__make} %{?_smp_mflags} check
+%endif
 
 %install
 %{__make} DESTDIR=%{buildroot} install
@@ -124,3 +143,7 @@ rm -f $(find %{buildroot}/%{_libdir} -name '*.a'; \
 %doc %{docdir}/LICENSE-BSD-3-Clause
 %doc %{docdir}/README.md
 %doc %{docdir}/VERSION
+
+%changelog
+* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
+- Official v3.1.0 release tag

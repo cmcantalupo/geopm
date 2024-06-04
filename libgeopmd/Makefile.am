@@ -49,7 +49,6 @@ geopminclude_HEADERS = include/geopm/json11.hpp \
                        # end
 
 install-exec-hook: install-plugin-dir
-dist: dist-googletest
 
 install-plugin-dir:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)/geopm
@@ -257,8 +256,7 @@ libgeopmd_la_SOURCES = $(include_HEADERS) \
                        src/geopm_version.cpp \
                        # end
 
-nodist_libgeopmd_la_SOURCES = \
-                              $(msr_cpp_files) \
+nodist_libgeopmd_la_SOURCES = $(msr_cpp_files) \
                               $(sysfs_cpp_files) \
                               # end
 
@@ -348,13 +346,8 @@ io.github.geopm.xml:
 	fi
 
 # RPM TARGET
-rpm_topdir ?= $(HOME)/rpmbuild
-rpm: dist
-	mkdir -p $(rpm_topdir)/SOURCES
-	mkdir -p $(rpm_topdir)/SPECS
-	cp geopm-service-$(VERSION).tar.gz $(rpm_topdir)/SOURCES
-	cp geopm-service.spec $(rpm_topdir)/SPECS
-	rpmbuild $(rpmbuild_flags) -ba $(rpm_topdir)/SPECS/geopm-service.spec
+rpm:
+	./make_rpm.sh
 
 DPKG_BUILDPACKAGE_OPTIONS ?= -us -uc
 deb: dist
@@ -394,6 +387,8 @@ CLEANFILES = $(msr_cpp_files) $(sysfs_cpp_files)
 
 include test/Makefile.mk
 
+if ENABLE_FUZZTESTS
 include fuzz_test/Makefile.mk
+endif
 
 .PHONY: $(PHONY_TARGETS)
