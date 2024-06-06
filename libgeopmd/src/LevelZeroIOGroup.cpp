@@ -452,7 +452,7 @@ namespace geopm
                               {M_NAME_PREFIX + "GPU_CORE_PERFORMANCE_FACTOR", {
                                   "Performance Factor of the GPU Compute Hardware Domain.\n"
                                   "Expresses a trade-off between energy provided to the GPU compute hardware and the supporting units",
-                                  GEOPM_DOMAIN_GPU_CHIP,
+                                  m_native_domain,
                                   Agg::average,
                                   IOGroup::M_SIGNAL_BEHAVIOR_VARIABLE,
                                   string_format_double,
@@ -699,6 +699,9 @@ namespace geopm
                             break;
                         }
                     }
+                    if (sv.first.find("_PERFORMANCE_") != std::string::npos) {
+                        m_levelzero_device_pool.performance_factor(GEOPM_DOMAIN_GPU_CHIP, 0, LevelZero::M_DOMAIN_COMPUTE);
+                    }
                     std::shared_ptr<Signal> signal =
                             std::make_shared<LevelZeroSignal>(sv.second.m_devpool_func,
                                                               domain_idx,
@@ -719,6 +722,7 @@ namespace geopm
 
         for (const auto &name : unsupported_signal_names) {
             m_signal_available.erase(name);
+            m_control_available.erase(name);
         }
 
         register_derivative_signals();
@@ -1247,20 +1251,22 @@ namespace geopm
                                 GEOPM_ERROR_INVALID, __FILE__, __LINE__);
             }
 
-            try {
-                // Currently only the levelzero compute domain control is supported.
-                // As new controls are added they should be included
-                m_perf_factor.at(domain_idx) =
-                    m_levelzero_device_pool.performance_factor(GEOPM_DOMAIN_GPU_CHIP,
-                                                               domain_idx,
-                                                               geopm::LevelZero::M_DOMAIN_COMPUTE);
-            }
-            catch (const geopm::Exception &ex) {
-                throw Exception("LevelZeroIOGroup::" + std::string(__func__) + ": "
-                                + " Failed to fetch performance factor value for "
-                                " GPU_CHIP domain " + std::to_string(domain_idx) +
-                                "due to exception: " + ex.what(),
-                                GEOPM_ERROR_INVALID, __FILE__, __LINE__);
+            if (m_control_available.find("GPU_CORE_PERFORMANCE_FACTOR_CONTROL") != m_control_available.end()) {
+                try {
+                    // Currently only the levelzero compute domain control is supported.
+                    // As new controls are added they should be included
+                    m_perf_factor.at(domain_idx) =
+                        m_levelzero_device_pool.performance_factor(m_native_domain,
+                                                                   domain_idx,
+                                                                   geopm::LevelZero::M_DOMAIN_COMPUTE);
+                }
+                catch (const geopm::Exception &ex) {
+                    throw Exception("LevelZeroIOGroup::" + std::string(__func__) + ": "
+                                    + " Failed to fetch performance factor value for "
+                                    " GPU_CHIP domain " + std::to_string(domain_idx) +
+                                    "due to exception: " + ex.what(),
+                                    GEOPM_ERROR_INVALID, __FILE__, __LINE__);
+                }
             }
         }
     }
@@ -1289,22 +1295,24 @@ namespace geopm
                              << std::endl;
 #endif
             }
-            try {
-                // Currently only the levelzero compute domain control is supported.
-                // As new controls are added they should be included
-                m_levelzero_device_pool.performance_factor_control(GEOPM_DOMAIN_GPU_CHIP,
-                                        domain_idx,
-                                        geopm::LevelZero::M_DOMAIN_COMPUTE,
-                                        m_perf_factor.at(domain_idx));
-            }
-            catch (const geopm::Exception &ex) {
+            if (m_control_available.find("GPU_CORE_PERFORMANCE_FACTOR_CONTROL") != m_control_available.end()) {
+                try {
+                    // Currently only the levelzero compute domain control is supported.
+                    // As new controls are added they should be included
+                    m_levelzero_device_pool.performance_factor_control(m_native_domain,
+                                            domain_idx,
+                                            geopm::LevelZero::M_DOMAIN_COMPUTE,
+                                            m_perf_factor.at(domain_idx));
+                }
+                catch (const geopm::Exception &ex) {
 #ifdef GEOPM_DEBUG
-                std::cerr << "Warning: <geopm> LevelZeroIOGroup: Failed to "
-                             "restore frequency control settings for "
-                             "GPU_CHIP domain " << std::to_string(domain_idx)
-                             << ".  Exception: " << ex.what()
-                             << std::endl;
+                    std::cerr << "Warning: <geopm> LevelZeroIOGroup: Failed to "
+                                 "restore frequency control settings for "
+                                 "GPU_CHIP domain " << std::to_string(domain_idx)
+                                 << ".  Exception: " << ex.what()
+                                 << std::endl;
 #endif
+                }
             }
         }
     }
