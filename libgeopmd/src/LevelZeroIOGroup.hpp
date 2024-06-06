@@ -111,6 +111,7 @@ namespace geopm
             const PlatformTopo &m_platform_topo;
             const LevelZeroDevicePool &m_levelzero_device_pool;
             bool m_is_batch_read;
+            int m_native_domain;
 
             std::map<std::string, signal_info> m_signal_available;
             std::map<std::string, control_info> m_control_available;

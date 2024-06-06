@@ -45,6 +45,8 @@ namespace geopm
         : m_platform_topo(platform_topo)
         , m_levelzero_device_pool(device_pool)
         , m_is_batch_read(false)
+        , m_native_domain(device_pool.num_gpu(GEOPM_DOMAIN_GPU) == device_pool.num_gpu(GEOPM_DOMAIN_GPU_CHIP) ?
+                          GEOPM_DOMAIN_GPU : GEOPM_DOMAIN_GPU_CHIP)
         , m_signal_available({{M_NAME_PREFIX + "GPU_CORE_FREQUENCY_STATUS", {
                                   "The current frequency of the GPU Compute Hardware.",
                                   GEOPM_DOMAIN_GPU_CHIP,
@@ -166,7 +168,7 @@ namespace geopm
                                   }},
                               {M_NAME_PREFIX + "GPU_CORE_ENERGY", {
                                   "GPU Compute Hardware Domain chip energy in Joules",
-                                  GEOPM_DOMAIN_GPU_CHIP,
+                                  m_native_domain,
                                   Agg::sum,
                                   IOGroup::M_SIGNAL_BEHAVIOR_MONOTONE,
                                   string_format_double,
@@ -199,7 +201,7 @@ namespace geopm
                               {M_NAME_PREFIX + "GPU_CORE_ENERGY_TIMESTAMP", {
                                   "GPU compute hardware domain energy timestamp in seconds."
                                   "\nBatch use only - value cached on LEVELZERO::GPU_CORE_ENERGY read",
-                                  GEOPM_DOMAIN_GPU_CHIP,
+                                  m_native_domain,
                                   Agg::sum,
                                   IOGroup::M_SIGNAL_BEHAVIOR_MONOTONE,
                                   string_format_double,
@@ -215,7 +217,7 @@ namespace geopm
                                   }},
                               {M_NAME_PREFIX + "GPU_ENERGY", {
                                   "GPU energy in joules.",
-                                  GEOPM_DOMAIN_GPU,
+                                  m_native_domain,
                                   Agg::sum,
                                   IOGroup::M_SIGNAL_BEHAVIOR_MONOTONE,
                                   string_format_double,
@@ -232,7 +234,7 @@ namespace geopm
                               {M_NAME_PREFIX + "GPU_ENERGY_TIMESTAMP", {
                                   "Timestamp for the GPU energy read in seconds."
                                   "\nBatch use only - value is updated on LEVELZERO::GPU_ENERGY read.",
-                                  GEOPM_DOMAIN_GPU,
+                                  m_native_domain,
                                   Agg::sum,
                                   IOGroup::M_SIGNAL_BEHAVIOR_MONOTONE,
                                   string_format_double,
@@ -296,7 +298,7 @@ namespace geopm
                                   }},
                               {M_NAME_PREFIX + "GPU_POWER_LIMIT_DEFAULT", {
                                   "Default power limit of the GPU in watts.",
-                                  GEOPM_DOMAIN_GPU,
+                                  m_native_domain,
                                   Agg::sum,
                                   IOGroup::M_SIGNAL_BEHAVIOR_VARIABLE,
                                   string_format_double,
@@ -312,7 +314,7 @@ namespace geopm
                                   }},
                               {M_NAME_PREFIX + "GPU_POWER_LIMIT_MIN_AVAIL", {
                                   "The minimum supported power limit in watts.",
-                                  GEOPM_DOMAIN_GPU,
+                                  m_native_domain,
                                   Agg::sum,
                                   IOGroup::M_SIGNAL_BEHAVIOR_VARIABLE,
                                   string_format_double,
@@ -328,7 +330,7 @@ namespace geopm
                                   }},
                               {M_NAME_PREFIX + "GPU_POWER_LIMIT_MAX_AVAIL", {
                                   "The maximum supported power limit in watts.",
-                                  GEOPM_DOMAIN_GPU,
+                                  m_native_domain,
                                   Agg::sum,
                                   IOGroup::M_SIGNAL_BEHAVIOR_VARIABLE,
                                   string_format_double,
