@@ -1,0 +1,840 @@
+From 9f1fb2aea4fa71f13c08132a7e4fc5f41339878d Mon Sep 17 00:00:00 2001
+From: "Christopher M. Cantalupo" <christopher.m.cantalupo@intel.com>
+Date: Thu, 30 May 2024 12:04:57 -0700
+Subject: [PATCH] Combination of several patches related to packaging
+
+- Add explicity dependency of the geopm-service rpm on python3-geopmdpy
++ Without this change an install of the geopm-service will
+  result in the service unit to be restarted until the limit
+  for restarts is reached.
+
+- Add support for fedora version in spec files
+
+- Add %doc to all files in the -doc rpms
++ This includes the bash completions files
++ Addresses an issue on fedora rawhide
+
+- Exclude bash completion for fedora rawhide
+
+- Fix Fedora rawhide build
++ Avoid trying to create debug symbols for documentation and python
+  packages
++ Avoid import error by adding marshalparser
+
+- Disable use of relro flag for rawhide
++ When this -Wl,-z,relro is provided an an LDFLAG, there is a configure
+  time test that specifies a static linking flag.  These two are incompatible
+  which causes a configure time failure.
++ Unclear how the test is executed *after* the relro flag is added, since
+  it is appended at the end of configure.ac
+
+- Add strict version requirement to geopmdpy requires
+
+- Explicitly disallow pandas 2.0 due to binary incompatibilty with 1.x versions
++ https://stackoverflow.com/questions/78634235/numpy-dtype-size-changed-may-indicate-binary-incompatibility-expected-96-from/78641304#78641304
+
+- Change all spec files to build from git archive
++ Add check target to spec file for fedora builds
++ Make gtest build configurable
++ Make fuzz corpus download optional
++ Run sphinx at build time in doc RPM build
++ Add %check targets for fedora in all spec files
++ Allow override of VERSION file in docs
+
+Signed-off-by: Christopher Cantalupo <christopher.m.cantalupo@intel.com>
+---
+ docs/Makefile                   |  2 +-
+ docs/geopm-doc.spec.in          | 36 +++++++++++++++++++----
+ geopmdpy/geopmdpy.spec.in       | 24 +++++++++++++--
+ geopmdpy/make_rpm.sh            |  7 +++--
+ geopmpy/geopmpy.spec.in         | 24 ++++++++++++---
+ geopmpy/make_rpm.sh             |  7 +++--
+ geopmpy/pyproject.toml          |  2 +-
+ geopmpy/requirements.txt        |  2 +-
+ libgeopm/Makefile.am            |  8 +----
+ libgeopm/configure.ac           | 13 +++++++++
+ libgeopm/geopm-runtime.spec.in  | 31 +++++++++++++++++---
+ libgeopm/test/Makefile.mk       | 14 ++++++---
+ libgeopmd/Makefile.am           | 15 ++++------
+ libgeopmd/configure.ac          | 14 +++++++++
+ libgeopmd/geopm-service.spec.in | 52 ++++++++++++++++++++++++++-------
+ libgeopmd/make_rpm.sh           | 23 +++++++++++++++
+ libgeopmd/test/Makefile.mk      | 17 +++++++----
+ libgeopmd/test/googletest.mk    |  3 ++
+ 18 files changed, 233 insertions(+), 61 deletions(-)
+ create mode 100755 libgeopmd/make_rpm.sh
+
+diff --git a/docs/Makefile b/docs/Makefile
+index 6616a4312..2b1cba8e8 100644
+--- a/docs/Makefile
++++ b/docs/Makefile
+@@ -106,4 +106,4 @@ install_html:
+ 	cp -rp json_schemas/* $(GEOPM_GITHUB_IO)
+ 	VERSION=`cat VERSION` && cd $(GEOPM_GITHUB_IO) && git add -A && git commit -sm"Update to version $$VERSION"
+ 
+-.PHONY: all man html geopmlint clean_all DATE VERSION MANIFEST dist install_man install_completion install_html json_schemas json_schemas/active_sessions.schema.json json_schemas/const_config_io.schema.json
++.PHONY: all man html geopmlint clean_all DATE MANIFEST dist install_man install_completion install_html json_schemas json_schemas/active_sessions.schema.json json_schemas/const_config_io.schema.json
+diff --git a/docs/geopm-doc.spec.in b/docs/geopm-doc.spec.in
+index 004f1c993..2083e5859 100644
+--- a/docs/geopm-doc.spec.in
++++ b/docs/geopm-doc.spec.in
+@@ -28,9 +28,17 @@ Group: System Environment/Daemons
+ Group: System/Daemons
+ %endif
+ URL: https://geopm.github.io
+-Source0: geopm-doc-%{version}.tar.gz
++# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
++Source0: geopm-%{version}.tar.gz
+ BuildRoot: %{_tmppath}/geopm-doc-%{version}-%{release}-root
+ Prefix: %{_prefix}
++BuildRequires: python3-sphinx >= 4.5.0
++BuildRequires: python3-sphinx_rtd_theme >= 1.0.0
++BuildRequires: python3-sphinxemoji >= 0.2.0
++BuildRequires: python3-pygments >= 2.13.0
++BuildRequires: python3-sphinx-tabs >= 3.3.1
++BuildRequires: doxygen
++BuildRequires: graphviz
+ Requires: geopm-service-doc
+ Requires: libgeopmd-doc
+ Requires: python3-geopmdpy-doc
+@@ -42,6 +50,10 @@ BuildRequires: bash-completion-devel
+ %else
+ BuildRequires: bash-completion
+ %endif
++%if 0%{?fedora}
++BuildRequires: marshalparser
++%global debug_package %{nil}
++%endif
+ 
+ %define completionsdir %(pkg-config --variable=completionsdir bash-completion)
+ %if "x%{?completionsdir}" == "x"
+@@ -88,13 +100,19 @@ Group: Documentation
+ Man pages for python3-geopmpy package
+ 
+ %prep
+-%setup
++%setup -n geopm-%{version}
+ 
+ %build
++cd docs
++echo %{version} > VERSION
++%{__make} man
+ 
+ %install
++cd docs
+ %{__make} DESTDIR=%{buildroot} prefix=%{_prefix} datarootdir=%{_datarootdir} mandir=%{_mandir} install_man
++%if 0%{?fedora} <= 40
+ %{__make} DESTDIR=%{buildroot} prefix=%{_prefix} datarootdir=%{_datarootdir} mandir=%{_mandir} completionsdir=%{completionsdir} install_completion
++%endif
+ 
+ %clean
+ 
+@@ -131,8 +149,10 @@ Man pages for python3-geopmpy package
+ %doc %{_mandir}/man7/geopm_pio_sysfs.7.gz
+ %doc %{_mandir}/man7/geopm_pio_time.7.gz
+ %doc %{_mandir}/man7/geopm_report.7.gz
+-%{completionsdir}/geopmread
+-%{completionsdir}/geopmwrite
++%if 0%{?fedora} <= 40
++%doc %{completionsdir}/geopmread
++%doc %{completionsdir}/geopmwrite
++%endif
+ 
+ %files -n libgeopmd-doc
+ %doc %{_mandir}/man3/geopm::Agg.3.gz
+@@ -177,4 +197,10 @@ Man pages for python3-geopmpy package
+ %files -n python3-geopmpy-doc
+ %doc %{_mandir}/man1/geopmlaunch.1.gz
+ %doc %{_mandir}/man7/geopmpy.7.gz
+-%{completionsdir}/geopmlaunch
++%if 0%{?fedora} <= 40
++%doc %{completionsdir}/geopmlaunch
++%endif
++
++%changelog
++* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
++- Official v3.1.0 release tag
+diff --git a/geopmdpy/geopmdpy.spec.in b/geopmdpy/geopmdpy.spec.in
+index 5861cf0b7..96eb94914 100644
+--- a/geopmdpy/geopmdpy.spec.in
++++ b/geopmdpy/geopmdpy.spec.in
+@@ -16,12 +16,17 @@ Group: System Environment/Libraries
+ Group: Development/Libraries/Python
+ %endif
+ URL: https://geopm.github.io
+-Source0: @ARCHIVE@
++# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
++Source0: geopm-%{version}.tar.gz
+ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+ BuildRequires: python3-devel
+ BuildRequires: python3-setuptools
+-
+ BuildRequires: python-rpm-macros
++%if 0%{?fedora}
++BuildRequires: marshalparser
++%global debug_package %{nil}
++%endif
++
+ 
+ %define python_bin %{__python3}
+ 
+@@ -54,12 +59,22 @@ configuring the service.
+ 
+ # Steps for all packages
+ %prep
+-%setup -n geopmdpy-%{version}
++%setup -n geopm-%{version}
++cd geopmdpy
++echo %{version} > geopmdpy/VERSION
+ 
+ %build
++cd geopmdpy
+ %py3_build
+ 
++%if 0%{?fedora}
++%check
++cd geopmdpy
++python3 test
++%endif
++
+ %install
++cd geopmdpy
+ %py3_install
+ 
+ # Installed files
+@@ -70,3 +85,6 @@ configuring the service.
+ %{_bindir}/geopmaccess
+ %{_bindir}/geopmsession
+ 
++%changelog
++* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
++- Official v3.1.0 release tag
+diff --git a/geopmdpy/make_rpm.sh b/geopmdpy/make_rpm.sh
+index 69124342a..11a370be3 100755
+--- a/geopmdpy/make_rpm.sh
++++ b/geopmdpy/make_rpm.sh
+@@ -8,10 +8,11 @@ set -xe
+ ./make_sdist.sh
+ 
+ PACKAGE_NAME=geopmdpy
+-ARCHIVE=${PACKAGE_NAME}-$(cat ${PACKAGE_NAME}/VERSION).tar.gz
++VERSION=$(cat ${PACKAGE_NAME}/VERSION)
+ RPM_TOPDIR=${RPM_TOPDIR:-${HOME}/rpmbuild}
+ mkdir -p ${RPM_TOPDIR}/SOURCES
+ mkdir -p ${RPM_TOPDIR}/SPECS
+-cp dist/${ARCHIVE} ${RPM_TOPDIR}/SOURCES
+-cp ${PACKAGE_NAME}.spec ${RPM_TOPDIR}/SPECS
++sed -e "s|@VERSION@|$VERSION|g" ${PACKAGE_NAME}.spec.in > ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
++cd ..
++git archive --format=tar.gz -o ${RPM_TOPDIR}/SOURCES/geopm-${VERSION}.tar.gz --prefix=geopm-${VERSION}/ HEAD
+ rpmbuild -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
+diff --git a/geopmpy/geopmpy.spec.in b/geopmpy/geopmpy.spec.in
+index 71d45ecd0..e75669f42 100644
+--- a/geopmpy/geopmpy.spec.in
++++ b/geopmpy/geopmpy.spec.in
+@@ -16,7 +16,8 @@ Group: System Environment/Libraries
+ Group: Development/Libraries/Python
+ %endif
+ URL: https://geopm.github.io
+-Source0: @ARCHIVE@
++# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
++Source0: geopm-%{version}.tar.gz
+ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+ BuildRequires: python3-devel
+ BuildRequires: python3-setuptools
+@@ -34,6 +35,10 @@ Requires: python3-tables>=3.7.0
+ Requires: python3-geopmdpy
+ Requires: libgeopm2 = %{version}
+ Recommends: python3-geopmpy-doc
++%if 0%{?fedora}
++BuildRequires: marshalparser
++%global debug_package %{nil}
++%endif
+ 
+ %{?python_provide:%python_provide python3-geopmpy}
+ 
+@@ -42,14 +47,23 @@ Recommends: python3-geopmpy-doc
+ Python3 package for GEOPM runtime.  Provides the implementation for
+ the runtime launcher and post-processing tools.
+ 
+-# Steps for all packages
+ %prep
+-%setup -n geopmpy-%{version}
++%setup -n geopm-%{version}
++cd geopmpy
++echo %{version} > geopmpy/VERSION
+ 
+ %build
++cd geopmpy
+ %py3_build
+ 
++%if 0%{?fedora}
++%check
++cd geopmdpy
++python3 test
++%endif
++
+ %install
++cd geopmpy
+ %py3_install
+ 
+ # Installed files
+@@ -58,4 +72,6 @@ the runtime launcher and post-processing tools.
+ %{python3_sitelib}/*
+ %{_bindir}/geopmlaunch
+ 
+-
++%changelog
++* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
++- Official v3.1.0 release tag
+diff --git a/geopmpy/make_rpm.sh b/geopmpy/make_rpm.sh
+index 82c79d23a..c0236f14b 100755
+--- a/geopmpy/make_rpm.sh
++++ b/geopmpy/make_rpm.sh
+@@ -8,10 +8,11 @@ set -xe
+ ./make_sdist.sh
+ 
+ PACKAGE_NAME=geopmpy
+-ARCHIVE=${PACKAGE_NAME}-$(cat ${PACKAGE_NAME}/VERSION).tar.gz
++VERSION=$(cat ${PACKAGE_NAME}/VERSION)
+ RPM_TOPDIR=${RPM_TOPDIR:-${HOME}/rpmbuild}
+ mkdir -p ${RPM_TOPDIR}/SOURCES
+ mkdir -p ${RPM_TOPDIR}/SPECS
+-cp dist/${ARCHIVE} ${RPM_TOPDIR}/SOURCES
+-cp ${PACKAGE_NAME}.spec ${RPM_TOPDIR}/SPECS
++sed -e "s|@VERSION@|$VERSION|g" ${PACKAGE_NAME}.spec.in > ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
++cd ..
++git archive --format=tar.gz -o ${RPM_TOPDIR}/SOURCES/geopm-${VERSION}.tar.gz --prefix=geopm-${VERSION}/ HEAD
+ rpmbuild -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
+diff --git a/geopmpy/pyproject.toml b/geopmpy/pyproject.toml
+index 15353113c..110659a6b 100755
+--- a/geopmpy/pyproject.toml
++++ b/geopmpy/pyproject.toml
+@@ -47,7 +47,7 @@ classifiers = ["Development Status :: 5 - Production/Stable",
+ dependencies = ['cffi>=1.14.5',
+                 'cycler>=0.11.0',
+                 'natsort>=8.1.0',
+-                'numpy>=1.19.5',
++                'numpy>=1.19.5,<2.0.0',
+                 'pandas>=1.1.5',
+                 'psutil>=5.8.0',
+                 'pyyaml>=6.0.0',
+diff --git a/geopmpy/requirements.txt b/geopmpy/requirements.txt
+index 212064955..419f60d3c 100644
+--- a/geopmpy/requirements.txt
++++ b/geopmpy/requirements.txt
+@@ -1,7 +1,7 @@
+ cffi>=1.14.5
+ cycler>=0.11.0
+ natsort>=8.1.0
+-numpy>=1.19.5
++numpy>=1.19.5,<2.0.0
+ pandas>=1.1.5
+ psutil>=5.8.0
+ pyyaml>=6.0.0
+diff --git a/libgeopm/Makefile.am b/libgeopm/Makefile.am
+index 0a27cef9d..03eda15c1 100644
+--- a/libgeopm/Makefile.am
++++ b/libgeopm/Makefile.am
+@@ -32,7 +32,6 @@ nodist_include_HEADERS =
+ EXTRA_DIST =
+ 
+ install-exec-hook: install-fortran
+-dist: dist-googletest
+ 
+ 
+ include_HEADERS = include/geopm_agent.h \
+@@ -394,7 +393,6 @@ DISTCLEANFILES = VERSION MANIFEST
+ 
+ CLEAN_LOCAL_TARGETS= clean-local-coverage \
+                      clean-local-fortran \
+-                     clean-local-googletest \
+                      # end
+ 
+ clean-local: $(CLEAN_LOCAL_TARGETS)
+@@ -423,11 +421,7 @@ endif # ENABLE_MPI
+ # RPM TARGET
+ rpm_topdir ?= $(HOME)/rpmbuild
+ rpm: dist
+-	mkdir -p $(rpm_topdir)/SOURCES
+-	mkdir -p $(rpm_topdir)/SPECS
+-	cp geopm-runtime-$(VERSION).tar.gz $(rpm_topdir)/SOURCES
+-	cp geopm-runtime.spec $(rpm_topdir)/SPECS
+-	rpmbuild $(rpmbuild_flags) -ba $(rpm_topdir)/SPECS/geopm-runtime.spec
++	./make_rpm.sh
+ 
+ DPKG_BUILDPACKAGE_OPTIONS ?= -us -uc
+ deb: dist
+diff --git a/libgeopm/configure.ac b/libgeopm/configure.ac
+index 7d7393e24..a6dd98c29 100644
+--- a/libgeopm/configure.ac
++++ b/libgeopm/configure.ac
+@@ -76,6 +76,18 @@ fi
+ AC_SUBST([enable_beta])
+ AM_CONDITIONAL([ENABLE_BETA], [test "x$enable_beta" = "x1"])
+ 
++AC_ARG_ENABLE([build-gtest],
++  [AS_HELP_STRING([--disable-build-gtest], [Do not download and build google test and google mock, system install required])],
++[if test "x$enable_build_gtest" = "xno" ; then
++  enable_build_gtest="0"
++else
++  enable_build_gtest="1"
++fi
++],
++[enable_build_gtest="1"]
++)
++AC_SUBST([enable_build_gtest])
++AM_CONDITIONAL([BUILD_GTEST], [test "x$enable_build_gtest" = "x1"])
+ 
+ AC_ARG_WITH([sqlite3], [AS_HELP_STRING([--with-sqlite3=PATH],
+             [specify directory for installed sqlite3 package.])])
+@@ -624,6 +636,7 @@ AC_MSG_RESULT([GEOPM_CONFIG_PATH  : ${GEOPM_CONFIG_PATH}])
+ AC_MSG_RESULT([])
+ AC_MSG_RESULT([debug              : ${enable_debug}])
+ AC_MSG_RESULT([coverage           : ${enable_coverage}])
++AC_MSG_RESULT([build_gtest        : ${enable_build_gtest}])
+ AC_MSG_RESULT([overhead           : ${enable_overhead}])
+ AC_MSG_RESULT([mpi                : ${enable_mpi}])
+ AC_MSG_RESULT([openmp             : ${enable_openmp}])
+diff --git a/libgeopm/geopm-runtime.spec.in b/libgeopm/geopm-runtime.spec.in
+index 6b71c6dba..5f8860ec6 100644
+--- a/libgeopm/geopm-runtime.spec.in
++++ b/libgeopm/geopm-runtime.spec.in
+@@ -9,7 +9,8 @@ License: BSD-3-Clause
+ Group: System Environment/Libraries
+ Vendor: Intel Corporation
+ URL: https://geopm.github.io
+-Source0: geopm-runtime-%{version}.tar.gz
++# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
++Source0: geopm-%{version}.tar.gz
+ BuildRoot: %{_tmppath}/geopm-runtime-%{version}-%{release}-root
+ Prefix: %{_prefix}
+ BuildRequires: gcc-c++
+@@ -28,6 +29,11 @@ BuildRequires: gdb-headless
+ %if 0%{?suse_version}
+ BuildRequires: systemd-rpm-macros
+ %endif
++%if 0%{?fedora}
++BuildRequires: gtest-devel >= 1.12.1
++BuildRequires: gmock-devel >= 1.12.1
++%endif
++
+ Recommends: geopm-runtime-doc
+ 
+ %if %{defined suse_version}
+@@ -36,6 +42,10 @@ Recommends: geopm-runtime-doc
+ %define docdir %{_defaultdocdir}/geopm-%{version}
+ %endif
+ 
++%if 0%{!fedora}
++%define gtest_option --disable-build-gtest
++%endif
++
+ Requires: libgeopm2 = %{version}
+ 
+ %description
+@@ -47,7 +57,8 @@ algorithms.
+ 
+ %prep
+ 
+-%setup -n geopm-runtime-%{version}
++%setup -n geopm-%{version}
++cd libgeopm
+ 
+ %package devel
+ Summary: Global Extensible Open Power Manager - development
+@@ -59,7 +70,7 @@ Development package for GEOPM.
+ 
+ %package -n libgeopm2
+ Summary: Provides libgeopm shared object library
+-%if 0%{?rhel_version} || 0%{?centos_version}
++%if 0%{?rhel_version} || 0%{?centos_version} || 0%{?rocky_ver} || 0%{?fedora}
+ # Deprecated for RHEL and CentOS
+ Group: System Environment/Libraries
+ %else
+@@ -73,18 +84,26 @@ Library supportingthe GEOPM Runtime.  This provides the libgeopm
+ library which provides C and C++ interfaces.
+ 
+ %build
+-test -f configure || ./autogen.sh
+ 
++./autogen.sh
+ ./configure --prefix=%{_prefix} --libdir=%{_libdir} --libexecdir=%{_libexecdir} \
+             --includedir=%{_includedir} --sbindir=%{_sbindir} \
+             --docdir=%{docdir} \
+             --disable-mpi --disable-openmp \
+             --disable-fortran \
+             --disable-geopmd-local \
++            %{?gtest_option} \
+             || ( cat config.log && false )
+ 
+ %{__make} %{?_smp_mflags}
+ 
++%if 0%{?fedora}
++%check
++cd libgeopm
++CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
++%{__make} %{?_smp_mflags} check
++%endif
++
+ %install
+ %{__make} DESTDIR=%{buildroot} install
+ rm -f $(find %{buildroot}/%{_libdir} -name '*.a'; \
+@@ -124,3 +143,7 @@ rm -f $(find %{buildroot}/%{_libdir} -name '*.a'; \
+ %doc %{docdir}/LICENSE-BSD-3-Clause
+ %doc %{docdir}/README.md
+ %doc %{docdir}/VERSION
++
++%changelog
++* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
++- Official v3.1.0 release tag
+diff --git a/libgeopm/test/Makefile.mk b/libgeopm/test/Makefile.mk
+index 5058c3e44..d32e3cff4 100644
+--- a/libgeopm/test/Makefile.mk
++++ b/libgeopm/test/Makefile.mk
+@@ -168,10 +168,7 @@ test_geopm_test_SOURCES += src/Profile.cpp \
+                            include/geopm/Profile.hpp \
+                            # endif
+ 
+-test_geopm_test_LDADD = libgeopm.la \
+-                        libgmock.a \
+-                        libgtest.a \
+-                        # end
++test_geopm_test_LDADD = libgeopm.la
+ 
+ test_geopm_test_CPPFLAGS = $(AM_CPPFLAGS) -Iplugin
+ test_geopm_test_CFLAGS = $(AM_CFLAGS)
+@@ -209,4 +206,13 @@ coverage: init-coverage check
+ 	lcov --remove coverage-base-combined.info "$$(realpath $$(pwd))/src/geopm_pmpi_fortran.c" --output-file coverage-base-combined-filtered.info
+ 	genhtml coverage-base-combined-filtered.info --output-directory coverage-base --legend -t $(VERSION) -f
+ 
++if BUILD_GTEST
+ include test/googletest.mk
++test_geopm_test_LDADD += libgtest.a \
++                         libgmock.a \
++                         # end
++else
++test_geopm_test_LDADD += -lgmock \
++                         -lgtest \
++                         # end
++endif
+diff --git a/libgeopmd/Makefile.am b/libgeopmd/Makefile.am
+index 6e40c48b2..27273b3d7 100644
+--- a/libgeopmd/Makefile.am
++++ b/libgeopmd/Makefile.am
+@@ -49,7 +49,6 @@ geopminclude_HEADERS = include/geopm/json11.hpp \
+                        # end
+ 
+ install-exec-hook: install-plugin-dir
+-dist: dist-googletest
+ 
+ install-plugin-dir:
+ 	$(INSTALL) -d $(DESTDIR)/$(libdir)/geopm
+@@ -257,8 +256,7 @@ libgeopmd_la_SOURCES = $(include_HEADERS) \
+                        src/geopm_version.cpp \
+                        # end
+ 
+-nodist_libgeopmd_la_SOURCES = \
+-                              $(msr_cpp_files) \
++nodist_libgeopmd_la_SOURCES = $(msr_cpp_files) \
+                               $(sysfs_cpp_files) \
+                               # end
+ 
+@@ -348,13 +346,8 @@ io.github.geopm.xml:
+ 	fi
+ 
+ # RPM TARGET
+-rpm_topdir ?= $(HOME)/rpmbuild
+-rpm: dist
+-	mkdir -p $(rpm_topdir)/SOURCES
+-	mkdir -p $(rpm_topdir)/SPECS
+-	cp geopm-service-$(VERSION).tar.gz $(rpm_topdir)/SOURCES
+-	cp geopm-service.spec $(rpm_topdir)/SPECS
+-	rpmbuild $(rpmbuild_flags) -ba $(rpm_topdir)/SPECS/geopm-service.spec
++rpm:
++	./make_rpm.sh
+ 
+ DPKG_BUILDPACKAGE_OPTIONS ?= -us -uc
+ deb: dist
+@@ -394,6 +387,8 @@ CLEANFILES = $(msr_cpp_files) $(sysfs_cpp_files)
+ 
+ include test/Makefile.mk
+ 
++if ENABLE_FUZZTESTS
+ include fuzz_test/Makefile.mk
++endif
+ 
+ .PHONY: $(PHONY_TARGETS)
+diff --git a/libgeopmd/configure.ac b/libgeopmd/configure.ac
+index 80e4d8abf..905ac1d67 100644
+--- a/libgeopmd/configure.ac
++++ b/libgeopmd/configure.ac
+@@ -242,6 +242,19 @@ else
+   AM_CFLAGS="$AM_CFLAGS $SANITIZE_CFI"
+ fi
+ 
++AC_ARG_ENABLE([build-gtest],
++  [AS_HELP_STRING([--disable-build-gtest], [Do not download and build google test and google mock, system install required])],
++[if test "x$enable_build_gtest" = "xno" ; then
++  enable_build_gtest="0"
++else
++  enable_build_gtest="1"
++fi
++],
++[enable_build_gtest="1"]
++)
++AC_SUBST([enable_build_gtest])
++AM_CONDITIONAL([BUILD_GTEST], [test "x$enable_build_gtest" = "x1"])
++
+ AC_SUBST([enable_asan])
+ AM_CONDITIONAL([ENABLE_SANITIZERS], [test "x$enable_asan" = "x1"])
+ 
+@@ -536,6 +549,7 @@ AC_MSG_RESULT([GEOPM_CONFIG_PATH  : ${GEOPM_CONFIG_PATH}])
+ AC_MSG_RESULT([])
+ AC_MSG_RESULT([debug              : ${enable_debug}])
+ AC_MSG_RESULT([coverage           : ${enable_coverage}])
++AC_MSG_RESULT([build_gtest        : ${enable_build_gtest}])
+ AC_MSG_RESULT([dcgm               : ${enable_dcgm}])
+ AC_MSG_RESULT([nvml               : ${enable_nvml}])
+ AC_MSG_RESULT([levelzero          : ${enable_levelzero}])
+diff --git a/libgeopmd/geopm-service.spec.in b/libgeopmd/geopm-service.spec.in
+index 6c2836f01..8ce393379 100644
+--- a/libgeopmd/geopm-service.spec.in
++++ b/libgeopmd/geopm-service.spec.in
+@@ -21,14 +21,15 @@ Name: geopm-service
+ Version: @VERSION@
+ Release: 1
+ License: BSD-3-Clause
+-%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver}
++%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
+ # Deprecated for RHEL and CentOS
+ Group: System Environment/Daemons
+ %else
+ Group: System/Daemons
+ %endif
+ URL: https://geopm.github.io
+-Source0: geopm-service-%{version}.tar.gz
++# Source0: https://github.com/geopm/geopm/archive/v3.1.0/geopm-3.1.0.tar.gz
++Source0: geopm-%{version}.tar.gz
+ BuildRoot: %{_tmppath}/geopm-service-%{version}-%{release}-root
+ Prefix: %{_prefix}
+ BuildRequires: gcc-c++
+@@ -37,6 +38,10 @@ BuildRequires: libtool
+ BuildRequires: libcap-devel
+ BuildRequires: systemd-devel >= 221
+ BuildRequires: zlib-devel
++%if 0%{?fedora}
++BuildRequires: gtest-devel >= 1.12.1
++BuildRequires: gmock-devel >= 1.12.1
++%endif
+ %if %{defined enable_level_zero}
+ BuildRequires: level-zero
+ BuildRequires: level-zero-devel
+@@ -55,6 +60,7 @@ Recommends: geopm-service-doc
+ %endif
+ 
+ Requires: libgeopmd2 = %{version}
++Requires: python3-geopmdpy = %{version}
+ 
+ %description
+ 
+@@ -70,7 +76,7 @@ is installed with this package.
+ %package devel
+ 
+ Summary: Global Extensible Open Power Manager Service - development
+-%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver}
++%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
+ # Deprecated for RHEL and CentOS
+ Group: Development/Libraries
+ %else
+@@ -88,7 +94,7 @@ libgeopmd.so shared object symbolic link.
+ %package -n libgeopmd2
+ 
+ Summary: Provides libgeopmd shared object library
+-%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver}
++%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver}  || 0%{?fedora}
+ # Deprecated for RHEL and CentOS
+ Group: System Environment/Libraries
+ %else
+@@ -108,17 +114,21 @@ BuildRequires: liburing-devel
+ %define cpuid_option --disable-cpuid
+ %endif
+ 
++%if 0%{?fedora}
++%define gtest_option --disable-build-gtest
++%endif
++
+ %description -n libgeopmd2
+ 
+ Library supporting the GEOPM Service.  This provides the libgeopmd
+ library which provides C and C++ interfaces.
+ 
+ # Steps for all packages
+-%global debug_package %{nil}
+ %prep
+-%setup
++%setup -n geopm-%{version}
+ 
+ %build
++cd libgeopmd
+ 
+ %if %{defined with_level_zero}
+ # Disable libze_loader as an explicit dependency for installing the RPM
+@@ -129,22 +139,36 @@ library which provides C and C++ interfaces.
+ %define level_zero_option --enable-levelzero
+ %endif
+ %endif
++%if 0%{?fedora} != 0 && ! 0%{?fedora} <= 40
++# Our use of relro flag causes a configure test to fail on fedora rawhide
++%define relro_flags LDFLAGS=-Wl,-z,norelro
++%endif
+ 
++echo %{version} > VERSION
+ ./autogen.sh
+ unset CFLAGS CXXFLAGS
+-CC=gcc CXX=g++ \
++CC=gcc CXX=g++ %{?relro_flags} \
+ ./configure --prefix=%{_prefix} --libdir=%{_libdir} --libexecdir=%{_libexecdir} \
+             --includedir=%{_includedir} --sbindir=%{_sbindir} \
+             --mandir=%{_mandir} --docdir=%{docdir} \
+             %{?level_zero_option} \
+             %{?io_uring_option} \
+             %{?cpuid_option} \
++            %{?gtest_option} \
+             || ( cat config.log && false )
+ 
+ CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
+ %{__make} %{?_smp_mflags}
+ 
++%if 0%{?fedora}
++%check
++cd libgeopmd
++CFLAGS= CXXFLAGS= CC=gcc CXX=g++ \
++%{__make} %{?_smp_mflags} check
++%endif
++
+ %install
++cd libgeopmd
+ %{__make} DESTDIR=%{buildroot} install
+ rm -f $(find %{buildroot}/%{_libdir} -name '*.a'; \
+         find %{buildroot}/%{_libdir} -name '*.la')
+@@ -159,26 +183,30 @@ ln -s -r %{buildroot}%{_sbindir}/service %{buildroot}%{_sbindir}/rcgeopm
+ %clean
+ 
+ %if 0%{?suse_version}
++cd libgeopmd
+ %pre -n geopm-service
+ %service_add_pre geopm.service
+ %endif
+ 
+ %post -n geopm-service
+-%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver}
++cd libgeopmd
++%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
+ %systemd_post geopm.service
+ %else
+ %service_add_post geopm.service
+ %endif
+ 
+ %preun -n geopm-service
+-%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver}
++cd libgeopmd
++%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
+ %systemd_preun geopm.service
+ %else
+ %service_del_preun geopm.service
+ %endif
+ 
+ %postun -n geopm-service
+-%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver}
++cd libgeopmd
++%if 0%{?rhel_version} || 0%{?centos_ver} || 0%{?rocky_ver} || 0%{?fedora}
+ %systemd_postun_with_restart geopm.service
+ %else
+ %service_del_postun geopm.service
+@@ -239,3 +267,7 @@ ln -s -r %{buildroot}%{_sbindir}/service %{buildroot}%{_sbindir}/rcgeopm
+ %{_includedir}/geopm_topo.h
+ %{_includedir}/geopm_version.h
+ %{_libdir}/libgeopmd.so
++
++%changelog
++* Fri May 17 2024 Christopher M Cantalupo <christopher.m.cantalupo@intel.com> v3.1.0
++- Official v3.1.0 release tag
+diff --git a/libgeopmd/make_rpm.sh b/libgeopmd/make_rpm.sh
+new file mode 100755
+index 000000000..22d30fd88
+--- /dev/null
++++ b/libgeopmd/make_rpm.sh
+@@ -0,0 +1,23 @@
++#!/bin/bash
++#  Copyright (c) 2015 - 2024 Intel Corporation
++#  SPDX-License-Identifier: BSD-3-Clause
++#
++
++set -xe
++
++./autogen.sh
++
++PACKAGE_NAME=geopm-service
++VERSION=$(cat VERSION)
++RPM_TOPDIR=${RPM_TOPDIR:-${HOME}/rpmbuild}
++mkdir -p ${RPM_TOPDIR}/SOURCES
++mkdir -p ${RPM_TOPDIR}/SPECS
++sed -e "s|@VERSION@|$VERSION|g" ${PACKAGE_NAME}.spec.in > ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
++cd ..
++git archive --format=tar.gz -o ${RPM_TOPDIR}/SOURCES/geopm-${VERSION}.tar.gz --prefix=geopm-${VERSION}/ HEAD
++
++if grep -q 'VERSION="15-SP2"' /etc/os-release; then
++    rpmbuild ${rpmbuild_flags} --define "disable_io_uring 1" -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
++else
++    rpmbuild ${rpmbuild_flags} -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
++fi
+diff --git a/libgeopmd/test/Makefile.mk b/libgeopmd/test/Makefile.mk
+index 06597860d..7256e9c8d 100644
+--- a/libgeopmd/test/Makefile.mk
++++ b/libgeopmd/test/Makefile.mk
+@@ -98,10 +98,18 @@ test_geopm_test_SOURCES = test/GPUTopoNullTest.cpp \
+                           test/UniqueFdTest.cpp \
+                           # end
+ 
+-test_geopm_test_LDADD = libgeopmd.la \
+-                        libgmock.a \
+-                        libgtest.a \
+-                        # end
++test_geopm_test_LDADD = libgeopmd.la
++
++if BUILD_GTEST
++include test/googletest.mk
++test_geopm_test_LDADD += libgtest.a \
++                         libgmock.a \
++                         # end
++else
++test_geopm_test_LDADD += -lgmock \
++                         -lgtest \
++                         # end
++endif
+ 
+ test_geopm_test_CPPFLAGS = $(AM_CPPFLAGS) -Iplugin
+ test_geopm_test_CFLAGS = $(AM_CFLAGS)
+@@ -119,4 +127,3 @@ coverage: init-coverage check
+ 	lcov -a coverage-service-initial.info -a coverage-service.info --output-file coverage-service-combined.info
+ 	genhtml coverage-service-combined.info --output-directory coverage-service --legend -t $(VERSION) -f
+ 
+-include test/googletest.mk
+diff --git a/libgeopmd/test/googletest.mk b/libgeopmd/test/googletest.mk
+index 6c03d08a3..611976fca 100644
+--- a/libgeopmd/test/googletest.mk
++++ b/libgeopmd/test/googletest.mk
+@@ -2,6 +2,9 @@
+ #  SPDX-License-Identifier: BSD-3-Clause
+ #
+ 
++CLEAN_LOCAL_TARGETS += clean-local-googletest
++dist: dist-googletest
++
+ AM_CPPFLAGS += -I$(googletest)/include
+ AM_CPPFLAGS += -I$(googlemock)/include
+ BUILT_SOURCES += $(googletest_suite)/VERSION
+-- 
+2.26.2
+
