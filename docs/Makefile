@@ -27,11 +27,11 @@ json_schemas/const_config_io.schema.json:
 
 man: html
 	PYTHONPATH=../geopmdpy:../geopmpy \
-	    sphinx-build -M man source build -W
+	    sphinx-build -M man source build
 
 html: VERSION json_schemas
 	PYTHONPATH=../geopmdpy:../geopmpy \
-	    sphinx-build -M html source build -W
+	    sphinx-build -M html source build
 	./doxygen_update.sh
 
 # Nobody asked for this build target, so don't make it a build-blocker unless

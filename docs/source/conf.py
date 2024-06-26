@@ -69,7 +69,6 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autosectionlabel',
     'sphinxemoji.sphinxemoji',
-    'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'geopmlint',
     'geopm_rst_extensions',
@@ -103,15 +102,6 @@ nitpicky = True
 # to enhance readability to the end of Python function names in the :py:func:
 # which is a python reference link to the documentation.
 add_function_parentheses = True
-
-intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'dasbus': ('https://dasbus.readthedocs.io/en/stable', None),
-    'pygobject': ('https://pygobject.readthedocs.io/en/latest', None),
-    'cffi': ('https://cffi.readthedocs.io/en/latest', None),
-    'pandas': ('https://pandas.pydata.org/docs/', None),
-    'psutil': ('https://psutil.readthedocs.io/en/latest', None),
-}
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
