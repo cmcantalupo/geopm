@@ -6,7 +6,6 @@
 #ifndef PLATFORMIO_HPP_INCLUDE
 #define PLATFORMIO_HPP_INCLUDE
 
-#include <climits>
 #include <functional>
 #include <memory>
 #include <set>
