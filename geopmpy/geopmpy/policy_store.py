@@ -5,15 +5,14 @@
 
 
 import math
-from package._libgeopm import ffi, lib
+from geopmpy._libgeopm import ffi, lib
 from geopmdpy import error
 
-
-def is_implemented():
-    """Check whether the optional PolicyStore feature is implemented in this
-    deployment of GEOPM.
-    """
-    return hasattr(lib, 'geopm_policystore_connect')
+if not hasattr(lib, 'geopm_policystore_connect'):
+    raise ImportError('geopmpy.policy_store cannot be imported because the installed '
+                      'libgeopm does not include the PolicyStore feature. '
+                      'Rebuild libgeopm with the --enable-beta configuration flag '
+                      'then reinstall geopmpy.')
 
 
 def connect(database_path):

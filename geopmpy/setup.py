@@ -20,6 +20,6 @@ except (ImportError, LookupError):
     os.environ['SETUPTOOLS_SCM_PRETEND_VERSION'] = version
 
 setuptools.setup(
-    cffi_modules=["geopmpy/build_libgeopm_wrapper.py:ffibuilder"]
+    cffi_modules=["build_libgeopm_wrapper.py:ffibuilder"]
 )
 

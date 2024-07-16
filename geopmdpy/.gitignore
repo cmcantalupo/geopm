@@ -6,3 +6,4 @@
 /geopmdpy-*/
 /debian/changelog
 geopmdpy/_libgeopmd.*
+__pycache__

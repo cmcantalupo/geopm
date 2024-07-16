@@ -7,6 +7,12 @@ from geopmdpy import error
 import geopmpy.agent
 from typing import Union, Mapping, List, Dict, Tuple
 
+if not hasattr(lib, 'geopm_endpoint_create'):
+    raise ImportError('geopmpy.endpoint cannot be imported because the installed '
+                      'libgeopm does not include the Endpoint feature. '
+                      'Rebuild libgeopm with the --enable-beta configuration flag '
+                      'then reinstall geopmpy.')
+
 _name_max = 1024
 _policy_max = 8192
 
