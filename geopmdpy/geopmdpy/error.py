@@ -5,21 +5,23 @@
 
 
 import sys
-from geopmdpy._libgeopmd import ffi, lib
+from . import gffi
 
-ERROR_RUNTIME = lib.GEOPM_ERROR_RUNTIME
-ERROR_LOGIC = lib.GEOPM_ERROR_LOGIC
-ERROR_INVALID = lib.GEOPM_ERROR_INVALID
-ERROR_FILE_PARSE = lib.GEOPM_ERROR_FILE_PARSE
-ERROR_LEVEL_RANGE = lib.GEOPM_ERROR_LEVEL_RANGE
-ERROR_NOT_IMPLEMENTED = lib.GEOPM_ERROR_NOT_IMPLEMENTED
-ERROR_PLATFORM_UNSUPPORTED = lib.GEOPM_ERROR_PLATFORM_UNSUPPORTED
-ERROR_MSR_OPEN = lib.GEOPM_ERROR_MSR_OPEN
-ERROR_MSR_READ = lib.GEOPM_ERROR_MSR_READ
-ERROR_MSR_WRITE = lib.GEOPM_ERROR_MSR_WRITE
-ERROR_AGENT_UNSUPPORTED = lib.GEOPM_ERROR_AGENT_UNSUPPORTED
-ERROR_AFFINITY = lib.GEOPM_ERROR_AFFINITY
-ERROR_NO_AGENT = lib.GEOPM_ERROR_NO_AGENT
+_dl = gffi.get_dl_geopmd()
+
+ERROR_RUNTIME = _dl.GEOPM_ERROR_RUNTIME
+ERROR_LOGIC = _dl.GEOPM_ERROR_LOGIC
+ERROR_INVALID = _dl.GEOPM_ERROR_INVALID
+ERROR_FILE_PARSE = _dl.GEOPM_ERROR_FILE_PARSE
+ERROR_LEVEL_RANGE = _dl.GEOPM_ERROR_LEVEL_RANGE
+ERROR_NOT_IMPLEMENTED = _dl.GEOPM_ERROR_NOT_IMPLEMENTED
+ERROR_PLATFORM_UNSUPPORTED = _dl.GEOPM_ERROR_PLATFORM_UNSUPPORTED
+ERROR_MSR_OPEN = _dl.GEOPM_ERROR_MSR_OPEN
+ERROR_MSR_READ = _dl.GEOPM_ERROR_MSR_READ
+ERROR_MSR_WRITE = _dl.GEOPM_ERROR_MSR_WRITE
+ERROR_AGENT_UNSUPPORTED = _dl.GEOPM_ERROR_AGENT_UNSUPPORTED
+ERROR_AFFINITY = _dl.GEOPM_ERROR_AFFINITY
+ERROR_NO_AGENT = _dl.GEOPM_ERROR_NO_AGENT
 
 def message(err_number):
     """Return the error message associated with the error code.  Positive
@@ -33,7 +35,9 @@ def message(err_number):
         str: Error message associated with error code.
 
     """
+    global _dl
+
     path_max = 4096
-    result_cstr = ffi.new("char[]", path_max)
-    lib.geopm_error_message(err_number, result_cstr, path_max)
-    return ffi.string(result_cstr).decode()
+    result_cstr = gffi.gffi.new("char[]", path_max)
+    _dl.geopm_error_message(err_number, result_cstr, path_max)
+    return gffi.gffi.string(result_cstr).decode()

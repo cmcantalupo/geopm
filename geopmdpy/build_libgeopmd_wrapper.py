@@ -8,6 +8,7 @@ ffibuilder.set_source('geopmdpy._libgeopmd',
                       #include <geopm_error.h>
                       #include <geopm_shmem.h>
                       #include <geopm_topo.h>
+                      #include <geopm_hash.h>
                       ''',
                       libraries=['geopmd'])
 
@@ -169,6 +170,11 @@ int geopm_topo_domain_name(int domain_type,
 int geopm_topo_domain_type(const char *domain_name);
 
 int geopm_topo_create_cache(void);
+""")
+
+# geopm_hash.h
+ffibuilder.cdef("""
+uint64_t geopm_crc32_str(const char *key);
 """)
 
 if __name__ == "__main__":

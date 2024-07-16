@@ -10,6 +10,7 @@ Files:     geopmdpy/__init__.py
            geopmdpy/access.py
            geopmdpy/dbus_xml.py
            geopmdpy/error.py
+           geopmdpy/gffi.py
            geopmdpy/loop.py
            geopmdpy/pio.py
            geopmdpy/restorable_file_writer.py

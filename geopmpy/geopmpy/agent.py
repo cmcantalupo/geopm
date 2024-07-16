@@ -4,11 +4,13 @@
 #
 
 
-from geopmpy._libgeopm import ffi, lib
+from geopmdpy.gffi import gffi
+from geopmdpy.gffi import get_dl_geopm
 from geopmdpy import error
 import json
 
 
+_dl = get_dl_geopm()
 _name_max = 1024
 _policy_max = 8192
 
@@ -22,20 +24,20 @@ def policy_names(agent_name):
         list[str]: Policy names required for the agent configuration.
 
     """
-    agent_name_cstr = ffi.new("char[]", agent_name.encode())
-    num_policy = ffi.new("int *")
-    err = lib.geopm_agent_num_policy(agent_name_cstr, num_policy)
+    agent_name_cstr = gffi.new("char[]", agent_name.encode())
+    num_policy = gffi.new("int *")
+    err = _dl.geopm_agent_num_policy(agent_name_cstr, num_policy)
     if err < 0:
         raise RuntimeError("geopm_agent_num_policy() failed: {}".format(
             error.message(err)))
     result = []
     for policy_idx in range(num_policy[0]):
-        buff = ffi.new("char[]", _name_max)
-        err = lib.geopm_agent_policy_name(agent_name_cstr, policy_idx, _name_max, buff)
+        buff = gffi.new("char[]", _name_max)
+        err = _dl.geopm_agent_policy_name(agent_name_cstr, policy_idx, _name_max, buff)
         if err < 0:
             raise RuntimeError("geopm_agent_policy_name() failed: {}".format(
                 error.message(err)))
-        result.append(ffi.string(buff).decode())
+        result.append(gffi.string(buff).decode())
     return result
 
 
@@ -52,17 +54,17 @@ def policy_json(agent_name, policy_values):
         str: JSON str containing a valid policy using the given values.
 
     """
-    agent_name_cstr = ffi.new("char[]", agent_name.encode())
-    policy_array = ffi.new("double[]", policy_values)
+    agent_name_cstr = gffi.new("char[]", agent_name.encode())
+    policy_array = gffi.new("double[]", policy_values)
 
-    json_string = ffi.new("char[]", _policy_max)
-    err = lib.geopm_agent_policy_json(agent_name_cstr, policy_array,
+    json_string = gffi.new("char[]", _policy_max)
+    err = _dl.geopm_agent_policy_json(agent_name_cstr, policy_array,
                                       _policy_max, json_string)
 
     if err < 0:
         raise RuntimeError("geopm_agent_policy_json() failed: {}".format(
             error.message(err)))
-    return ffi.string(json_string).decode()
+    return gffi.string(json_string).decode()
 
 
 def sample_names(agent_name):
@@ -74,20 +76,20 @@ def sample_names(agent_name):
     Returns:
         list[str]: List of sample names.
     """
-    agent_name_cstr = ffi.new("char[]", agent_name.encode())
-    num_sample = ffi.new("int *")
-    err = lib.geopm_agent_num_sample(agent_name_cstr, num_sample)
+    agent_name_cstr = gffi.new("char[]", agent_name.encode())
+    num_sample = gffi.new("int *")
+    err = _dl.geopm_agent_num_sample(agent_name_cstr, num_sample)
     if err < 0:
         raise RuntimeError("geopm_agent_num_sample() failed: {}".format(
             error.message(err)))
     result = []
     for sample_idx in range(num_sample[0]):
-        buff = ffi.new("char[]", _name_max)
-        err = lib.geopm_agent_sample_name(agent_name_cstr, sample_idx, _name_max, buff)
+        buff = gffi.new("char[]", _name_max)
+        err = _dl.geopm_agent_sample_name(agent_name_cstr, sample_idx, _name_max, buff)
         if err < 0:
             raise RuntimeError("geopm_agent_sample_name() failed: {}".format(
                 error.message(err)))
-        result.append(ffi.string(buff).decode())
+        result.append(gffi.string(buff).decode())
     return result
 
 
@@ -97,19 +99,19 @@ def names():
     Returns:
         list[str]: List of all agent names.
     """
-    num_agent = ffi.new("int *")
-    err = lib.geopm_agent_num_avail(num_agent)
+    num_agent = gffi.new("int *")
+    err = _dl.geopm_agent_num_avail(num_agent)
     if err < 0:
         raise RuntimeError("geopm_agent_num_avail() failed: {}".format(
             error.message(err)))
-    buff = ffi.new("char[]", _name_max)
+    buff = gffi.new("char[]", _name_max)
     result = []
     for agent_idx in range(num_agent[0]):
-        err = lib.geopm_agent_name(agent_idx, _name_max, buff)
+        err = _dl.geopm_agent_name(agent_idx, _name_max, buff)
         if err < 0:
             raise RuntimeError("geopm_agent_name() failed: {}".format(
                 error.message(err)))
-        result.append(ffi.string(buff).decode())
+        result.append(gffi.string(buff).decode())
     return result
 
 
@@ -118,7 +120,7 @@ def enforce_policy():
        and the policy are chosen based on the GEOPM environment
        variables and configuration files.
     """
-    err = lib.geopm_agent_enforce_policy()
+    err = _dl.geopm_agent_enforce_policy()
     if err < 0:
         raise RuntimeError("geopm_agent_enforce_policy() failed: {}".format(
             error.message(err)))
