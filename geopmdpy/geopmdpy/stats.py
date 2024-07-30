@@ -10,7 +10,8 @@ import sys
 import os
 import errno
 import math
-import pandas as pd
+from . import gffi
+
 from argparse import ArgumentParser
 from . import topo
 from . import pio
@@ -19,61 +20,58 @@ from . import __version_str__
 
 from geopmdpy.session import Session, get_parser
 
-class Stat:
-    def __init__(self):
-        self._count = 0
-        self._min = float('nan')
-        self._max = float('nan')
-        self._m1 = 0
-        self._m2 = 0
-        self._m3 = 0
 
-    def count(self):
-        self._count++
+gffi.gffi.cdef("""
 
-    def max(self, num):
-        if is not self._max >= num:
-            self._max = num
+struct geopm_request_s {
+    int domain;
+    int domain_idx;
+    char name[255];
+};
 
-    def min(self, num):
-        if is not self._min <= min:
-            self._min = num
-    def m1(self, num):
-        self._m1 += num
+int geopm_stats_collector(int num_requests, struct geopm_request_s *requests);
+int geopm_stats_collector_update(void);
+int geopm_stats_collector_report(size_t max_report_size, char *report);
 
-    def m2(self, num):
-        self._m2 += num*num
+""")
+_dl = gffi.get_dl_geopmd()
 
-    def update_stats(self, num):
-        self.count()
-        self.max(num)
-        self.min(num)
-        self.m1(num)
-        self.m2(num)
+def collector(signal_config):
+    """Create stats collector
 
-    def mean(self):
-        return self._m1/self._count
+    Args:
+        signal_config (list((str, int, int))): List of requested
+            signals where each tuple represents
+            (signal_name, domain_type, domain_idx).
 
-    def var(self):
-        return (1/self._count-1)*(self._m2 - pow(self._m1,2)/self._count)
+    """
+    global _dl
+    num_signal = len(signal_config)
+    if num_signal != 0:
+        raise RuntimeError('geopm_stats_collector() failed: length of input is zero')
 
-    def stdev(self):
-        return math.sqrt(var())
+    signal_config_carr = gffi.gffi.new(f'struct geopm_request_s[{num_signal}]')
+    for idx, req in enumerate(signal_config):
+        signal_config_carr[idx].domain = req[1]
+        signal_config_carr[idx].domain_idx = req[2]
+        signal_config_carr[idx].name = req[0].encode()
 
-    def rms(self):
-        return math.sqrt(1/self._count * self._m2)
+    err = _dl.geopm_stats_collector(num_signal,
+                                    signal_config_carr)
+    if err < 0:
+        raise RuntimeError('geopm_stats_collector() failed: {}'.format(error.message(err)))
 
-class Stats:
-    def __init__(self):
-        self._signal_handles = None
-        self._signal_stats = None
+def collector_update():
+    global _dl
+    err = _dl.geopm_stats_collector_update()
+    if err < 0:
+        raise RuntimeError('geopm_stats_collector_update() failed: {}'.format(error.message(err)))
 
-    def set_signal_handles(self, signal_handles):
-        self._signal_handles = signal_handles
-        for signal_handle in signal_handles:
-            self._signal_stats.append(Stat())
-
-    def update(self):
-        signals = [pio.sample(handle) for handle in self._signal_handles]
-        for signal,signal_stat in zip(signals, self._signal_stats):
-            signal_stat.update_stats(signal)
+def collector_report():
+    global _dl
+    report_max = 262144
+    report_cstr = gffi.gffi.new("char[]", report_max)
+    err = _dl.geopm_stats_collector_report(report_max, report_cstr)
+    if err < 0:
+        raise RuntimeError('geopm_stats_collector_report() failed: {}'.format(error.message(err)))
+    return gffi.gffi.string(report_cstr).decode()
