@@ -15,3 +15,4 @@ fi
 sed -e "s|@VERSION@|$(cat VERSION)|" Cargo.toml.in > Cargo.toml
 cargo vendor
 cargo build
+cargo deb
