@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2015 - 2022, Intel Corporation
+#  Copyright (c) 2015 - 2024 Intel Corporation
 #  SPDX-License-Identifier: BSD-3-Clause
 #
 
@@ -63,7 +63,7 @@ class GEOPMServiceProxy(geopm_service_pb2_grpc.GEOPMServiceServicer):
                              for sc in request.signal_config]
         control_config = []
         if request.control_config:
-            control_config = [(int(cc.domain), int(cc.domain_idx, str(cc.name)))
+            control_config = [(int(cc.domain), int(cc.domain_idx), str(cc.name))
                               for cc in request.control_config]
         server_pid, server_key = self._platform_service.start_batch(client_id,
                                                                     signal_config,

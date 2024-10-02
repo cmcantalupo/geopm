@@ -2,8 +2,6 @@
 #  SPDX-License-Identifier: BSD-3-Clause
 #
 
-import sys
-
 from dasbus.loop import EventLoop
 from dasbus.connection import SystemMessageBus
 from signal import signal
