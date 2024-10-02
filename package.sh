@@ -25,3 +25,7 @@ for pdir in geopmdpy geopmpy docs; do
     ./make_$pkg.sh
     cd -
 done
+
+cd geopmdrs
+./build.sh
+cd -
