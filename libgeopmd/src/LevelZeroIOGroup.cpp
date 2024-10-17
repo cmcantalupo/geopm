@@ -1282,9 +1282,7 @@ namespace geopm
                             __FILE__, __LINE__);
         }
         if (string_ends_with(signal_name, "_TIMESTAMP")) {
-            throw Exception("LevelZeroIOGroup::" + std::string(__func__) +
-                            ": TIMESTAMP Signals are for batch use only.",
-                            GEOPM_ERROR_INVALID, __FILE__, __LINE__);
+            return NAN;
         }
         double result = NAN;
         auto it = m_signal_available.find(signal_name);
