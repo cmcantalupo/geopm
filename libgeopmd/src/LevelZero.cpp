@@ -659,7 +659,7 @@ namespace geopm
         check_ze_result(zesPerformanceFactorGetConfig(handle, &result),
                         GEOPM_ERROR_RUNTIME, "LevelZero::" + std::string(__func__) +
                         ": Sysman failed to get performance factor values", __LINE__);
-        return conert_nan(result);
+        return result;
     }
 
 
@@ -820,7 +820,7 @@ namespace geopm
     double LevelZeroImp::frequency_efficient(unsigned int l0_device_idx,
                                              int l0_domain, int l0_domain_idx) const
     {
-        return conert_nan(frequency_status_helper(l0_device_idx, l0_domain, l0_domain_idx).efficient);
+        return convert_nan(frequency_status_helper(l0_device_idx, l0_domain, l0_domain_idx).efficient);
     }
 
     uint32_t LevelZeroImp::frequency_throttle_reasons(unsigned int l0_device_idx,
@@ -852,13 +852,13 @@ namespace geopm
     double LevelZeroImp::frequency_min(unsigned int l0_device_idx,
                                        int l0_domain, int l0_domain_idx) const
     {
-        return convert_nan(frequency_min_max(l0_device_idx, l0_domain, l0_domain_idx).first);
+        return frequency_min_max(l0_device_idx, l0_domain, l0_domain_idx).first;
     }
 
     double LevelZeroImp::frequency_max(unsigned int l0_device_idx,
                                        int l0_domain, int l0_domain_idx) const
     {
-        return convert_nan(frequency_min_max(l0_device_idx, l0_domain, l0_domain_idx).second);
+        return frequency_min_max(l0_device_idx, l0_domain, l0_domain_idx).second;
     }
 
     std::pair<double, double> LevelZeroImp::frequency_min_max(unsigned int l0_device_idx,
@@ -870,7 +870,7 @@ namespace geopm
         check_ze_result(zesFrequencyGetProperties(handle, &property),
                         GEOPM_ERROR_RUNTIME, "LevelZero::" + std::string(__func__) +
                         ": Sysman failed to get domain properties.", __LINE__);
-        return {convert_nan(property.min), convert_nan(property.max)};
+        return {property.min, property.max};
     }
 
     std::vector<double> LevelZeroImp::frequency_supported(unsigned int l0_device_idx,
@@ -887,9 +887,6 @@ namespace geopm
         check_ze_result(zesFrequencyGetAvailableClocks(handle, &num_freq, result.data()),
                         GEOPM_ERROR_RUNTIME, "LevelZero::" + std::string(__func__) +
                         ": Sysman failed to get supported frequency list.", __LINE__);
-        for (auto &rr : result) {
-            rr = convert_nan(rr);
-        }
         return result;
     }
 
@@ -903,7 +900,7 @@ namespace geopm
         check_ze_result(zesFrequencyGetRange(handle, &range),
                         GEOPM_ERROR_RUNTIME, "LevelZero::" + std::string(__func__) +
                         ": Sysman failed to get frequency range.", __LINE__);
-        return {convert_nan(range.min), convert_nan(range.max)};
+        return {range.min, range.max};
     }
 
     double LevelZeroImp::temperature_max(unsigned int l0_device_idx,
@@ -915,7 +912,7 @@ namespace geopm
         check_ze_result(zesTemperatureGetState(handle, &result),
                         GEOPM_ERROR_RUNTIME, "LevelZero::" + std::string(__func__) +
                         ": Sysman failed to get temperature.", __LINE__);
-        return convert_nan(result);
+        return result;
     }
 
     uint64_t LevelZeroImp::active_time_timestamp(unsigned int l0_device_idx,
