@@ -17,14 +17,21 @@
 import sys
 from geopmdpy import pio
 from geopmdpy import __version_str__
+from mpi4py import MPI
 
 
 def run(input_stream):
     requests = [line.split() for line in input_stream.readlines()]
     ctl_idx = [pio.push_control(rr[0], rr[1], int(rr[2])) for rr in requests]
+    sig_idx = [pio.push_signal(rr[0], rr[1], int(rr[2])) for rr in requests]
     for ii, rr in enumerate(requests):
         pio.adjust(ctl_idx[ii], float(rr[3]))
     pio.write_batch()
+    pio.read_batch()
+    names = [rr[0] for rr in requests]
+    sigs = [str(pio.sample(idx)) for idx in sig_idx]
+    print(','.join(names))
+    print(','.join(sigs))
 
 def main():
     if len(sys.argv) > 1:
@@ -40,4 +47,8 @@ def main():
         run(sys.stdin)
 
 if __name__ == '__main__':
-    main()
+    comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
+    rr = comm.rank
+    if rr == 0:
+        main()
+    comm.barrier()
