@@ -48,7 +48,6 @@ def main():
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
-    rr = comm.rank
-    if rr == 0:
+    if comm.rank == 0:
         main()
-    comm.barrier()
+    MPI.COMM_WORLD.barrier()
