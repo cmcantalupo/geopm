@@ -18,9 +18,10 @@ import sys
 from geopmdpy import pio
 from geopmdpy import __version_str__
 from mpi4py import MPI
+import socket
 
 
-def run(input_string):
+def run(comm, input_string):
     requests = [line.strip().split() for line in input_string.splitlines()]
     ctl_idx = [pio.push_control(rr[0], rr[1], int(rr[2])) for rr in requests]
     sig_idx = [pio.push_signal(rr[0], rr[1], int(rr[2])) for rr in requests]
@@ -29,14 +30,20 @@ def run(input_string):
     pio.write_batch()
     pio.read_batch()
     names = [rr[0] for rr in requests]
+    names = ['hostname'] + names
     sigs = [str(pio.sample(idx)) for idx in sig_idx]
-    print(','.join(names))
+    sigs = [socket.gethostname()] + sigs
+    if comm.rank == 0:
+        print(','.join(names))
+        sys.stdout.flush()
+    comm.barrier()
     print(','.join(sigs))
 
 def read_stream(comm, input_stream):
-    input_string = ''
     if MPI.COMM_WORLD.rank == 0:
         input_string = input_stream.read()
+    else:
+        input_string = None
     input_string = comm.bcast(input_string, root=0)
     return input_string
 
@@ -52,10 +59,12 @@ def main(comm):
             input_string = read_stream(comm, input_stream)
     else:
         input_string = read_stream(comm, sys.stdin)
-    run(input_string)
+    run(comm, input_string)
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
-    if comm.rank == 0:
+    color = 0 if comm.rank == 0 else 1
+    comm = MPI.COMM_WORLD.Split(color)
+    if color == 0:
         main(comm)
     MPI.COMM_WORLD.barrier()
