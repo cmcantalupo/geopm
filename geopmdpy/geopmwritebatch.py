@@ -20,8 +20,8 @@ from geopmdpy import __version_str__
 from mpi4py import MPI
 
 
-def run(input_stream):
-    requests = [line.split() for line in input_stream.readlines()]
+def run(input_string):
+    requests = [line.strip().split() for line in input_string.splitlines()]
     ctl_idx = [pio.push_control(rr[0], rr[1], int(rr[2])) for rr in requests]
     sig_idx = [pio.push_signal(rr[0], rr[1], int(rr[2])) for rr in requests]
     for ii, rr in enumerate(requests):
@@ -33,7 +33,14 @@ def run(input_stream):
     print(','.join(names))
     print(','.join(sigs))
 
-def main():
+def read_stream(comm, input_stream):
+    input_string = ''
+    if MPI.COMM_WORLD.rank == 0:
+        input_string = input_stream.read()
+    input_string = comm.bcast(input_string, root=0)
+    return input_string
+
+def main(comm):
     if len(sys.argv) > 1:
         if sys.argv[1] == '--help':
             print(__doc__)
@@ -42,12 +49,13 @@ def main():
             print(__version_str__)
             return 0
         with open(sys.argv[1]) as input_stream:
-            run(input_stream)
+            input_string = read_stream(comm, input_stream)
     else:
-        run(sys.stdin)
+        input_string = read_stream(comm, sys.stdin)
+    run(input_string)
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
     if comm.rank == 0:
-        main()
+        main(comm)
     MPI.COMM_WORLD.barrier()
