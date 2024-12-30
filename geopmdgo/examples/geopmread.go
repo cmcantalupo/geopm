@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
 
+// This is an example of how to use the geopm golang bindings that implements
+// the geopmread command line tool using the golang bindings.
+
 package main
 
 import (
