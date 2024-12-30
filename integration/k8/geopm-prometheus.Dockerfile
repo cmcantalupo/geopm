@@ -17,3 +17,9 @@ RUN printf \
 "DRAM_ENERGY\nDRAM_POWER\nGPU_CORE_FREQUENCY_STATUS\nGPU_ENERGY\n"\
 "GPU_POWER\nGPU_TEMPERATURE\n" | \
     geopmaccess --direct --force --write --default
+RUN wget https://github.com/cmcantalupo/geopm/archive/refs/heads/golang-bindings.zip
+RUN apt-get install -yq unzip
+RUN unzip golang-bindings.zip
+RUN apt-get install -yq golang
+RUN cd geopm-golang-bindings/geopmdgo &&  go install ./geopmdgo
+RUN rm -rf geopm-golang-bindings
