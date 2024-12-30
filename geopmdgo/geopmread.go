@@ -11,7 +11,7 @@ import (
     "strconv"
 )
 
-import geopm "github.com/geopm/geopm/geopmgo/geopmgo"
+import geopm "github.com/geopm/geopm/geopmdgo/geopmdgo"
 
 // PrintDomains prints the number of domains detected for each domain type.
 func PrintDomains() {
