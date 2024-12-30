@@ -7,12 +7,8 @@ package geopmgo
 /*
 #cgo LDFLAGS: -lgeopmd
 #include <geopm_error.h>
-#include <stdlib.h>
 */
 import "C"
-import (
-    "unsafe"
-)
 
 // Error constants
 const (
@@ -31,8 +27,8 @@ const (
     ErrorNoAgent               = C.GEOPM_ERROR_NO_AGENT
 )
 
-// Message returns the error message associated with the error code.
-func Message(errNumber int) string {
+// ErrorMessage returns the error message associated with the error code.
+func ErrorMessage(errNumber int) string {
     pathMax := 4096
     resultCStr := C.malloc(C.size_t(pathMax))
     defer C.free(resultCStr)

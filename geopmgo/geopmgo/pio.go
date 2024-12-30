@@ -225,30 +225,6 @@ func ControlDescription(controlName string) (string, error) {
     return C.GoString((*C.char)(resultCStr)), nil
 }
 
-// SaveControlDir saves the state of all controls to files in the save directory.
-func SaveControlDir(saveDir string) error {
-    saveDirCStr := C.CString(saveDir)
-    defer C.free(unsafe.Pointer(saveDirCStr))
-
-    err := C.geopm_pio_save_control_dir(saveDirCStr)
-    if err < 0 {
-        return errors.New("geopm_pio_save_control_dir() failed")
-    }
-    return nil
-}
-
-// RestoreControlDir restores the state recorded to the save directory.
-func RestoreControlDir(saveDir string) error {
-    saveDirCStr := C.CString(saveDir)
-    defer C.free(unsafe.Pointer(saveDirCStr))
-
-    err := C.geopm_pio_restore_control_dir(saveDirCStr)
-    if err < 0 {
-        return errors.New("geopm_pio_restore_control_dir() failed")
-    }
-    return nil
-}
-
 // SignalInfo gets information about a signal.
 func SignalInfo(signalName string) (int, int, int, error) {
     signalNameCStr := C.CString(signalName)
@@ -260,55 +236,6 @@ func SignalInfo(signalName string) (int, int, int, error) {
         return 0, 0, 0, errors.New("geopm_pio_signal_info() failed")
     }
     return int(aggregationType), int(formatType), int(behaviorType), nil
-}
-
-// StartBatchServer starts a batch server to interface with a client thread.
-func StartBatchServer(clientPid int, signalConfig, controlConfig []GeopmRequest) (int, string, error) {
-    numSignal := len(signalConfig)
-    numControl := len(controlConfig)
-    var signalConfigCarr, controlConfigCarr unsafe.Pointer
-
-    if numSignal != 0 {
-        signalConfigCarr = C.malloc(C.size_t(numSignal) * C.size_t(unsafe.Sizeof(C.struct_geopm_request_s{})))
-        defer C.free(signalConfigCarr)
-        configArr := (*[1 << 30]C.struct_geopm_request_s)(signalConfigCarr)[:numSignal:numSignal]
-        for i, req := range signalConfig {
-            configArr[i].domain_type = C.int(req.DomainType)
-            configArr[i].domain_idx = C.int(req.DomainIdx)
-            configArr[i].name = C.CString(req.Name)
-            defer C.free(unsafe.Pointer(configArr[i].name))
-        }
-    }
-    if numControl != 0 {
-        controlConfigCarr = C.malloc(C.size_t(numControl) * C.size_t(unsafe.Sizeof(C.struct_geopm_request_s{})))
-        defer C.free(controlConfigCarr)
-        configArr := (*[1 << 30]C.struct_geopm_request_s)(controlConfigCarr)[:numControl:numControl]
-        for i, req := range controlConfig {
-            configArr[i].domain_type = C.int(req.DomainType)
-            configArr[i].domain_idx = C.int(req.DomainIdx)
-            configArr[i].name = C.CString(req.Name)
-            defer C.free(unsafe.Pointer(configArr[i].name))
-        }
-    }
-
-    var serverPid C.int
-    serverKeyCStr := C.malloc(255)
-    defer C.free(serverKeyCStr)
-
-    err := C.geopm_pio_start_batch_server(C.int(clientPid), C.int(numSignal), (*C.struct_geopm_request_s)(signalConfigCarr), C.int(numControl), (*C.struct_geopm_request_s)(controlConfigCarr), &serverPid, 255, (*C.char)(serverKeyCStr))
-    if err < 0 {
-        return 0, "", errors.New("geopm_pio_start_batch_server() failed")
-    }
-    return int(serverPid), C.GoString((*C.char)(serverKeyCStr)), nil
-}
-
-// StopBatchServer stops a currently running batch server.
-func StopBatchServer(serverPid int) error {
-    err := C.geopm_pio_stop_batch_server(C.int(serverPid))
-    if err < 0 {
-        return errors.New("geopm_pio_stop_batch_server() failed")
-    }
-    return nil
 }
 
 // FormatSignal converts a signal into a string representation.
