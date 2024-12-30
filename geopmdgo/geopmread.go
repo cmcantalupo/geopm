@@ -15,6 +15,17 @@ import geopm "github.com/geopm/geopm/geopmdgo/geopmdgo"
 
 // PrintDomains prints the number of domains detected for each domain type.
 func PrintDomains() {
+    board, _ := geopm.NumDomain("board")
+    pkg, _ := geopm.NumDomain("package")
+    core, _ := geopm.NumDomain("core")
+    cpu, _ := geopm.NumDomain("cpu")
+    memory, _ := geopm.NumDomain("memory")
+    package_integrated_memory, _ := geopm.NumDomain("package_integrated_memory")
+    nic, _ := geopm.NumDomain("nic")
+    package_integrated_nic, _ := geopm.NumDomain("package_integrated_nic")
+    gpu, _ := geopm.NumDomain("gpu")
+    package_integrated_gpu, _ := geopm.NumDomain("package_integrated_gpu")
+    gpu_chip, _ := geopm.NumDomain("gpu_chip")
     fmt.Printf(`board                       %d
 package                     %d
 core                        %d
@@ -27,17 +38,17 @@ gpu                         %d
 package_integrated_gpu      %d
 gpu_chip                    %d
 `,
-        geopm.NumDomain("board"),
-        geopm.NumDomain("package"),
-        geopm.NumDomain("core"),
-        geopm.NumDomain("cpu"),
-        geopm.NumDomain("memory"),
-        geopm.NumDomain("package_integrated_memory"),
-        geopm.NumDomain("nic"),
-        geopm.NumDomain("package_integrated_nic"),
-        geopm.NumDomain("gpu"),
-        geopm.NumDomain("package_integrated_gpu"),
-        geopm.NumDomain("gpu_chip"))
+        board,
+        pkg,
+        core,
+        cpu,
+        memory,
+        package_integrated_memory,
+        nic,
+        package_integrated_nic,
+        gpu,
+        package_integrated_gpu,
+        gpu_chip)
 }
 
 // PrintInfo prints the description of a single signal.
@@ -104,9 +115,10 @@ func Run() int {
             fmt.Fprintf(os.Stderr, "invalid domain index: %s\n", args[2])
             return 1
         }
-        signal, _ := geopm.ReadSignal(args[0], args[1], domainIdx)
-        info, _ := geopm.SignalInfo(args[0])
-        formattedSignal, _ := geopm.FormatSignal(signal, info[1])
+	domainType, _ := geopm.DomainType(args[1])
+        signal, _ := geopm.ReadSignal(args[0], domainType, domainIdx)
+        _, formatType, _, _:= geopm.SignalInfo(args[0])
+        formattedSignal, _ := geopm.FormatSignal(signal, formatType)
         fmt.Println(formattedSignal)
         return 0
     }
