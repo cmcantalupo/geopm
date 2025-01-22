@@ -225,6 +225,9 @@ namespace geopm
             static const std::string M_BEHAVIORS[];
             static const std::map<std::string, m_units_e> M_UNITS_STRING;
             static const std::map<std::string, m_signal_behavior_e> M_BEHAVIOR_STRING;
+        public:
+	    virtual std::shared_ptr<geopm_signal_info_s> signal_info(const std::string &signal_name) const { return nullptr; }
+	    virtual std::shared_ptr<geopm_control_info_s> control_info(const std::string &control_name) const { return nullptr; }
     };
 
     class GEOPM_PUBLIC IOGroupFactory : public PluginFactory<IOGroup>

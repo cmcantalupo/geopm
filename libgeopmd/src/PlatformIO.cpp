@@ -957,7 +957,13 @@ namespace geopm
                 throw Exception("PlatformIOImp::signal_description(): unknown signal \"" + signal_name + "\"",
                                 GEOPM_ERROR_INVALID, __FILE__, __LINE__);
             }
-            result = iogroups.at(0)->signal_description(signal_name);
+            auto signal_info = iogroups.at(0)->signal_info(signal_name);
+            if (signal_info == nullptr) {
+                  result = iogroups.at(0)->signal_description(signal_name);
+            }
+            else {
+                 result = signal_description(signal_info);
+            }
         }
         return result;
     }
