@@ -459,4 +459,84 @@ namespace geopm
         return std::all_of(vec.begin(), vec.end(),
                            [](double x) -> bool { return std::isnan(x); });
     }
+
+    static const std::string CPU_GOVERNOR_PATH = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor";
+
+    static std::string get_governor_path(int cpu_idx)
+    {
+        return "/sys/devices/system/cpu/cpu" + std::to_string(cpu_idx) + "/cpufreq/scaling_governor";
+    }
+
+    static void set_governor_to_userspace_or_performance(std::ofstream &governor_file_out)
+    {
+        if (std::ifstream("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors").good()) {
+            std::string available_governors;
+            std::ifstream available_governors_file("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors");
+            std::getline(available_governors_file, available_governors);
+            available_governors_file.close();
+
+            if (available_governors.find("userspace") != std::string::npos) {
+                governor_file_out << "userspace";
+            }
+            else if (available_governors.find("performance") != std::string::npos) {
+                governor_file_out << "performance";
+            }
+            else {
+                throw Exception("set_governor_to_userspace_or_performance(): Neither 'userspace' nor 'performance' governor is available",
+                                GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+            }
+        }
+        else {
+            governor_file_out << "performance"; // Default fallback
+        }
+    }
+
+    void linux_cpu_governor_lock(std::map<int, std::string> &cpu_governors)
+    {
+        for (const auto &cpu_entry : cpu_governors) {
+            int cpu_idx = cpu_entry.first;
+            std::string &governor_it = cpu_entry.second;
+            std::string governor_path = get_governor_path(cpu_idx);
+
+            std::ifstream governor_file_in(governor_path);
+            if (!governor_file_in.is_open()) {
+                throw Exception("linux_cpu_governor_lock(): Unable to open CPU governor file for reading: " + governor_path,
+                                errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+            }
+            std::string current_governor;
+            std::getline(governor_file_in, current_governor);
+            governor_file_in.close();
+
+            if (governor_it.empty()) {
+                governor_it = current_governor;
+            }
+
+            if (current_governor != "userspace" && current_governor != "performance") {
+                std::ofstream governor_file_out(governor_path);
+                if (!governor_file_out.is_open()) {
+                    throw Exception("linux_cpu_governor_lock(): Unable to open CPU governor file for writing: " + governor_path,
+                                    errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+                }
+                set_governor_to_userspace_or_performance(governor_file_out);
+                governor_file_out.close();
+            }
+        }
+    }
+
+    void linux_cpu_governor_unlock(const std::map<int, std::string> &cpu_governors)
+    {
+        for (const auto &cpu_entry : cpu_governors) {
+            int cpu_idx = cpu_entry.first;
+            const std::string &previous_governor = cpu_entry.second;
+
+            std::string governor_path = get_governor_path(cpu_idx);
+            std::ofstream governor_file(governor_path);
+            if (!governor_file.is_open()) {
+                throw Exception("linux_cpu_governor_unlock(): Unable to open CPU governor file for writing: " + governor_path,
+                                errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
+            }
+            governor_file << previous_governor;
+            governor_file.close();
+        }
+    }
 }

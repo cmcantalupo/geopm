@@ -200,6 +200,20 @@ namespace geopm
     bool GEOPM_PUBLIC
         has_cap_sys_admin(int pid);
 
+    /// @brief Set the CPU governor to "userspace" or "performance".
+    /// @details Records the previous state in the provided map so it can be restored with
+    ///          linux_cpu_governor_unlock().
+    /// @param [in, out] cpu_governors Map to store the previous governor states for each CPU.
+    /// @param [in] cpu_set The set of CPUs to operate on.
+    void GEOPM_PUBLIC
+        linux_cpu_governor_lock(std::map<int, std::string> &cpu_governors, const std::set<int> &cpu_set);
+
+    /// @brief Restore the CPU governor to the previous state.
+    /// @param [in] cpu_governors Map containing the previous governor states for each CPU.
+    /// @param [in] cpu_set The set of CPUs to operate on.
+    void GEOPM_PUBLIC
+        linux_cpu_governor_unlock(const std::map<int, std::string> &cpu_governors, const std::set<int> &cpu_set);
+
     class GEOPM_PUBLIC DeprecationWarning
     {
         public:
