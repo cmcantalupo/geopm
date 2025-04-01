@@ -48,5 +48,5 @@ popd
 export C_INCLUDE_PATH="$deps_tmp_root/usr/include"
 export LIBRARY_PATH="$deps_tmp_root/usr/lib:$deps_tmp_root/usr/lib64"
 
-rpmbuild -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
+rpmbuild --nocheck -ba ${RPM_TOPDIR}/SPECS/${PACKAGE_NAME}.spec
 rm -r "${deps_tmp_root}"

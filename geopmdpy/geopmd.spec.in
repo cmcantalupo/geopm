@@ -32,17 +32,17 @@ License:	BSD-3-Clause
 URL:		https://geopm.github.io
 Source0:	geopmdpy-%{version}.tar.gz
 
-BuildRequires:	libgeopmd-devel
+# BuildRequires:	libgeopmd-devel
 BuildRequires:	python3-cffi
-BuildRequires:	python3-dasbus
+# BuildRequires:	python3-dasbus
 BuildRequires:	python3-devel
-BuildRequires:	python3-jsonschema
+# BuildRequires:	python3-jsonschema
 BuildRequires:	python3-psutil
 BuildRequires:	python3-setuptools
-BuildRequires:	python3-setuptools_scm
+# BuildRequires:	python3-setuptools_scm
 %if %{defined suse_version}
 BuildRequires:	gobject-introspection
-BuildRequires:	python-gobject-common-devel
+#BuildRequires:	python-gobject-common-devel
 BuildRequires:	python3-gobject
 %endif
 %if 0%{?fedora}
@@ -55,7 +55,7 @@ Requires:	python3-psutil
 Requires:	python3-%{prj_name} = %{version}-%{release}
 Requires:	geopmd-cli
 %if %{defined suse_version}
-Requires:	python-gobject-common-devel
+# Requires:	python-gobject-common-devel
 Requires:	python3-gobject
 %endif
 %if %{defined enable_grpc}
