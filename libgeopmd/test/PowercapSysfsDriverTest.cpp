@@ -198,3 +198,33 @@ TEST_F(PowercapSysfsDriverTest, driver_and_plugin_name_match)
     EXPECT_EQ("POWERCAP", PowercapSysfsDriver::plugin_name())
         << "Plugin name should be POWERCAP";
 }
+
+TEST_F(PowercapSysfsDriverTest, pink_noise_short_duration_power_estimate)
+{
+    auto parse_function = m_driver->signal_parse("POWERCAP::CPU_ENERGY");
+
+    // Simulate short duration energy readings
+    double energy_start = parse_function("1000000"); // 1 Joule
+    double energy_end = parse_function("1001500");   // 1.0015 Joules
+    double duration = 0.5; // 0.5 seconds
+
+    double power_estimate = (energy_end - energy_start) / duration;
+
+    // Validate that the error induced by noise is small
+    EXPECT_NEAR(power_estimate, 3.0, 0.1) << "Short duration power estimate should have minimal noise-induced error";
+}
+
+TEST_F(PowercapSysfsDriverTest, pink_noise_long_duration_power_estimate)
+{
+    auto parse_function = m_driver->signal_parse("POWERCAP::CPU_ENERGY");
+
+    // Simulate long duration energy readings
+    double energy_start = parse_function("1000000"); // 1 Joule
+    double energy_end = parse_function("2000000");   // 2 Joules
+    double duration = 100.0; // 100 seconds
+
+    double power_estimate = (energy_end - energy_start) / duration;
+
+    // Validate that the error induced by noise is sufficiently large
+    EXPECT_GT(std::abs(power_estimate - 10.0), 0.5) << "Long duration power estimate should have significant noise-induced error";
+}

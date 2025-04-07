@@ -11,6 +11,8 @@
 #include <cmath>
 #include <cstring>
 #include <sstream>
+#include <random>
+#include <chrono>
 
 #include "geopm/Helper.hpp"
 
@@ -61,6 +63,31 @@ static std::map<std::string, std::string> load_powercap_resource_by_name(const s
 
 namespace geopm
 {
+    // Helper class to generate pink noise
+    class PinkNoiseGenerator {
+    public:
+        PinkNoiseGenerator(double alpha, double beta)
+            : m_alpha(alpha)
+            , m_beta(beta)
+            , m_rng(std::chrono::system_clock::now().time_since_epoch().count())
+            , m_distribution(0.0, 1.0)
+            , m_last_noise(0.0)
+        {}
+
+        double generate() {
+            double white_noise = m_distribution(m_rng);
+            m_last_noise = m_alpha * m_last_noise + m_beta * white_noise;
+            return m_last_noise;
+        }
+
+    private:
+        double m_alpha;
+        double m_beta;
+        std::default_random_engine m_rng;
+        std::normal_distribution<double> m_distribution;
+        double m_last_noise;
+    };
+
     const std::string powercap_sysfs_json(void);
 
     PowercapSysfsDriver::PowercapSysfsDriver()
@@ -148,6 +175,24 @@ namespace geopm
                             GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
         }
         double scaling_factor = prop_it->second.scaling_factor;
+
+        // Add pink noise for CPU_ENERGY signal
+        if (signal_name == "POWERCAP::CPU_ENERGY") {
+            static PinkNoiseGenerator pink_noise_gen(0.9, 0.1); // Example parameters
+            return [scaling_factor](const std::string &content) {
+                double result = static_cast<double>(NAN);
+                try {
+                    double base_value = static_cast<double>(std::stoull(content) * scaling_factor);
+                    double noise = pink_noise_gen.generate();
+                    result = base_value + noise;
+                }
+                catch (const std::invalid_argument &ex) {}
+                catch (const std::out_of_range &ex) {}
+                return result;
+            };
+        }
+
+        // Default behavior for other signals
         return [scaling_factor](const std::string &content) {
             double result = static_cast<double>(NAN);
             try {
