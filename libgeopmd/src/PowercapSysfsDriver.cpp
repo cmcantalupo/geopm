@@ -69,6 +69,7 @@ namespace geopm
         PinkNoiseGenerator(double alpha, double beta)
             : m_alpha(alpha)
             , m_beta(beta)
+            , m_last_time(std::chrono::steady_clock::now())
             , m_rng(std::chrono::system_clock::now().time_since_epoch().count())
             , m_distribution(0.0, 1.0)
             , m_last_noise(0.0)
@@ -76,13 +77,17 @@ namespace geopm
 
         double generate() {
             double white_noise = m_distribution(m_rng);
-            m_last_noise = m_alpha * m_last_noise + m_beta * white_noise;
+            auto this_time = std::chrono::steady_clock::now();
+            double elapsed_time = 1e-9 * std::chrono::duration_cast<std::chrono::nanoseconds>(this_time - m_last_time).count();
+            m_last_time = this_time;
+            m_last_noise = m_alpha * m_last_noise + elapsed_time * m_beta * white_noise;
             return m_last_noise;
         }
 
     private:
         double m_alpha;
         double m_beta;
+        std::chrono::steady_clock::time_point m_last_time;
         std::default_random_engine m_rng;
         std::normal_distribution<double> m_distribution;
         double m_last_noise;
