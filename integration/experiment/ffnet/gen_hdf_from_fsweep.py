@@ -111,6 +111,19 @@ def process_trace_files(sweep_dir, region_ignore):
 
 
 def main(output_prefix, frequency_sweep_dirs, region_ignore=None):
+    ffnet_path = os.getenv("GEOPM_FFNET_PATH")
+    if not ffnet_path:
+        raise RuntimeError("GEOPM_FFNET_PATH environment variable is not set.")
+
+    # Ensure required files exist in the directory
+    required_files = [
+        "*_nn_cpu.json", "*_fmap_cpu.json",
+        "*_nn_gpu.json", "*_fmap_gpu.json"
+    ]
+    for pattern in required_files:
+        if not glob.glob(os.path.join(ffnet_path, pattern)):
+            raise RuntimeError(f"Required file matching pattern '{pattern}' not found in {ffnet_path}.")
+
     #Regions to ignore
     if region_ignore is None:
         region_list = []

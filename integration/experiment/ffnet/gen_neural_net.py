@@ -6,6 +6,7 @@
 import argparse
 import json
 import numpy as np
+import os
 import pandas as pd
 import sys
 import torch
@@ -190,6 +191,12 @@ def train_model(df_traces, X_columns, y_column, num_outputs, log=print):
     return model
 
 def main(input_list, output_name="nnet", describe_net="A neural net."):
+    ffnet_path = os.getenv("GEOPM_FFNET_PATH")
+    if not ffnet_path:
+        raise RuntimeError("GEOPM_FFNET_PATH environment variable is not set.")
+
+    # Ensure output files are saved in the specified directory
+    output_name = os.path.join(ffnet_path, output_name)
 
     dfs = []
 

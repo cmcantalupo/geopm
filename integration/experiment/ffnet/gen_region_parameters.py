@@ -7,6 +7,7 @@ import json
 import pandas as pd
 from sklearn import datasets, linear_model
 import argparse
+import os
 
 def get_domains(table_stats):
     domains = []
@@ -88,6 +89,13 @@ def get_lowest_energy_freq(table_stats, domain, region, freq_perf, freq_range, f
     return (float)(freq_subset[f'{domain}-frequency'].iloc[row_idx])
 
 def main(output_name, data_file):
+    ffnet_path = os.getenv("GEOPM_FFNET_PATH")
+    if not ffnet_path:
+        raise RuntimeError("GEOPM_FFNET_PATH environment variable is not set.")
+
+    # Ensure output files are saved in the specified directory
+    output_name = os.path.join(ffnet_path, output_name)
+
     freq_range={}
     region_regression={}
     table_stats = pd.read_hdf(data_file)

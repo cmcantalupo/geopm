@@ -4,6 +4,7 @@
 #
 
 import argparse
+import os
 
 import gen_hdf_from_fsweep as hdf
 import gen_neural_net as nn
@@ -27,6 +28,13 @@ if __name__ == '__main__':
                         nargs='+',
                         help='Directories containing reports and traces from frequency sweeps')
     args = parser.parse_args()
+
+    ffnet_path = os.getenv("GEOPM_FFNET_PATH")
+    if not ffnet_path:
+        raise RuntimeError("GEOPM_FFNET_PATH environment variable is not set.")
+
+    # Ensure output files are saved in the specified directory
+    args.output = os.path.join(ffnet_path, args.output)
 
     hdf.main(args.output, args.frequency_sweep_dirs, args.region_ignore)
     stats_hdf = f"{args.output}_stats.h5"
