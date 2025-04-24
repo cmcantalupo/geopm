@@ -239,17 +239,16 @@ using the following steps.
    - GPU Region Frequency Recommendation Map: `test_fmap_gpu.json`
 
 
-3. Set environment variables to point to the generated json files. 
+3. Set the `GEOPM_FFNET_PATH` environment variable to the directory containing the generated JSON files.
 
    Example:
+   ```
+   export GEOPM_FFNET_PATH=${GEOPM_SOURCE}/integration/experiment/ffnet/generated_files
+   ```
 
-```
-    export GEOPM_CPU_NN_PATH=${GEOPM_SOURCE}/integration/experiment/ffnet/test_nn_cpu.json
-    export GEOPM_GPU_NN_PATH=${GEOPM_SOURCE}/integration/experiment/ffnet/test_nn_gpu.json
-
-    export GEOPM_CPU_FMAP_PATH=${GEOPM_SOURCE}/integration/experiment/ffnet/test_fmap_cpu.json
-    export GEOPM_GPU_FMAP_PATH=${GEOPM_SOURCE}/integration/experiment/ffnet/test_fmap_gpu.json
-``` 
+   The directory must contain:
+   - `*_nn_cpu.json` and/or `*_nn_gpu.json` for neural nets.
+   - `*_fmap_cpu.json` and/or `*_fmap_gpu.json` for frequency recommendation maps.
 
 4. Run your workload with the FFNet agent.
 

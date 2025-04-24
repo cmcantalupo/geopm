@@ -86,6 +86,7 @@ namespace geopm
             bool env_are_set(const std::string &nnet, const std::string &fmap);
             static std::string get_env_value(const std::string &env_var);
             void init_domain_indices(const PlatformTopo &topo);
+            bool file_exists(const std::string &path, const std::string &pattern);
 
             PlatformIO &m_platform_io;
             static constexpr double M_WAIT_SEC = 0.020;

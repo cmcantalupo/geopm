@@ -10,6 +10,7 @@ Helper functions for running CPU activity agent experiments.
 
 import argparse
 import os
+import glob
 
 import geopmpy.agent
 
@@ -42,34 +43,24 @@ def trace_signals():
     return []
 
 def setup_env_paths(args):
-    if not args.cpu_nn_path and not args.gpu_nn_path:
-        raise RuntimeError('Must specify cpu-nn-path and/or gpu-nn-path when running ffnet experiment')
+    ffnet_path = os.getenv("GEOPM_FFNET_PATH")
+    if not ffnet_path:
+        raise RuntimeError("GEOPM_FFNET_PATH environment variable is not set.")
 
-    if hasattr(args, "cpu_nn_path") and args.cpu_nn_path is not None:
-        if os.path.exists(args.cpu_nn_path):
-            os.environ['GEOPM_CPU_NN_PATH'] = args.cpu_nn_path
-        else:
-            raise FileNotFoundError(f'File cpu-nn-path={args.cpu_nn_path} does not exist.')
-        if hasattr(args, "cpu_fmap_path") and args.cpu_fmap_path is not None:
-            if os.path.exists(args.cpu_fmap_path):
-                os.environ['GEOPM_CPU_FMAP_PATH'] = args.cpu_fmap_path
-            else:
-                raise FileNotFoundError(f'File cpu-nn-path={args.cpu_fmap_path} does not exist.')
-        else:
-            raise RuntimeError('Must specify cpu-fmap-path when cpu-nn-path is specified for ffnet experiment')
+    cpu_nn_files = glob.glob(os.path.join(ffnet_path, "*_nn_cpu.json"))
+    cpu_fmap_files = glob.glob(os.path.join(ffnet_path, "*_fmap_cpu.json"))
+    gpu_nn_files = glob.glob(os.path.join(ffnet_path, "*_nn_gpu.json"))
+    gpu_fmap_files = glob.glob(os.path.join(ffnet_path, "*_fmap_gpu.json"))
 
-    if hasattr(args, "gpu_nn_path") and args.gpu_nn_path is not None:
-        if os.path.exists(args.gpu_nn_path):
-            os.environ['GEOPM_GPU_NN_PATH'] = args.gpu_nn_path
-        else:
-            raise FileNotFoundError(f'File gpu-nn-path={args.gpu_nn_path} does not exist.')
-        if hasattr(args, "gpu_fmap_path"):
-            if os.path.exists(args.gpu_fmap_path) and args.cpu_fmap_path is not None:
-                os.environ['GEOPM_GPU_FMAP_PATH'] = args.gpu_fmap_path
-            else:
-                raise FileNotFoundError(f'File gpu-nn-path={args.gpu_fmap_path} does not exist.')
-        else:
-            raise RuntimeError('Must specify gpu-fmap-path when gpu-nn-path is specified for ffnet experiment')
+    if cpu_nn_files and cpu_fmap_files:
+        args.cpu_nn_path = cpu_nn_files[0]
+        args.cpu_fmap_path = cpu_fmap_files[0]
+    if gpu_nn_files and gpu_fmap_files:
+        args.gpu_nn_path = gpu_nn_files[0]
+        args.gpu_fmap_path = gpu_fmap_files[0]
+
+    if not (cpu_nn_files and cpu_fmap_files) and not (gpu_nn_files and gpu_fmap_files):
+        raise RuntimeError("No valid neural net or frequency map files found in GEOPM_FFNET_PATH.")
 
 def launch_configs(output_dir, app_conf, perf_energy_bias=0):
     mach = machine.init_output_dir(output_dir)
@@ -92,14 +83,14 @@ def launch_configs(output_dir, app_conf, perf_energy_bias=0):
 def launch(app_conf, args, experiment_cli_args):
     output_dir = os.path.abspath(args.output_dir)
     extra_cli_args = launch_util.geopm_signal_args(report_signals=report_signals(),
-                                                    trace_signals=trace_signals())
+                                                   trace_signals=trace_signals())
     extra_cli_args += experiment_cli_args
 
     setup_env_paths(args)
 
     targets = launch_configs(output_dir, app_conf, args.perf_energy_bias)
 
-    #Set and initialize required counters
+    # Set and initialize required counters
     init_control_path = os.path.join(output_dir, 'ffnet_init.controls')
     with open(init_control_path, 'w') as outfile:
         outfile.write("MSR::PQR_ASSOC:RMID board 0 0\n"

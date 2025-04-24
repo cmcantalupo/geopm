@@ -160,10 +160,7 @@ void FFNetAgentTest::construct()
     }
 
     //Set paths
-    setenv("GEOPM_CPU_NN_PATH", "dummy_cpu_nnet", 1);
-    setenv("GEOPM_CPU_FMAP_PATH", "dummy_cpu_fmap", 1);
-    setenv("GEOPM_GPU_NN_PATH", "dummy_gpu_nnet", 1);
-    setenv("GEOPM_GPU_FMAP_PATH", "dummy_gpu_fmap", 1);
+    setenv("GEOPM_FFNET_PATH", "dummy_ffnet_path", 1);
 
     std::shared_ptr<geopm::Waiter> waiter = std::make_unique<MockWaiter>();
     m_agent = geopm::make_unique<FFNetAgent>(
@@ -175,10 +172,7 @@ void FFNetAgentTest::construct()
     m_agent->init(0, {}, false); 
     
     //Unset paths after init_domain_indices call
-    unsetenv("GEOPM_CPU_NN_PATH");
-    unsetenv("GEOPM_GPU_NN_PATH");
-    unsetenv("GEOPM_CPU_FMAP_PATH");
-    unsetenv("GEOPM_GPU_FMAP_PATH");
+    unsetenv("GEOPM_FFNET_PATH");
 }
 
 int FFNetAgentTest::construct_and_init(bool do_gpu)

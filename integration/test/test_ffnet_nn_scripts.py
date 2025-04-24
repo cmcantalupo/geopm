@@ -51,6 +51,9 @@ class TestIntegration_ffnet(unittest.TestCase):
         cls._do_gen_nn = True
         cls._do_ffnet = True
 
+        cls._ffnet_path = os.path.join(Path.cwd(), "test_ffnet", "files")
+        os.environ["GEOPM_FFNET_PATH"] = cls._ffnet_path
+
         ########################
         # CPU Neural Net Sweep #
         ########################
@@ -277,6 +280,10 @@ class TestIntegration_ffnet(unittest.TestCase):
         ###########
         # Helpers #
         ###########
+
+    @classmethod
+    def tearDownClass(cls):
+        del os.environ["GEOPM_FFNET_PATH"]
 
     #Used to calculate region probabilities
     def sigmoid(self, x):

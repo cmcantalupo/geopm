@@ -50,8 +50,9 @@ class TestIntegration_ffnet_agent(unittest.TestCase):
 
         cls._cpu_nn_dummy_path = os.path.dirname(__file__) + "/ffnet_dummy.json"
         cls._cpu_fmap_dummy_path = os.path.dirname(__file__) + "/fmap_dummy.json"
-#        cls._cpu_nn_dummy_path = os.path.dirname(__file__) + "/ffnet_small_dummy.json"
-#        cls._cpu_fmap_dummy_path = os.path.dirname(__file__) + "/fmap_dummy.json"
+
+        cls._ffnet_path = os.path.dirname(__file__) + "/test_ffnet_files"
+        os.environ["GEOPM_FFNET_PATH"] = cls._ffnet_path
 
         node_count = 1
         cls._run_count = 0
@@ -89,9 +90,6 @@ class TestIntegration_ffnet_agent(unittest.TestCase):
 
         ffnet_app_conf = geopmbench.GeopmbenchAppConf(os.path.abspath(bench_conf.get_path()), 1)
 
-        os.environ["GEOPM_CPU_NN_PATH"] = cls._cpu_nn_dummy_path
-        os.environ["GEOPM_CPU_FMAP_PATH"] = cls._cpu_fmap_dummy_path
-
         cls.launch_helper(cls, ffnet, ffnet_experiment_args, ffnet_app_conf, experiment_cli_args)
 
         # Get traces and reports
@@ -110,6 +108,10 @@ class TestIntegration_ffnet_agent(unittest.TestCase):
         ###########
         # Helpers #
         ###########
+
+    @classmethod
+    def tearDownClass(cls):
+        del os.environ["GEOPM_FFNET_PATH"]
 
     #Launch Helper for multiple job launches
     def launch_helper(self, experiment_type, experiment_args, app_conf, experiment_cli_args):

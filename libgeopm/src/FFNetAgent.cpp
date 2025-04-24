@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <glob.h>
 
 #include "geopm/PlatformIOProf.hpp"
 #include "geopm/Waiter.hpp"
@@ -25,14 +26,6 @@
 
 namespace geopm
 {
-    const std::map<geopm_domain_e, std::string> FFNetAgent::M_NNET_ENVNAME =
-        {{GEOPM_DOMAIN_PACKAGE, "GEOPM_CPU_NN_PATH"},
-         {GEOPM_DOMAIN_GPU, "GEOPM_GPU_NN_PATH"}};
-
-    const std::map<geopm_domain_e, std::string> FFNetAgent::M_FREQMAP_ENVNAME =
-        {{GEOPM_DOMAIN_PACKAGE, "GEOPM_CPU_FMAP_PATH"},
-         {GEOPM_DOMAIN_GPU, "GEOPM_GPU_FMAP_PATH"}};
-
     const std::map<geopm_domain_e, std::string> FFNetAgent::M_MAX_FREQ_SIGNAL_NAME = 
         {{GEOPM_DOMAIN_PACKAGE, "CPU_FREQUENCY_MAX_AVAIL"},
          {GEOPM_DOMAIN_GPU, "GPU_CORE_FREQUENCY_MAX_AVAIL"}};
@@ -109,24 +102,27 @@ namespace geopm
     }
 
     void FFNetAgent::init_domain_indices(const PlatformTopo &topo) {
-        //Include domains if they have a neural net and fmap file
-        //Currently supported: package, gpu
+        std::string ffnet_path = geopm::get_env("GEOPM_FFNET_PATH");
+        if (ffnet_path.empty()) {
+            throw Exception("FFNetAgent::" + std::string(__func__) +
+                            "(): GEOPM_FFNET_PATH environment variable is not set.",
+                            GEOPM_ERROR_INVALID, __FILE__, __LINE__);
+        }
+
         bool domain_set = false;
-        if (env_are_set(M_NNET_ENVNAME.at(GEOPM_DOMAIN_PACKAGE),
-                        M_FREQMAP_ENVNAME.at(GEOPM_DOMAIN_PACKAGE))) {
+        if (file_exists(ffnet_path, "*_nn_cpu.json") && file_exists(ffnet_path, "*_fmap_cpu.json")) {
             m_domain_types.push_back(GEOPM_DOMAIN_PACKAGE);
             domain_set = true;
         }
         if (topo.num_domain(GEOPM_DOMAIN_GPU) > 0 &&
-            env_are_set(M_NNET_ENVNAME.at(GEOPM_DOMAIN_GPU),
-                        M_FREQMAP_ENVNAME.at(GEOPM_DOMAIN_GPU))) {
+            file_exists(ffnet_path, "*_nn_gpu.json") && file_exists(ffnet_path, "*_fmap_gpu.json")) {
             m_domain_types.push_back(GEOPM_DOMAIN_GPU);
             domain_set = true;
         }
 
-        if (! domain_set) {
+        if (!domain_set) {
             throw Exception("FFNetAgent::" + std::string(__func__) +
-                            "(): No viable domain identified.",
+                            "(): No viable domain identified in GEOPM_FFNET_PATH.",
                             GEOPM_ERROR_INVALID, __FILE__, __LINE__);
         }
 
@@ -136,6 +132,14 @@ namespace geopm
                 m_domains.push_back({domain_type, domain_index});
             }
         }
+    }
+
+    bool FFNetAgent::file_exists(const std::string &path, const std::string &pattern) {
+        glob_t glob_result;
+        std::string full_pattern = path + "/" + pattern;
+        int ret = glob(full_pattern.c_str(), GLOB_NOSORT, nullptr, &glob_result);
+        globfree(&glob_result);
+        return ret == 0 && glob_result.gl_pathc > 0;
     }
 
     std::string FFNetAgent::plugin_name(void)
