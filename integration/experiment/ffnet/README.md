@@ -14,31 +14,6 @@ frequency recommendation maps, optionally with a specified perf energy bias.
   In addition to command line arguments common to all run scripts, the
   FFNet agent experiment script requires the following parameters:
 
-  - `--cpu-nn-path`: A path to a neural network for guiding CPU frequency decisions.
-                     Frequency steering will occur at the package scope. If the path
-                     does not exist, an error will be thrown. At least one of 
-                     `cpu-nn-path` and `gpu-nn-path` must be specified or an error will be
-                     thrown.
-  - `--gpu-nn-path`: A path to a neural network json for guiding GPU frequency decisions.
-                     Frequency steering will occur at the gpu scope. If the path
-                     does not exist, an error will be thrown. At least one of 
-                     `cpu-nn-path` and `gpu-nn-path` must be specified or an error will be
-                     thrown.
-  - `--cpu-fmap-path`: A path to the CPU frequency recommendation map json. This file
-                       must contain region keys specified in the file at `cpu-nn-path`
-                       and must map each of these regions to an array of frequency 
-                       decisions for different values of `perf-energy-bias`. If `cpu-nn-path`
-                       is specified but cpu-fmap-path is not (or its path is invalid),
-                       an error will be thrown.
-  - `--gpu-fmap-path`: A path to the GPU frequency recommendation map json. This file
-                       must contain region keys specified in the file at `gpu-nn-path`
-                       and must map each of these regions to an array of frequency 
-                       decisions for different values of `perf-energy-bias`. If `gpu-nn-path`
-                       is specified but gpu-fmap-path is not (or its path is invalid),
-                       an error will be thrown.
-
- The following parameter is optional:
-
   - `--perf-energy-bias`: (default=0) A bias [0-1] that indicates the amount of
                           performance degradation that is acceptable in order to
                           achieve an improvement in energy efficiency. A value
@@ -47,6 +22,18 @@ frequency recommendation maps, optionally with a specified perf energy bias.
                           is of utmost importance. Note that there are no absolute
                           guarantees on the amount of performance degradation or
                           energy savings.
+
+  The following environment variable must be set before running the FFNet agent:
+
+  - `GEOPM_FFNET_PATH`: A directory containing the neural network and frequency
+                        recommendation map JSON files. The directory must include:
+                        - Neural net JSON files with the suffix `*_nn_cpu.json` and/or `*_nn_gpu.json`.
+                        - Frequency recommendation map JSON files with the suffix `*_fmap_cpu.json` and/or `*_fmap_gpu.json`.
+
+  Example:
+  ```
+  export GEOPM_FFNET_PATH=/path/to/ffnet/files
+  ```
 
 ## Additional Experiment Module
 #### `neural_net_sweep.py`:
@@ -221,34 +208,28 @@ using the following steps.
    generate useful results include Arithmetic Intensity Benchmark and geopmbench on CPU,
    and the PARRES suite (DGEMM and STREAM) on GPU.
 
-2. Generate neural net json files and region frequency recommendation map files using
+2. Generate neural net JSON files and region frequency recommendation map files using
    `gen_sweep_to_ffnet.py`. 
 
    Example:
-
    ```
    ./gen_sweep_to_ffnet.py --output test --description "Test" --frequency_sweep_dirs /path/to/fsweep
    ```
 
-   Resulting json files will output in the directory in which the script was executed
-   and filenames will be prepended with the user-provided prefix. Example output files:
+   Resulting JSON files will output in the directory specified by `GEOPM_FFNET_PATH` and filenames
+   will be prepended with the user-provided prefix. Example output files:
 
    - CPU Neural Net: `test_nn_cpu.json`
    - CPU Region Frequency Recommendation Map: `test_fmap_cpu.json`
    - GPU Neural Net: `test_nn_gpu.json`
    - GPU Region Frequency Recommendation Map: `test_fmap_gpu.json`
 
-
-3. Set the `GEOPM_FFNET_PATH` environment variable to the directory containing the generated JSON files.
+3. Set the `GEOPM_FFNET_PATH` environment variable to point to the directory containing the generated JSON files.
 
    Example:
    ```
-   export GEOPM_FFNET_PATH=${GEOPM_SOURCE}/integration/experiment/ffnet/generated_files
+   export GEOPM_FFNET_PATH=/path/to/generated/files
    ```
-
-   The directory must contain:
-   - `*_nn_cpu.json` and/or `*_nn_gpu.json` for neural nets.
-   - `*_fmap_cpu.json` and/or `*_fmap_gpu.json` for frequency recommendation maps.
 
 4. Run your workload with the FFNet agent.
 
