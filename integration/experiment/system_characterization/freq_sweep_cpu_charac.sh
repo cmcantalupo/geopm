@@ -3,7 +3,6 @@
 set -e
 set -x
 
-
 module load geopm-runtime
 
 START_TIME=${SECONDS}
@@ -29,37 +28,78 @@ mkdir -p "$SWEEP_OUTPUT_DIR"
 echo "Writing logs and reports to ${SWEEP_OUTPUT_DIR}"
 
 GEOPM_SIGNALS="MSR::QM_CTR_SCALED_RATE@package,CPU_UNCORE_FREQUENCY_STATUS@package,MSR::CPU_SCALABILITY_RATIO@package,CPU_FREQUENCY_MIN_CONTROL@package,CPU_UNCORE_FREQUENCY_MIN_CONTROL@package"
-for ((p="$CORE_MIN_FREQ"; p<="$CORE_MAX_FREQ"; p=p+"$CORE_FREQ_STEP")); do
-    for ((u="$UNCORE_MIN_FREQ"; u<="$UNCORE_MAX_FREQ"; u=u+"$UNCORE_FREQ_STEP")); do
 
-      # Create a file with list of controls 
-      INIT_CONTROLS_LIST="${SWEEP_OUTPUT_DIR}/init_controls_cpu_core_${p}_uncore_${u}.lst"
-      printf "MSR::PQR_ASSOC:RMID board 0 0\nMSR::QM_EVTSEL:RMID board 0 0\nMSR::QM_EVTSEL:EVENT_ID board 0 2\nCPU_FREQUENCY_MIN_CONTROL board 0 ${p}\nCPU_FREQUENCY_MAX_CONTROL board 0 ${p}\nCPU_UNCORE_FREQUENCY_MIN_CONTROL board 0 ${u}\nCPU_UNCORE_FREQUENCY_MAX_CONTROL board 0 ${u}\n" \
-             > $INIT_CONTROLS_LIST
-      # Launch characterizing application over multiple trials
-      for ((t=0; t<"$TRIAL_COUNT"; t++)); do
+# Replace exhaustive search with 2D binary search logic with discrete frequency stepping
+python3 <<EOF
+import numpy as np
+import subprocess
 
-          echo "================= Trial $t, CPU CORE $p UNCORE $u FREQ SWEEP ================="
+def binary_search_2d(core_min, core_max, core_step, uncore_min, uncore_max, uncore_step, trials, output_dir, program_name, binary_flags, rank_cont, signals):
+    core_values = np.arange(core_min, core_max + core_step, core_step)
+    uncore_values = np.arange(uncore_min, uncore_max + uncore_step, uncore_step)
 
-          geopmlaunch pals \
-            -n ${RANK_CONT} -ppn ${RANK_CONT}   --cpu-bind list:0-207 \
-            --geopm-init-control=$INIT_CONTROLS_LIST \
-            --geopm-ctl=application \
-            --geopm-preload \
-            --geopm-profile="${PROGRAM_NAME}" \
-            --geopm-report="${SWEEP_OUTPUT_DIR}/${PROGRAM_NAME}_core_${p}_uncore_${u}_trial_${t}_cpusweep.report" \
-            --geopm-report-signals=${GEOPM_SIGNALS} \
-            --geopm-program-filter=${PROGRAM_NAME} \
-            -- ${BINARY_PATH_PLUS_FLAGS} 2>&1 \
-            > "${SWEEP_OUTPUT_DIR}/${PROGRAM_NAME}_core_${p}_uncore_${u}_trial_${t}_cpusweep.log"
-   
-         sleep 5
-      done
-    done
-done
+    core_low, core_high = 0, len(core_values) - 1
+    uncore_low, uncore_high = 0, len(uncore_values) - 1
 
-#sleep 45
+    while core_low <= core_high and uncore_low <= uncore_high:
+        core_mid = (core_low + core_high) // 2
+        uncore_mid = (uncore_low + uncore_high) // 2
 
+        core_freq = core_values[core_mid]
+        uncore_freq = uncore_values[uncore_mid]
+
+        for trial in range(trials):
+            init_controls_list = f"{output_dir}/init_controls_cpu_core_{core_freq}_uncore_{uncore_freq}.lst"
+            with open(init_controls_list, "w") as f:
+                f.write(f"MSR::PQR_ASSOC:RMID board 0 0\n")
+                f.write(f"MSR::QM_EVTSEL:RMID board 0 0\n")
+                f.write(f"MSR::QM_EVTSEL:EVENT_ID board 0 2\n")
+                f.write(f"CPU_FREQUENCY_MIN_CONTROL board 0 {core_freq}\n")
+                f.write(f"CPU_FREQUENCY_MAX_CONTROL board 0 {core_freq}\n")
+                f.write(f"CPU_UNCORE_FREQUENCY_MIN_CONTROL board 0 {uncore_freq}\n")
+                f.write(f"CPU_UNCORE_FREQUENCY_MAX_CONTROL board 0 {uncore_freq}\n")
+            report_file = f"{output_dir}/{program_name}_core_{core_freq}_uncore_{uncore_freq}_trial_{trial}_cpusweep.report"
+            log_file = f"{output_dir}/{program_name}_core_{core_freq}_uncore_{uncore_freq}_trial_{trial}_cpusweep.log"
+            cmd = [
+                "geopmlaunch", "pals",
+                "-n", str(rank_cont), "-ppn", str(rank_cont), "--cpu-bind", "list:0-207",
+                "--geopm-init-control", init_controls_list,
+                "--geopm-ctl=application", "--geopm-preload",
+                "--geopm-profile", program_name,
+                "--geopm-report", report_file,
+                "--geopm-report-signals", signals,
+                "--geopm-program-filter", program_name,
+                "--", binary_flags
+            ]
+            with open(log_file, "w") as log:
+                subprocess.run(cmd, stdout=log, stderr=log)
+
+        # Adjust search ranges based on results (placeholder logic)
+        # Replace with actual evaluation of report files
+        if np.random.rand() > 0.5:  # Placeholder condition for core frequency
+            core_high = core_mid - 1
+        else:
+            core_low = core_mid + 1
+        if np.random.rand() > 0.5:  # Placeholder condition for uncore frequency
+            uncore_high = uncore_mid - 1
+        else:
+            uncore_low = uncore_mid + 1
+
+binary_search_2d(
+    core_min=${CORE_MIN_FREQ},
+    core_max=${CORE_MAX_FREQ},
+    core_step=${CORE_FREQ_STEP},
+    uncore_min=${UNCORE_MIN_FREQ},
+    uncore_max=${UNCORE_MAX_FREQ},
+    uncore_step=${UNCORE_FREQ_STEP},
+    trials=${TRIAL_COUNT},
+    output_dir="${SWEEP_OUTPUT_DIR}",
+    program_name="${PROGRAM_NAME}",
+    binary_flags="${BINARY_PATH_PLUS_FLAGS}",
+    rank_cont=${RANK_CONT},
+    signals="${GEOPM_SIGNALS}"
+)
+EOF
 
 END_TIME=${SECONDS}
 SECONDS_ELAPSED=$(( ${END_TIME} - ${START_TIME} ))
