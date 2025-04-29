@@ -31,8 +31,11 @@ GEOPM_SIGNALS="MSR::QM_CTR_SCALED_RATE@package,CPU_UNCORE_FREQUENCY_STATUS@packa
 
 # Replace exhaustive search with 2D binary search logic with discrete frequency stepping
 python3 <<EOF
+
 import numpy as np
-import subprocess
+import subprocess # nosec
+
+from geopmpy.io import RawReportCollection
 
 def binary_search_2d(core_min, core_max, core_step, uncore_min, uncore_max, uncore_step, trials, output_dir, program_name, binary_flags, rank_cont, signals):
     core_values = np.arange(core_min, core_max + core_step, core_step)
@@ -48,6 +51,7 @@ def binary_search_2d(core_min, core_max, core_step, uncore_min, uncore_max, unco
         core_freq = core_values[core_mid]
         uncore_freq = uncore_values[uncore_mid]
 
+        all_reports = []
         for trial in range(trials):
             init_controls_list = f"{output_dir}/init_controls_cpu_core_{core_freq}_uncore_{uncore_freq}.lst"
             with open(init_controls_list, "w") as f:
@@ -59,6 +63,7 @@ def binary_search_2d(core_min, core_max, core_step, uncore_min, uncore_max, unco
                 f.write(f"CPU_UNCORE_FREQUENCY_MIN_CONTROL board 0 {uncore_freq}\n")
                 f.write(f"CPU_UNCORE_FREQUENCY_MAX_CONTROL board 0 {uncore_freq}\n")
             report_file = f"{output_dir}/{program_name}_core_{core_freq}_uncore_{uncore_freq}_trial_{trial}_cpusweep.report"
+            all_reports.append(report_file)
             log_file = f"{output_dir}/{program_name}_core_{core_freq}_uncore_{uncore_freq}_trial_{trial}_cpusweep.log"
             cmd = [
                 "geopmlaunch", "pals",
@@ -73,9 +78,18 @@ def binary_search_2d(core_min, core_max, core_step, uncore_min, uncore_max, unco
             ]
             with open(log_file, "w") as log:
                 subprocess.run(cmd, stdout=log, stderr=log)
+        raw_report = RawReportCollection(all_reports)
+        df = raw_report.get_df()
+
+        # Use extract_columns() to filter the dataframe
+        from integration.experiment.uncore_frequency_sweep.gen_cpu_activity_constconfig_recommendation import extract_columns
+        filtered_df = extract_columns(df)
+
+        # Evaluate energy for the region "intensity_16"
+        region_energy = filtered_df.loc[filtered_df['region'] == 'intensity_16', 'package-energy (J)'].mean()
+        print(f"Total energy for region 'intensity_16': {region_energy} J")
 
         # Adjust search ranges based on results (placeholder logic)
-        # Replace with actual evaluation of report files
         if np.random.rand() > 0.5:  # Placeholder condition for core frequency
             core_high = core_mid - 1
         else:
