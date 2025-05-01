@@ -11,11 +11,22 @@ noinst_SCRIPTS += $(check_SCRIPTS)
 test_isadmin_SOURCES = test/isadmin.cpp
 test_isadmin_LDADD = libgeopmd.la
 
-TEST_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
-                  $(top_srcdir)/build-aux/tap-driver.sh
+# Ensure the test script depends on the test binary
+test/geopm_test.test: test/geopm_test test/geopm_test.log_driver
+	@echo "Generating test script for geopm_test"
+	@echo "#!/bin/bash" > $@
+	@echo "$(top_builddir)/test/geopm_test --tap-out-path -" >> $@
+	@chmod +x $@
 
-AM_TESTS_ENVIRONMENT = geopm_test_path='$(top_builddir)'/test/geopm_test; \
-		       export geopm_test_path;
+test/geopm_test.log_driver:
+	@echo "Generating test log driver for geopm_test"
+	@echo "#!/bin/bash" > $@
+	@echo "export AM_TAP_AWK='$(AWK)'" >> $@
+	@echo "$(top_srcdir)/build-aux/tap-driver.sh "'$$@' >> $@
+	@chmod +x $@
+
+TEST_LOG_DRIVER = test/geopm_test.log_driver
+
 TESTS += $(check_SCRIPTS)
 
 EXTRA_DIST += test/legacy_allowlist.out \

@@ -48,6 +48,8 @@ src/msr_data_*.cpp
 src/sysfs_attributes_*.cpp
 /stamp-h1
 /test/geopm_test
+/test/geopm_test.log_driver
+/test/geopm_test.test
 /test/isadmin
 /test/*.log
 /test/*.trs

@@ -63,6 +63,8 @@ compile_commands.json
 /test/geopm_mpi_test_api
 /test/geopm_print_error
 /test/geopm_test
+/test/geopm_test.log_driver
+/test/geopm_test.test
 /test/geopm_test.sh
 /test/*.log
 /test/*.o
