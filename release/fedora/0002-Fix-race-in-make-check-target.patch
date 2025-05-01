@@ -1,0 +1,140 @@
+From 16bd1ac77fa555920fd5bab5253b723bfcd6a130 Mon Sep 17 00:00:00 2001
+From: "Christopher M. Cantalupo" <christopher.m.cantalupo@intel.com>
+Date: Wed, 30 Apr 2025 21:59:38 -0700
+Subject: [PATCH] Fix race in make check target
+
+Signed-off-by: Christopher M. Cantalupo <christopher.m.cantalupo@intel.com>
+---
+ libgeopm/.gitignore            |  2 ++
+ libgeopm/test/Makefile.mk      | 20 +++++++++++++++-----
+ libgeopm/test/geopm_test.test  |  6 ------
+ libgeopmd/.gitignore           |  2 ++
+ libgeopmd/test/Makefile.mk     | 19 +++++++++++++++----
+ libgeopmd/test/geopm_test.test |  6 ------
+ 6 files changed, 34 insertions(+), 21 deletions(-)
+ delete mode 100755 libgeopm/test/geopm_test.test
+ delete mode 100755 libgeopmd/test/geopm_test.test
+
+diff --git a/libgeopm/.gitignore b/libgeopm/.gitignore
+index 97efdc6da..f8c29420e 100644
+--- a/libgeopm/.gitignore
++++ b/libgeopm/.gitignore
+@@ -63,6 +63,8 @@ compile_commands.json
+ /test/geopm_mpi_test_api
+ /test/geopm_print_error
+ /test/geopm_test
++/test/geopm_test.log_driver
++/test/geopm_test.test
+ /test/geopm_test.sh
+ /test/*.log
+ /test/*.o
+diff --git a/libgeopm/test/Makefile.mk b/libgeopm/test/Makefile.mk
+index fe88cd362..1e834c4bf 100644
+--- a/libgeopm/test/Makefile.mk
++++ b/libgeopm/test/Makefile.mk
+@@ -10,11 +10,22 @@ if ENABLE_MPI
+     check_PROGRAMS += test/geopm_mpi_test_api
+ endif
+ 
+-TEST_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
+-                  $(top_srcdir)/build-aux/tap-driver.sh
++# Ensure the test script depends on the test binary
++test/geopm_test.test: test/geopm_test test/geopm_test.log_driver
++	@echo "Generating test script for geopm_test"
++	@echo "#!/bin/bash" > $@
++	@echo "$(top_builddir)/test/geopm_test --tap-out-path -" >> $@
++	@chmod +x $@
++
++test/geopm_test.log_driver:
++	@echo "Generating test log driver for geopm_test"
++	@echo "#!/bin/bash" > $@
++	@echo "export AM_TAP_AWK='$(AWK)'" >> $@
++	@echo "$(top_srcdir)/build-aux/tap-driver.sh "'$$@' >> $@
++	@chmod +x $@
++
++TEST_LOG_DRIVER = test/geopm_test.log_driver
+ 
+-AM_TESTS_ENVIRONMENT = geopm_test_path='$(top_builddir)'/test/geopm_test; \
+-                       export geopm_test_path;
+ TESTS += $(check_SCRIPTS)
+ 
+ EXTRA_DIST += test/InternalProfile.cpp \
+@@ -34,7 +45,6 @@ EXTRA_DIST += test/InternalProfile.cpp \
+               test/EditDistPeriodicityDetectorTest.8_pattern_subtract1.trace \
+               test/EditDistPeriodicityDetectorTest.fft_small.trace \
+               test/EditDistPeriodicityDetectorTest.cpp \
+-              test/geopm_test.test \
+               # end
+ 
+ test_geopm_test_SOURCES = test/AccumulatorTest.cpp \
+diff --git a/libgeopm/test/geopm_test.test b/libgeopm/test/geopm_test.test
+deleted file mode 100755
+index 666c7c327..000000000
+--- a/libgeopm/test/geopm_test.test
++++ /dev/null
+@@ -1,6 +0,0 @@
+-#!/bin/bash
+-#  Copyright (c) 2015 - 2025 Intel Corporation
+-#  SPDX-License-Identifier: BSD-3-Clause
+-#
+-test_dir="$(dirname "$0")"
+-"${geopm_test_path:-$test_dir/geopm_test}" --tap-out-path -
+diff --git a/libgeopmd/.gitignore b/libgeopmd/.gitignore
+index 120f5193d..5a6cce8da 100644
+--- a/libgeopmd/.gitignore
++++ b/libgeopmd/.gitignore
+@@ -48,6 +48,8 @@ src/msr_data_*.cpp
+ src/sysfs_attributes_*.cpp
+ /stamp-h1
+ /test/geopm_test
++/test/geopm_test.log_driver
++/test/geopm_test.test
+ /test/isadmin
+ /test/*.log
+ /test/*.trs
+diff --git a/libgeopmd/test/Makefile.mk b/libgeopmd/test/Makefile.mk
+index dd5fe753c..ee30b27db 100644
+--- a/libgeopmd/test/Makefile.mk
++++ b/libgeopmd/test/Makefile.mk
+@@ -11,11 +11,22 @@ noinst_SCRIPTS += $(check_SCRIPTS)
+ test_isadmin_SOURCES = test/isadmin.cpp
+ test_isadmin_LDADD = libgeopmd.la
+ 
+-TEST_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
+-                  $(top_srcdir)/build-aux/tap-driver.sh
++# Ensure the test script depends on the test binary
++test/geopm_test.test: test/geopm_test test/geopm_test.log_driver
++	@echo "Generating test script for geopm_test"
++	@echo "#!/bin/bash" > $@
++	@echo "$(top_builddir)/test/geopm_test --tap-out-path -" >> $@
++	@chmod +x $@
++
++test/geopm_test.log_driver:
++	@echo "Generating test log driver for geopm_test"
++	@echo "#!/bin/bash" > $@
++	@echo "export AM_TAP_AWK='$(AWK)'" >> $@
++	@echo "$(top_srcdir)/build-aux/tap-driver.sh "'$$@' >> $@
++	@chmod +x $@
++
++TEST_LOG_DRIVER = test/geopm_test.log_driver
+ 
+-AM_TESTS_ENVIRONMENT = geopm_test_path='$(top_builddir)'/test/geopm_test; \
+-		       export geopm_test_path;
+ TESTS += $(check_SCRIPTS)
+ 
+ EXTRA_DIST += test/legacy_allowlist.out \
+diff --git a/libgeopmd/test/geopm_test.test b/libgeopmd/test/geopm_test.test
+deleted file mode 100755
+index 666c7c327..000000000
+--- a/libgeopmd/test/geopm_test.test
++++ /dev/null
+@@ -1,6 +0,0 @@
+-#!/bin/bash
+-#  Copyright (c) 2015 - 2025 Intel Corporation
+-#  SPDX-License-Identifier: BSD-3-Clause
+-#
+-test_dir="$(dirname "$0")"
+-"${geopm_test_path:-$test_dir/geopm_test}" --tap-out-path -
+-- 
+2.43.0
+
