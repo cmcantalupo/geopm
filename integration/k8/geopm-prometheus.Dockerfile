@@ -44,7 +44,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Copy .deb packages from the build stage and install them
 COPY --from=build /mnt/geopm-prometheus /mnt/geopm-prometheus
 RUN apt-get update && \
-    apt-get install -yq --no-install-recommends python3-grpcio /mnt/geopm-prometheus/*.deb && \
+    apt-get install -yq --no-install-recommends python3-grpcio \
+    /mnt/geopm-prometheus/libgeopmd2_*.deb \
+    /mnt/geopm-prometheus/geopmd-cli_*.deb \
+    /mnt/geopm-prometheus/python3-geopmdpy_*.deb \
+    /mnt/geopm-prometheus/geopmdrs_*.deb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /mnt/geopm-prometheus
