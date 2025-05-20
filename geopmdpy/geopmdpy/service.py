@@ -462,6 +462,16 @@ class PlatformService(object):
             raise RuntimeError('Closing session of another PID requires CAP_SYS_ADMIN, try with "sudo" or run with "root"')
         self._close_session_completely(client_pid)
 
+    def close_all_sessions(self):
+        """Close all active sessions.
+
+        This method should be called when terminating the service but not when
+        restarting.
+
+        """
+        for client_pid in self._active_sessions.get_clients():
+            self.close_session_admin(client_pid, client_pid)
+
     def _close_session_completely(self, client_pid):
         """Close an active session for the client process completely.
 
@@ -1082,6 +1092,9 @@ class GEOPMService(object):
 
         """
         self._topo.rm_cache()
+
+    def close_all_sessions(self):
+        self._platform.close_all_sessions()
 
     def _get_user(self, call_info):
         """Use DBus proxy object to derive the user name that owns the client
