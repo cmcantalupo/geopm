@@ -53,6 +53,7 @@ class PlatformService(object):
         self._accessed_signals = set()
         self._accessed_controls = set()
         self._batch_subp = dict()
+        self._write_pid = None
         for client_pid in self._active_sessions.get_clients():
             is_active = self.check_client(client_pid)
             if is_active:
@@ -60,8 +61,11 @@ class PlatformService(object):
                 self._active_sessions.set_watch_id(client_pid, watch_id)
         with system_files.WriteLock(self._RUN_PATH) as lock:
             write_pid = lock.try_lock()
-            if write_pid is not None and not self._is_client_active(write_pid):
-                self._close_session_write(lock, write_pid)
+            if write_pid is not None:
+                if not self._is_client_active(write_pid):
+                    self._close_session_write(lock, write_pid)
+                else:
+                    self._write_pid = write_pid
         with system_files.WriteLock(self._RUN_PATH, self._PROFILER_LOCK_NAME) as lock:
             profiler_pid = lock.try_lock()
             if profiler_pid is not None and not self._is_client_active(profiler_pid):
@@ -469,8 +473,18 @@ class PlatformService(object):
         restarting.
 
         """
-        for client_pid in self._active_sessions.get_clients():
-            self.close_session_admin(client_pid, client_pid)
+        all_clients = self._active_sessions.get_clients()
+        write_idx = all_clients.index(self._write_pid) if self._write_pid in all_clients else None
+        if write_idx is not None:
+            all_clients.insert(0, all_clients.pop(write_idx))
+        for client_pid in all_clients:
+            try:
+                self.close_session_admin(client_pid, client_pid)
+            except Exception as ex:
+                sys.stderr.write(f'Warning: <geopm-service>: When closing session for client PID {client_pid}: {ex}\n')
+                pass
+        if all_clients:
+            sys.stderr.write(f'Info: <geopm-service>: Closed all sessions for client PIDs: {all_clients}\n')
 
     def _close_session_completely(self, client_pid):
         """Close an active session for the client process completely.
@@ -521,6 +535,7 @@ class PlatformService(object):
             os.rename(save_dir, del_dir)
             if is_restored:
                 shutil.rmtree(del_dir)
+                self._write_pid = None
             else:
                 sys.stderr.write(f'Warning: <geopm-service>: Failed to restore controls for PID {pid}, moved to {del_dir}')
         else:
@@ -896,6 +911,7 @@ class PlatformService(object):
                 os.rename(tmp_dir, save_dir)
                 # Set the write lock to the writer PID
                 lock.try_lock(write_pid)
+                self._write_pid = write_pid
             elif lock_pid != write_pid:
                 raise RuntimeError(f'The PID {client_pid} requested write access, but the geopm service already has write mode client with PID or SID of {lock_pid}')
 
