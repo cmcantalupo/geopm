@@ -253,7 +253,7 @@ def predict_power_cap_at_performance_factor(job_type, slowdown, min_power_per_no
 
 def pio_read_signal(name, domain, domain_idx):
     pid = subprocess.run(['geopmread', name, str(domain), str(domain_idx)],
-                         check=True, text=True, capture_output=True)
+                         check=True, stdout=subprocess.PIPE, universal_newlines=True)
     return float(pid.stdout)
 
 def pio_write_control(name, domain, domain_idx, setting):
