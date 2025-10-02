@@ -71,7 +71,7 @@ def print_env():
         path.append(f"{k}")
     pbs.logmsg(pbs.LOG_DEBUG, "DEBUGGING: GEOPM hook:  " + "\n".join(path))
 
-    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING: GEOPM hook:  geopmdpy location: {pio.__file__}" )
+    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING: GEOPM hook:  geopmdpy location: {system_files.__file__}" )
 
 
 def clip_list(list_to_clip, min_value, max_value):
