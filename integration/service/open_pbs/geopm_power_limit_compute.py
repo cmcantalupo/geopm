@@ -27,6 +27,9 @@ import subprocess # nosec
 
 from geopmdpy import system_files
 
+import socket
+hostname = socket.gethostname()
+
 os.environ["ZES_ENABLE_SYSMAN"] = "1"
 os.environ["ZE_FLAT_DEVICE_HIERARCHY"] = "COMPOSITE"
 
@@ -60,18 +63,18 @@ _controls = [
 
 
 def print_env():
-    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING: GEOPM hook: Printing environment variables...")
+    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING {hostname}: GEOPM hook: Printing environment variables...")
     env = []
     for k, v in os.environ.items():
         env.append(f"{k}={v}")
-    pbs.logmsg(pbs.LOG_DEBUG, "DEBUGGING: GEOPM hook:  " + "\n".join(env))
+    pbs.logmsg(pbs.LOG_DEBUG, "DEBUGGING {hostname}: GEOPM hook:  " + "\n".join(env))
 
     path = []
     for k in sys.path:
         path.append(f"{k}")
-    pbs.logmsg(pbs.LOG_DEBUG, "DEBUGGING: GEOPM hook:  " + "\n".join(path))
+    pbs.logmsg(pbs.LOG_DEBUG, "DEBUGGING {hostname}: GEOPM hook:  " + "\n".join(path))
 
-    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING: GEOPM hook:  geopmdpy location: {system_files.__file__}" )
+    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING {hostname}: GEOPM hook:  geopmdpy location: {system_files.__file__}" )
 
 
 def clip_list(list_to_clip, min_value, max_value):
@@ -261,14 +264,14 @@ def pio_write_control(name, domain, domain_idx, setting):
                    check=True)
 
 def read_controls(event, controls):
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: In read_controls()...")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: In read_controls()...")
     try:
         for c in controls:
-            pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: Reading signal {c['name']}...")
+            pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Reading signal {c['name']}...")
             c["setting"] = pio_read_signal(c["name"], c["domain_type"],
                                            c["domain_idx"])
     except RuntimeError as e:
-        pbs.logmsg(pbs.LOG_WARNING, f"{event.hook_name}: Unable to read signal {c['name']}: {e}")
+        pbs.logmsg(pbs.LOG_WARNING, f"{event.hook_name}: {hostname}: Unable to read signal {c['name']}: {e}")
         reject_event(event, f"Unable to read signal {c['name']}: {e}")
 
 
@@ -350,15 +353,15 @@ def load_resources(event, job_id):
 
 
 def do_power_limit_prologue(event):
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: Entering prologue")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Entering prologue")
     job_id = event.job.id
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: Job ID: {job_id}")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Job ID: {job_id}")
 
     if os.path.exists(_SAVED_CONTROLS_FILE):
         restore_controls_from_file(event, _SAVED_CONTROLS_FILE)
 
     resource_dict = load_resources(event, job_id)
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: Loaded resources: {resource_dict}")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Loaded resources: {resource_dict}")
 
     node_power_limit_str = resource_dict.get(_POWER_LIMIT_RESOURCE)
     if node_power_limit_str is not None:
@@ -401,7 +404,7 @@ def do_power_limit_prologue(event):
                     B = [host_models[host]['B'] for host in vnode_names]
                     C = [host_models[host]['C'] for host in vnode_names]
                 except (ValueError, KeyError):
-                    pbs.logmsg(pbs.LOG_WARNING, f"{event.hook_name}: GEOPM PBS config has an incomplete set of host models. Using uniform power limits.")
+                    pbs.logmsg(pbs.LOG_WARNING, f"{event.hook_name}: {hostname}: GEOPM PBS config has an incomplete set of host models. Using uniform power limits.")
                 else:
                     use_uniform_limit = False
                     slowdown, power_by_node = allocate_budget_to_nodes(
@@ -415,23 +418,23 @@ def do_power_limit_prologue(event):
             job_node_count = len(vnode_names)
             power_limit = job_power_limit / job_node_count
 
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: Requested power limit: {power_limit}")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Requested power limit: {power_limit}")
     current_settings = copy.deepcopy(_controls)
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: About to read current power limit settings")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: About to read current power limit settings")
     read_controls(event, current_settings)
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: About to make save directory: {_SAVED_CONTROLS_PATH}")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: About to make save directory: {_SAVED_CONTROLS_PATH}")
     system_files.secure_make_dirs(_SAVED_CONTROLS_PATH)
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: About to save current power limit settings to: {_SAVED_CONTROLS_FILE}")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: About to save current power limit settings to: {_SAVED_CONTROLS_FILE}")
     save_controls_to_file(event, _SAVED_CONTROLS_FILE, current_settings)
     _power_limit_control["setting"] = power_limit
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: About to write new power limit settings")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: About to write new power limit settings")
     write_controls(event, _controls)
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: About to accept job")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: About to accept job")
     event.accept()
 
 
 def do_power_limit_epilogue(event):
-    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: Entering epilogue")
+    pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Entering epilogue")
     if os.path.exists(_SAVED_CONTROLS_FILE):
         restore_controls_from_file(event, _SAVED_CONTROLS_FILE)
     event.accept()
