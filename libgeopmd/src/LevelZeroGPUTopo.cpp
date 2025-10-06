@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <fstream>
+#include <unistd.h>
 
 #include "geopm/Exception.hpp"
 #include "LevelZeroDevicePool.hpp"
@@ -98,10 +100,40 @@ namespace geopm
         return cpu_affinity_ideal(GEOPM_DOMAIN_GPU, gpu_idx);
     }
 
+    namespace {
+        std::ofstream &levelzero_topo_log()
+        {
+            static std::ofstream log_stream;
+            log_stream.rdbuf()->pubsetbuf(0, 0);
+            static bool initialized = false;
+            if (!initialized) {
+                char tmpl[] = "/tmp/geopm-levelzero-gpu-topo-log-XXXXXX";
+                int fd = mkstemp(tmpl);
+                if (fd != -1) {
+                    // We just needed the path; reopen with ofstream for convenience
+                    close(fd);
+                    log_stream.open(tmpl, std::ios_base::out | std::ios_base::app);
+                }
+                initialized = true;
+            }
+            return log_stream;
+        }
+        inline void lvlzero_log(const std::string &msg)
+        {
+            auto &ls = levelzero_topo_log();
+            if (ls.is_open()) {
+                ls << msg << std::endl;
+            }
+        }
+    }
+
     std::set<int> LevelZeroGPUTopo::cpu_affinity_ideal(int domain, int gpu_idx) const
     {
         std::set<int> result = {};
+        lvlzero_log("LevelZeroGPUTopo::cpu_affinity_ideal(domain=" +
+                    std::to_string(domain) + ", gpu_idx=" + std::to_string(gpu_idx) + ") called.");
         if (domain == GEOPM_DOMAIN_GPU) {
+            lvlzero_log("LevelZeroGPUTopo::cpu_affinity_ideal(): domain is GEOPM_DOMAIN_GPU");
             if (gpu_idx < 0 || (unsigned int)gpu_idx >= m_cpu_affinity_ideal.size()) {
                 throw Exception("LevelZeroGPUTopo::" + std::string(__func__) + ": gpu_idx " +
                                 std::to_string(gpu_idx) + " is out of range",
@@ -110,6 +142,7 @@ namespace geopm
             result = m_cpu_affinity_ideal.at(gpu_idx);
         }
         else if (domain == GEOPM_DOMAIN_GPU_CHIP) {
+            lvlzero_log("LevelZeroGPUTopo::cpu_affinity_ideal(): domain is GEOPM_DOMAIN_GPU_CHIP");
             if (gpu_idx < 0 || (unsigned int)gpu_idx >= m_cpu_affinity_ideal_chip.size()) {
                 throw Exception("LevelZeroGPUTopo::" + std::string(__func__) + ": gpu_idx " +
                                 std::to_string(gpu_idx) + " is out of range",
@@ -122,6 +155,8 @@ namespace geopm
                             std::to_string(domain) + " is not supported.",
                             GEOPM_ERROR_INVALID, __FILE__, __LINE__);
         }
+        lvlzero_log("LevelZeroGPUTopo::cpu_affinity_ideal(): returning set of size " +
+                    std::to_string(result.size()));
         return result;
     }
 }

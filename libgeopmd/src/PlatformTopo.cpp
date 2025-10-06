@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 #include <stdexcept>
+#include <iostream>
 
 #include "geopm_sched.h"
 #include "geopm_time.h"
@@ -440,6 +441,25 @@ namespace geopm
 
     void PlatformTopoImp::create_cache(const std::string &cache_file_name, const GPUTopo &gtopo)
     {
+        // Create debug log file (template contains XXXXXX prior to mkstemp)
+        std::string log_template = "/tmp/geopm-topo-create-cache-log-XXXXXX";
+        char log_path[PATH_MAX];
+        log_path[PATH_MAX - 1] = '\0';
+        strncpy(log_path, log_template.c_str(), PATH_MAX - 1);
+        int log_fd = mkstemp(log_path);
+        std::ofstream log_stream;
+        log_stream.rdbuf()->pubsetbuf(0, 0);
+        if (log_fd != -1) {
+            // We only need std::ofstream; descriptor stays open until stream closes
+            log_stream.open(log_path, std::ios_base::out | std::ios_base::app);
+        }
+        auto log = [&](const std::string &msg) {
+            if (log_stream.is_open()) {
+                log_stream << msg << std::endl;
+            }
+        };
+
+        log("PlatformTopoImp::create_cache(\"" + cache_file_name + "\") called.");
         // If cache file is not present, or is too old, create it
         bool is_file_ok = false;
         try {
@@ -469,6 +489,8 @@ namespace geopm
             std::ostringstream cmd;
             cmd << "unset LD_PRELOAD; LC_ALL=C lscpu -x >> " << tmp_path << ";";
 
+            log(std::string("PlatformTopoImp::create_cache(): running command: ") + cmd.str());
+
             FILE *pid;
             int err = geopm_topo_popen(cmd.str().c_str(), &pid);
             if (err) {
@@ -481,34 +503,50 @@ namespace geopm
                 throw Exception("PlatformTopo::create_cache(): Could not pclose lscpu command: ",
                                 errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
             }
+
+            log("PlatformTopoImp::create_cache(): About to inspect GPU topology");
+
             if (gtopo.num_gpu() != 0) {
+                log("PlatformTopoImp::create_cache(): num_gpu is non-zero");
                 std::ofstream cache_stream;
                 cache_stream.open(tmp_path, std::ios_base::app);
+                log("PlatformTopoImp::create_cache(): opened tmp file for appending");
                 std::vector<int> gpu_domains = {
                     GEOPM_DOMAIN_GPU,
                     GEOPM_DOMAIN_GPU_CHIP
                 };
                 for (const auto &domain_type : gpu_domains) {
                     std::string short_name = gpu_short_name(domain_type);
+                    log("PlatformTopoImp::create_cache(): Inspecting " + short_name);
                     int num_domain = gtopo.num_gpu(domain_type);
+                    log("PlatformTopoImp::create_cache(): num_domain is " + std::to_string(num_domain));
                     for (int domain_idx = 0; domain_idx != num_domain; ++domain_idx) {
+                        log("PlatformTopoImp::create_cache(): Inspecting " + short_name + std::to_string(domain_idx));
                         cache_stream << "GPU " << short_name << domain_idx << " CPU(s):";
                         std::string delim = " ";
                         for (const auto &cpu_idx : gtopo.cpu_affinity_ideal(domain_type, domain_idx)) {
+                            log("PlatformTopoImp::create_cache():   CPU " + std::to_string(cpu_idx));
                             cache_stream << delim << cpu_idx;
                             delim = ",";
                         }
                         cache_stream << "\n";
                     }
+                    log("PlatformTopoImp::create_cache(): Finished inspecting " + short_name);
                 }
+                log("PlatformTopoImp::create_cache(): Finished inspecting GPUs");
                 cache_stream.close();
             }
+            log("PlatformTopoImp::create_cache(): About to rename tmp file");
             err = rename(tmp_path, cache_file_name.c_str());
+            log("PlatformTopoImp::create_cache(): Finished renaming tmp file");
             if (err) {
                 unlink(tmp_path);
                 throw Exception("PlatformTopo::create_cache(): Could not rename tmp_path: ",
                                 errno ? errno : GEOPM_ERROR_RUNTIME, __FILE__, __LINE__);
             }
+        }
+        if (log_stream.is_open()) {
+            log_stream.close(); // ensures flush & close
         }
     }
 
