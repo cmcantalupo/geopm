@@ -266,6 +266,12 @@ def pio_write_control(name, domain, domain_idx, setting):
 def read_controls(event, controls):
     pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: In read_controls()...")
     try:
+        cmd = "/usr/bin/python3 -c 'from dasbus.connection import SystemMessageBus;"
+              "SystemMessageBus().get_proxy(\"io.github.geopm\",\"/io/github/geopm\").TopoGetCache()'"
+        subprocess.run(cmd, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        pbs.logmsg(pbs.LOG_WARNING, f"{event.hook_name}: {hostname}: Unable to create topo cache: {e}")
+    try:
         for c in controls:
             pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Reading signal {c['name']}...")
             c["setting"] = pio_read_signal(c["name"], c["domain_type"],
