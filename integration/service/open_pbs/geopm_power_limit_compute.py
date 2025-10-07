@@ -67,12 +67,12 @@ def print_env():
     env = []
     for k, v in os.environ.items():
         env.append(f"{k}={v}")
-    pbs.logmsg(pbs.LOG_DEBUG, "DEBUGGING {hostname}: GEOPM hook:  " + "\n".join(env))
+    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING {hostname}: GEOPM hook:  " + "\n".join(env))
 
     path = []
     for k in sys.path:
         path.append(f"{k}")
-    pbs.logmsg(pbs.LOG_DEBUG, "DEBUGGING {hostname}: GEOPM hook:  " + "\n".join(path))
+    pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING {hostname}: GEOPM hook:  " + "\n".join(path))
 
     pbs.logmsg(pbs.LOG_DEBUG, f"DEBUGGING {hostname}: GEOPM hook:  geopmdpy location: {system_files.__file__}" )
 
