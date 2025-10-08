@@ -24,6 +24,7 @@ import math
 
 import pbs
 import subprocess # nosec
+import signal
 
 from geopmdpy import system_files
 
@@ -265,11 +266,13 @@ def pio_write_control(name, domain, domain_idx, setting):
 
 def read_controls(event, controls):
     pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: In read_controls()...")
-    cmd = "/usr/bin/python3 -c 'from dasbus.connection import SystemMessageBus; SystemMessageBus().get_proxy(\"io.github.geopm\",\"/io/github/geopm\").TopoGetCache()'"
-    try:
-        subprocess.run(cmd, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
-        pbs.logmsg(pbs.LOG_WARNING, f"{event.hook_name}: {hostname}: Unable to create topo cache: {e}")
+    # Unblock SIGCHLD temporarily (hook env may have it blocked); restore after all reads.
+    old_mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])  # Query current mask (no change)
+    did_unblock = False
+    if signal.SIGCHLD in old_mask:
+        signal.pthread_sigmask(signal.SIG_UNBLOCK, [signal.SIGCHLD])
+        did_unblock = True
+        pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Unblocked SIGCHLD for geopmread operations")
     try:
         for c in controls:
             pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Reading signal {c['name']}...")
@@ -278,7 +281,10 @@ def read_controls(event, controls):
     except RuntimeError as e:
         pbs.logmsg(pbs.LOG_WARNING, f"{event.hook_name}: {hostname}: Unable to read signal {c['name']}: {e}")
         reject_event(event, f"Unable to read signal {c['name']}: {e}")
-
+    finally:
+        if did_unblock:
+            signal.pthread_sigmask(signal.SIG_SETMASK, old_mask)
+            pbs.logmsg(pbs.LOG_DEBUG, f"{event.hook_name}: {hostname}: Restored original signal mask after reading controls")
 
 def write_controls(event, controls):
     try:
