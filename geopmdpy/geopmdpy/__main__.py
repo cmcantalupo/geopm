@@ -46,7 +46,12 @@ def main_dbus():
     signal(SIGINT, term_handler)
     global _bus, _loop, _service
     _loop = EventLoop()
-    _bus = SystemMessageBus()
+    try:
+        _bus = SystemMessageBus()
+    except Exception as ex:
+        raise RuntimeError('Failed to connect to the system D-Bus') from ex
+    if _bus is None:
+        raise RuntimeError('SystemMessageBus() returned None; is the system bus running?')
     with RestorableFileWriter(
         ALLOW_WRITES_PATH, ALLOW_WRITES_BACKUP_PATH,
         warning_handler=lambda warning: print('Warning <geopm-service>', warning,
