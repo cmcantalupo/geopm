@@ -13,15 +13,15 @@ a monitoring session with a default set of signals, and supports
 a --hi-res option to sample all signals at their native resolution.
 
 Example usage:
-    python -m geopmpy.monitor
-    python -m geopmpy.monitor --hi-res
+    python -m geopmdpy.monitor_agent
+    python -m geopmdpy.monitor_agent --hi-res
 """
 
-from geopmdpy import pio
+from . import pio
 
-from geopmdpy.session import main
-from geopmdpy.session import Agent
-from geopmdpy.exporter import default_requests
+from .session import main
+from .session import Agent
+from .exporter import default_requests
 
 class MonitorAgent(Agent):
     """Agent for monitoring a default set of signals in a GEOPM session.
@@ -34,7 +34,7 @@ class MonitorAgent(Agent):
       --hi-res   Measure signals at finest granularity (all domains/indices).
 
     Example:
-        python -m geopmpy.monitor --hi-res
+        python -m geopmdpy.monitor_agent --hi-res
 
     """
     def __init__(self):
