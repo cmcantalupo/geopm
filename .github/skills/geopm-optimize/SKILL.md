@@ -106,12 +106,21 @@ See [sweep-dimensions.md](references/sweep-dimensions.md).
 
 ### 3. Baseline the workload
 
+Run once per candidate dimension identified in step 2, passing `--dimension`
+(and `--venv`, matching steps 2 and 4) so the baseline is measured under the
+same forced conditions -- governor, pinned MIN/MAX -- that dimension's sweep
+will actually run under, not faster, unconstrained defaults the campaign can
+never reach:
+
 ```bash
-./scripts/geopm-check-workload.sh --regex 'GFLOPS: ([0-9.]+)' --runs 3 -- ./bench.sh
+./scripts/geopm-check-workload.sh --venv ~/geopm-venv --dimension cpu-freq \
+    --regex 'GFLOPS: ([0-9.]+)' --runs 3 -- ./bench.sh
 ```
 
 Establishes runtime, a recommended `--application-timeout`, whether the regex
-matches, and the noise floor.
+matches, and the noise floor. See
+[sweep-dimensions.md](references/sweep-dimensions.md) for the dimension names
+`--dimension` accepts.
 
 Regex help: [metric-regex.md](references/metric-regex.md).
 

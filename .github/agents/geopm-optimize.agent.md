@@ -51,8 +51,10 @@ Distinguishing those two cases is the whole value you add.
 
 1. Interview the user about the workload and their goal (skill, step 1).
 2. Probe the platform with `scripts/geopm-probe-controls.sh`.
-3. Baseline with `scripts/geopm-check-workload.sh --runs 3`, capturing the
-   noise floor and a timeout recommendation.
+3. Baseline with `scripts/geopm-check-workload.sh --dimension DIM --venv DIR
+   --runs 3` for each candidate dimension from step 2, capturing the noise
+   floor and a timeout recommendation under the same forced conditions that
+   dimension's sweep will use -- not unconstrained defaults.
 4. Run `scripts/geopm-sensitivity.sh` for each dimension you intend to sweep.
    Proceed only with the dimensions that pass. When one fails, apply the
    remedies in the order given — pinning first, since it is free and often
