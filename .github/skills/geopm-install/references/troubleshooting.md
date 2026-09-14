@@ -232,9 +232,11 @@ ps -fp <old>              # see what it is (often just an idle shell)
 ```
 
 Issue every command for one `geopmopt` campaign from the same
-terminal/session. Do not move an in-progress campaign to a new terminal, a
-new SSH connection, or a background/async execution context — that starts a
-second session which will contend with the first for the same lock.
+terminal/session. Launchers that start a genuinely new session —
+`setsid`, a new terminal tab, a new SSH connection, or some service
+managers — will contend with the first for the same lock. A plain
+background job (`command &`) does **not**: it inherits the shell's session
+ID, so it is not itself the problem this rule is guarding against.
 
 ## geopmopt runs but nothing is sweepable
 
@@ -244,10 +246,16 @@ gpu-freq      n/a       Hz      n/a           n/a           n/a
 board-power   n/a       W       200           6000          1
 ```
 
-A dimension is usable only when its **domain** resolved. Bounds alone are not
-enough: unavailable power dimensions still print hardcoded defaults (`200`,
-`6000`) beside an `n/a` domain. Treat any row whose domain is `n/a` as
-unusable.
+A dimension is usable only when its **domain** resolved *and* its bounds are
+numerically sane. Bounds alone are not enough: unavailable power dimensions
+still print hardcoded defaults (`200`, `6000`) beside an `n/a` domain, so
+treat any row whose domain is `n/a` as unusable. But a resolved domain is not
+sufficient either: `scripts/geopm-verify-install.sh` and
+`scripts/geopm-probe-controls.sh` also reject `max<=0`, `min>max`, and
+`step<=0` -- for example a never-tuned `uncore-freq` control can report a
+real domain with `max=0`, auto-detected from the control's current,
+never-explicitly-set value. Treat a row that fails those numeric checks the
+same as `n/a`.
 
 Causes, in order of likelihood:
 
@@ -259,6 +267,11 @@ Causes, in order of likelihood:
    though the control itself is writable.
 3. GEOPM was built without the relevant support, for example no LevelZero or
    NVML for GPU dimensions.
+4. The domain resolved, but the bound itself is degenerate (most often
+   `uncore-freq` reporting `max=0`), typically because the underlying limit
+   was never explicitly set on this platform. This is a different problem
+   from 1-3: ask a system administrator to set a sane bound rather than
+   treating it as missing hardware or an access-list gap.
 
 Check which controls the platform really implements:
 

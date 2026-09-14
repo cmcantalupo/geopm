@@ -186,6 +186,12 @@ if (( ! access_ok )); then
        that PyGObject is visible.  See references/client-venv.md."
 fi
 
+# Needed both to size the companion check below (a MIN control that does not
+# exist on this platform at all is not required, per grid.py) and to name
+# controls when nothing is writable.
+supported_controls=$(geopmaccess --all --controls 2>/dev/null \
+                     || /usr/bin/geopmaccess --all --controls 2>/dev/null)
+
 writable=()
 for control in "${CANDIDATE_CONTROLS[@]}"; do
     if printf '%s\n' "$granted_controls" | grep -qx "$control"; then
@@ -199,10 +205,18 @@ if (( ${#writable[@]} )); then
         say "           - ${control}"
     done
     # A granted MAX without its MIN passes this gate and then fails the
-    # campaign, so surface it here rather than an hour later.
+    # campaign, so surface it here rather than an hour later.  grid.py only
+    # pairs a MIN control that actually exists on this platform, so a MIN
+    # that is not supported here at all is not required (a MAX-only sweep is
+    # then valid); the governor companion has no such exception -- geopmopt
+    # unconditionally writes it for every cpu_frequency dimension.
     for control in "${writable[@]}"; do
         companion=${COMPANION_CONTROLS[$control]:-}
         [[ -z $companion ]] && continue
+        if [[ $companion != CPU_FREQUENCY_GOVERNOR_CONTROL ]] \
+           && ! printf '%s\n' "$supported_controls" | grep -qx "$companion"; then
+            continue
+        fi
         if ! printf '%s\n' "$granted_controls" | grep -qx "$companion"; then
             say "${WARN_MARK} ${control} is granted but ${companion} is not"
             fail "Sweeping that dimension also requires ${companion} to be granted, so
@@ -215,8 +229,6 @@ elif (( access_ok )); then
     # Name the controls, and separate a platform limitation from an access
     # problem: "not supported here" and "not granted to you" need different
     # people to fix them.
-    supported_controls=$(geopmaccess --all --controls 2>/dev/null \
-                         || /usr/bin/geopmaccess --all --controls 2>/dev/null)
     ungranted=(); unsupported=()
     for control in "${CANDIDATE_CONTROLS[@]}"; do
         if printf '%s\n' "$supported_controls" | grep -qx "$control"; then
@@ -274,8 +286,10 @@ else
         # enough: unavailable power dimensions still print hardcoded defaults
         # next to an n/a domain, and a never-tuned uncore control can
         # auto-detect its max bound from the control's current value, which
-        # reads 0 on such a host.  See references/sweep-dimensions.md.
-        usable=$(printf '%s\n' "$opt_out" | awk 'NR>1 && NF>=6 && $2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && ($5+0)>0 && ($4+0)<=($5+0) {print $1}')
+        # reads 0 on such a host.  A non-positive step is equally unusable:
+        # ControlGrid.get_dimension_grid() rejects it outright.  See
+        # references/sweep-dimensions.md.
+        usable=$(printf '%s\n' "$opt_out" | awk 'NR>1 && NF>=6 && $2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && ($5+0)>0 && ($4+0)<=($5+0) && ($6+0)>0 {print $1}')
         usable_count=$(printf '%s' "$usable" | grep -c . || true)
         if (( usable_count > 0 )); then
             say "${PASS_MARK} sweepable dimensions: ${usable_count}"
@@ -284,9 +298,21 @@ else
             done <<< "$usable"
         else
             say "${FAIL_MARK} no sweep dimension has usable bounds"
-            fail "geopmopt runs but every dimension reports n/a bounds, so there is
+            # A resolved domain with a degenerate bound (e.g. uncore-freq's
+            # max=0) is a different, non-access problem than every domain
+            # failing to resolve at all; the two need different messages.
+            resolved_count=$(printf '%s\n' "$opt_out" | awk 'NR>1 && NF>=6 && $2!="n/a"' | grep -c . || true)
+            if (( resolved_count > 0 )); then
+                fail "geopmopt runs and ${resolved_count} dimension(s) have a resolved domain,
+       but their numeric bounds are invalid (max<=0, min>max, or step<=0) --
+       see --list-controls.  This is a platform configuration issue (a
+       control that was never explicitly tuned), not a hardware or
+       access-list limitation.  See references/sweep-dimensions.md."
+            else
+                fail "geopmopt runs but every dimension reports n/a bounds, so there is
        nothing to search.  The platform may not expose the frequency and
        power limits GEOPM needs."
+            fi
         fi
     fi
 fi

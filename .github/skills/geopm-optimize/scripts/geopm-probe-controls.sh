@@ -84,12 +84,13 @@ echo
 # default bounds next to an n/a domain, so an n/a check alone would give a
 # false positive; a never-tuned uncore control can also auto-detect its max
 # bound from the control's current value, which reads 0 on such a host, so a
-# numeric max>0 and min<=max check is needed too.  See
+# numeric max>0 and min<=max check is needed too.  A non-positive step is
+# equally unusable: ControlGrid.get_dimension_grid() rejects it outright.  See
 # references/sweep-dimensions.md for the uncore-freq max=0 case.
 usable=$(printf '%s\n' "$controls_out" \
-    | awk 'NR>1 && NF>=6 && $2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && ($5+0)>0 && ($4+0)<=($5+0) {print $1}')
+    | awk 'NR>1 && NF>=6 && $2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && ($5+0)>0 && ($4+0)<=($5+0) && ($6+0)>0 {print $1}')
 unusable=$(printf '%s\n' "$controls_out" \
-    | awk 'NR>1 && NF>=6 && !($2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && ($5+0)>0 && ($4+0)<=($5+0)) {print $1}')
+    | awk 'NR>1 && NF>=6 && !($2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && ($5+0)>0 && ($4+0)<=($5+0) && ($6+0)>0) {print $1}')
 
 usable_count=$(printf '%s' "$usable" | grep -c . || true)
 
@@ -109,7 +110,7 @@ if [[ -n $unusable ]]; then
             board-power)
                 reason="platform exposes no board-level power limit" ;;
             uncore-freq)
-                reason="uncore control unavailable, or its bounds signals are not granted" ;;
+                reason="uncore control unavailable, its bounds signals are not granted, or its max resolved to a degenerate 0 (never tuned on this platform)" ;;
             cpu-power)
                 reason="RAPL package power limit unavailable, or bounds signals not granted" ;;
             cpu-freq)
@@ -124,42 +125,88 @@ if [[ -n $unusable ]]; then
 fi
 
 if (( usable_count == 0 )); then
-    cat <<'MSG'
+    # A resolved domain with a degenerate bound (e.g. uncore-freq's max=0) is
+    # a different, non-access problem than every domain failing to resolve.
+    resolved_count=$(printf '%s\n' "$controls_out" | awk 'NR>1 && NF>=6 && $2!="n/a"' | grep -c . || true)
+    if (( resolved_count > 0 )); then
+        cat <<MSG
+
+${resolved_count} dimension(s) have a resolved domain, but their numeric
+bounds are invalid (max<=0, min>max, or step<=0) -- see the table above.
+This is a platform configuration issue (a control that was never explicitly
+tuned), not a hardware or access-list limitation.  See
+references/sweep-dimensions.md.
+MSG
+    else
+        cat <<'MSG'
 
 Nothing can be swept on this platform.  Every dimension reports an unresolved
 domain, so geopmopt has no search space.  This is normal in a virtual machine,
 a container without hardware access, or WSL, none of which expose RAPL or the
 frequency controls.  Use a bare-metal host.
 MSG
+    fi
     exit 1
 fi
 
 # Distinguish an access-list problem from a hardware limitation, since the two
 # look identical from --list-controls alone.
-if [[ -n $unusable ]] && command -v geopmaccess >/dev/null 2>&1; then
+if command -v geopmaccess >/dev/null 2>&1; then
     supported=$(geopmaccess --all --controls 2>/dev/null \
                 || /usr/bin/geopmaccess --all --controls 2>/dev/null)
     granted=$(geopmaccess --controls 2>/dev/null \
               || /usr/bin/geopmaccess --controls 2>/dev/null)
-    withheld=""
-    for pair in "cpu-freq:CPU_FREQUENCY_MAX_CONTROL" \
-                "uncore-freq:CPU_UNCORE_FREQUENCY_MAX_CONTROL" \
-                "cpu-power:POWERCAP::CPU_POWER_LIMIT" \
-                "gpu-freq:GPU_CORE_FREQUENCY_MAX_CONTROL" \
-                "gpu-power:GPU_POWER_LIMIT_CONTROL" \
-                "board-power:BOARD_POWER_LIMIT_CONTROL"; do
-        dim="${pair%%:*}"; ctl="${pair#*:}"
-        printf '%s\n' "$unusable" | grep -qx "$dim" || continue
-        if printf '%s\n' "$supported" | grep -qx "$ctl" \
-           && ! printf '%s\n' "$granted" | grep -qx "$ctl"; then
-            withheld+="  - ${dim} (${ctl})"$'\n'
+    if [[ -n $unusable ]]; then
+        withheld=""
+        for pair in "cpu-freq:CPU_FREQUENCY_MAX_CONTROL" \
+                    "uncore-freq:CPU_UNCORE_FREQUENCY_MAX_CONTROL" \
+                    "cpu-power:POWERCAP::CPU_POWER_LIMIT" \
+                    "gpu-freq:GPU_CORE_FREQUENCY_MAX_CONTROL" \
+                    "gpu-power:GPU_POWER_LIMIT_CONTROL" \
+                    "board-power:BOARD_POWER_LIMIT_CONTROL"; do
+            dim="${pair%%:*}"; ctl="${pair#*:}"
+            printf '%s\n' "$unusable" | grep -qx "$dim" || continue
+            if printf '%s\n' "$supported" | grep -qx "$ctl" \
+               && ! printf '%s\n' "$granted" | grep -qx "$ctl"; then
+                withheld+="  - ${dim} (${ctl})"$'\n'
+            fi
+        done
+        if [[ -n $withheld ]]; then
+            echo
+            echo "These are supported by the service but NOT granted to you."
+            echo "This is an access-list problem, not a hardware limitation:"
+            printf '%s' "$withheld"
+            echo "  Ask an administrator; see the geopm-install skill."
+        fi
+    fi
+
+    # A dimension can look usable -- its own control's bounds resolved and are
+    # granted -- while a control geopmopt unconditionally pairs with it is
+    # still missing: the cpu-freq governor (always required), or an
+    # uncore-freq/gpu-freq MIN control this platform actually has (grid.py
+    # only pairs a MIN that exists).  Check these regardless of whether the
+    # primary dimension was classified usable or unusable, since a sensitivity
+    # run or the campaign itself is what actually surfaces the gap otherwise.
+    declare -A dim_companion=(
+        [cpu-freq]=CPU_FREQUENCY_GOVERNOR_CONTROL
+        [uncore-freq]=CPU_UNCORE_FREQUENCY_MIN_CONTROL
+        [gpu-freq]=GPU_CORE_FREQUENCY_MIN_CONTROL
+    )
+    missing_companions=""
+    for dim in "${!dim_companion[@]}"; do
+        printf '%s\n%s\n' "$usable" "$unusable" | grep -qx "$dim" || continue
+        companion=${dim_companion[$dim]}
+        if printf '%s\n' "$supported" | grep -qx "$companion" \
+           && ! printf '%s\n' "$granted" | grep -qx "$companion"; then
+            missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
         fi
     done
-    if [[ -n $withheld ]]; then
+    if [[ -n $missing_companions ]]; then
         echo
-        echo "These are supported by the service but NOT granted to you."
-        echo "This is an access-list problem, not a hardware limitation:"
-        printf '%s' "$withheld"
+        echo "These dimensions look usable above, but a control geopmopt pairs with"
+        echo "them is not granted -- a campaign or geopm-sensitivity.sh run will fail"
+        echo "on this even though --list-controls looks fine:"
+        printf '%s' "$missing_companions"
         echo "  Ask an administrator; see the geopm-install skill."
     fi
 fi
