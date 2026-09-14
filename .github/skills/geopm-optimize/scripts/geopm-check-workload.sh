@@ -208,7 +208,15 @@ if [[ -n $DIMENSION ]]; then
         if [[ $CONTROL == *_MAX_CONTROL ]]; then
             min_control=${CONTROL/_MAX_/_MIN_}
             if [[ $min_control != "$CONTROL" && $min_control != CPU_FREQUENCY_MIN_CONTROL ]]; then
-                printf '%s board 0 %s\n' "$min_control" "$ref"
+                # grid.py only pairs this MIN control when the platform
+                # actually has it (pio.control_names()); writing it
+                # unconditionally can fail with an unknown-control error on a
+                # platform that intentionally supports a MAX-only sweep here.
+                supported_controls=$(geopmaccess --all --controls 2>/dev/null \
+                                     || /usr/bin/geopmaccess --all --controls 2>/dev/null)
+                if printf '%s\n' "$supported_controls" | grep -qx "$min_control"; then
+                    printf '%s board 0 %s\n' "$min_control" "$ref"
+                fi
             fi
         fi
     } > "$ctl_conf"

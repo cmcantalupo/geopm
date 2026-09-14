@@ -93,6 +93,17 @@ fi
 
 ## Resolve the control's grid from the platform
 
+# --list-controls always keys its table by the short alias (grid.py's
+# _PREFERRED_ALIAS), even though these long dashed spellings are also
+# accepted below.  Normalize before the lookup, or a long spelling never
+# matches a row and is rejected as unknown, as geopm-check-workload.sh
+# also had to guard against.
+case "$DIMENSION" in
+    cpu-frequency)        DIMENSION=cpu-freq ;;
+    cpu-uncore-frequency) DIMENSION=uncore-freq ;;
+    gpu-frequency)        DIMENSION=gpu-freq ;;
+esac
+
 controls=$(geopmopt --list-controls 2>&1) || {
     echo "geopm-sensitivity.sh: could not list controls." >&2
     printf '%s\n' "$controls" | tail -3 >&2
@@ -121,25 +132,41 @@ fi
 # despite sharing a description, and testing the wrong one here would measure
 # sensitivity to a control geopmopt never actually sweeps.
 case "$DIMENSION" in
-    cpu-freq|cpu-frequency)                  CONTROL=CPU_FREQUENCY_MAX_CONTROL ;;
-    uncore-freq|cpu-uncore-frequency)        CONTROL=CPU_UNCORE_FREQUENCY_MAX_CONTROL ;;
-    cpu-power)                               CONTROL=POWERCAP::CPU_POWER_LIMIT ;;
-    gpu-freq|gpu-frequency)                  CONTROL=GPU_CORE_FREQUENCY_MAX_CONTROL ;;
-    gpu-power)                               CONTROL=GPU_POWER_LIMIT_CONTROL ;;
-    board-power)                             CONTROL=BOARD_POWER_LIMIT_CONTROL ;;
+    cpu-freq)    CONTROL=CPU_FREQUENCY_MAX_CONTROL ;;
+    uncore-freq) CONTROL=CPU_UNCORE_FREQUENCY_MAX_CONTROL ;;
+    cpu-power)   CONTROL=POWERCAP::CPU_POWER_LIMIT ;;
+    gpu-freq)    CONTROL=GPU_CORE_FREQUENCY_MAX_CONTROL ;;
+    gpu-power)   CONTROL=GPU_POWER_LIMIT_CONTROL ;;
+    board-power) CONTROL=BOARD_POWER_LIMIT_CONTROL ;;
     *) echo "geopm-sensitivity.sh: no control mapping for '$DIMENSION'." >&2
        echo "  Supported: cpu-freq, uncore-freq, cpu-power, gpu-freq, gpu-power, board-power" >&2
        exit 2 ;;
 esac
 
 # grid.py pins *_MAX_CONTROL sweeps by also writing the matching *_MIN_CONTROL
-# (except CPU_FREQUENCY_MIN_CONTROL, deliberately excluded there).  Mirror it
-# here so this measures the pinned setting geopmopt evaluates, not just a cap.
+# only when it exists in pio.control_names() (except CPU_FREQUENCY_MIN_CONTROL,
+# deliberately excluded there).  Mirror both halves of that: skip the MIN
+# companion when the platform doesn't have it at all (a MAX-only sweep is then
+# valid and geopmopt does the same), but treat "supported here yet not granted
+# to me" as a real gap rather than silently measuring MAX-only and claiming to
+# mirror geopmopt -- the real campaign will fail on it later.
 MIN_CONTROL=""
 candidate_min=${CONTROL/_MAX_/_MIN_}
-if [[ $candidate_min != "$CONTROL" && $candidate_min != CPU_FREQUENCY_MIN_CONTROL ]] \
-   && geopmread "$candidate_min" "$DOMAIN" 0 >/dev/null 2>&1; then
-    MIN_CONTROL=$candidate_min
+if [[ $candidate_min != "$CONTROL" && $candidate_min != CPU_FREQUENCY_MIN_CONTROL ]]; then
+    supported_controls=$(geopmaccess --all --controls 2>/dev/null \
+                         || /usr/bin/geopmaccess --all --controls 2>/dev/null)
+    if printf '%s\n' "$supported_controls" | grep -qx "$candidate_min"; then
+        if geopmread "$candidate_min" "$DOMAIN" 0 >/dev/null 2>&1; then
+            MIN_CONTROL=$candidate_min
+        else
+            echo "geopm-sensitivity.sh: ${candidate_min} is supported on this platform but" >&2
+            echo "  not granted to you.  geopmopt pins it alongside ${CONTROL} for this" >&2
+            echo "  dimension, so the real campaign will fail partway without it even though" >&2
+            echo "  this measurement could otherwise proceed MAX-only.  Grant it first; see" >&2
+            echo "  scripts/geopm-verify-install.sh or references/access-lists.md." >&2
+            exit 2
+        fi
+    fi
 fi
 
 # geopmopt prepends CPU_FREQUENCY_GOVERNOR_CONTROL=performance whenever cpu-freq
@@ -147,7 +174,7 @@ fi
 # governor and the requested frequency would not stick.  Mirror that here so the
 # sensitivity measurement is taken under the same conditions as the campaign.
 GOVERNOR_LINE=""
-if [[ $DIMENSION == cpu-freq || $DIMENSION == cpu-frequency ]]; then
+if [[ $DIMENSION == cpu-freq ]]; then
     if geopmread CPU_FREQUENCY_GOVERNOR_CONTROL board 0 >/dev/null 2>&1; then
         GOVERNOR_LINE="CPU_FREQUENCY_GOVERNOR_CONTROL board 0 0"
     fi
@@ -164,7 +191,7 @@ TURBO_NOTE=""
 # instead, so neighbouring requests in that range can be indistinguishable.
 # Anchor the reference at the sticker so the measurement reflects a setting the
 # hardware actually honours.
-if [[ $DIMENSION == cpu-freq || $DIMENSION == cpu-frequency ]]; then
+if [[ $DIMENSION == cpu-freq ]]; then
     STICKER=$(geopmread CPU_FREQUENCY_STICKER package 0 2>/dev/null)
     if [[ -n $STICKER ]] && awk -v s="$STICKER" -v m="$ctl_max" 'BEGIN{exit !(s > 0 && s < m)}'; then
         REF=$STICKER

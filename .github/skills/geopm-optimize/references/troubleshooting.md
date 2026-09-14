@@ -49,8 +49,10 @@ Most often caused by running one campaign's commands from more than one
 terminal. Full diagnosis and fix:
 [geopm-install troubleshooting](../../geopm-install/references/troubleshooting.md#write-access-rejected-by-another-session-even-right-after-installing).
 Rule of thumb: issue every command for one campaign from the same
-terminal/session; never switch terminals or move to a background/async
-execution context mid-campaign.
+terminal/session; a launcher that starts a genuinely new session — `setsid`,
+a new terminal, a new SSH connection, or some service managers — will
+contend with the first for the lock. A plain background job (`command &`)
+does not, since it inherits the shell's session ID.
 
 ## No dimension is sweepable
 
@@ -60,9 +62,13 @@ gpu-freq      n/a       Hz      n/a     n/a     n/a
 board-power   n/a       W       200     6000    1
 ```
 
-A dimension is usable only when its **domain** is not `n/a`. Bounds alone are
-not enough — unavailable power dimensions print hardcoded defaults next to an
-`n/a` domain, as `board-power` does above.
+A dimension is usable only when its **domain** is not `n/a` *and* its bounds
+are numerically sane (`max>0`, `min<=max`, `step>0`). Bounds alone are not
+enough — unavailable power dimensions print hardcoded defaults next to an
+`n/a` domain, as `board-power` does above — but a resolved domain is not
+sufficient either: `uncore-freq` can report a real domain with a degenerate
+`max=0` bound, auto-detected from a control that was never explicitly tuned
+on this platform. `geopm-probe-controls.sh` rejects both cases the same way.
 
 ```bash
 ./scripts/geopm-probe-controls.sh --venv ~/geopm-venv
