@@ -117,6 +117,11 @@ never reach:
     --regex 'GFLOPS: ([0-9.]+)' --runs 3 -- ./bench.sh
 ```
 
+These per-dimension runs are for screening: they establish the noise floor and
+a timeout, and they feed step 4's one-knob-at-a-time sensitivity check.
+**They are not the reference to judge the campaign against** when more than one
+dimension will be swept -- see step 7a.
+
 `prefetch` is the one exception: the probe can report it usable, but
 `geopm-check-workload.sh` rejects `--dimension prefetch` because `geopmopt`
 expands it into four ordered MSR prefetcher-disable controls rather than one
@@ -231,6 +236,27 @@ campaign on a 90-second workload is about 90 minutes.
 
 See [campaign-design.md](references/campaign-design.md) for trial budgets.
 
+### 7a. Combined baseline — the reference the result is judged against
+
+Once the final dimension set is fixed, take **one** baseline with all of those
+dimensions constrained together, by repeating `--dimension`:
+
+```bash
+./scripts/geopm-check-workload.sh --venv ~/geopm-venv \
+    --dimension cpu-freq --dimension uncore-freq \
+    --regex 'GFLOPS: ([0-9.]+)' --runs 3 -- ./bench.sh
+```
+
+Skipping this and reusing step 3's per-dimension numbers compares the winner
+against a run the campaign could never produce. A `cpu-freq + uncore-freq`
+campaign constrains *both* on every trial, while step 3's cpu-freq baseline
+left uncore unconstrained and its uncore-freq baseline left CPU turbo
+unconstrained — neither is reachable by that campaign, so an improvement
+measured against either is not a real comparison.
+
+With a single swept dimension this is the same run as step 3; say so and reuse
+it rather than repeating the measurement.
+
 ### 8. Run
 
 ```bash
@@ -250,8 +276,9 @@ campaign is indistinguishable from a hang.
 
 ### 9. Interpret honestly
 
-Compare the improvement against the **noise floor from step 3**. Then verify by
-running the recommended configuration against the baseline several times.
+Compare the improvement against the **combined baseline from step 7a** and the
+**noise floor from step 3**. Then verify by running the recommended
+configuration against that same combined baseline several times.
 
 See [interpreting-results.md](references/interpreting-results.md).
 

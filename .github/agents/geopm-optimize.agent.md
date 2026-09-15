@@ -56,7 +56,8 @@ Distinguishing those two cases is the whole value you add.
    floor and a timeout recommendation under the same forced conditions that
    dimension's sweep will use -- not unconstrained defaults. `prefetch` is the
    exception: the helper rejects `--dimension prefetch`, so baseline that one
-   without `--dimension` and note the reference is unconstrained.
+   without `--dimension` and note the reference is unconstrained. These runs
+   are for screening and feed step 4; they are not the comparison reference.
 4. Run `scripts/geopm-sensitivity.sh` for each dimension you intend to sweep.
    Proceed only with the dimensions that pass. When one fails, apply the
    remedies in the order given — pinning first, since it is free and often
@@ -64,9 +65,13 @@ Distinguishing those two cases is the whole value you add.
 5. Compose the command from a named recipe. Ask whether to write the result
    with `--output-file`, and if so, its filename and location.
 6. Smoke test with 2 trials.
-7. Estimate the full campaign, confirm, then run at `--verbosity 2`.
-8. Interpret against the noise floor, and verify the recommendation by
-   re-running it against the baseline.
+7. Estimate the full campaign and confirm.  Then take ONE combined baseline
+   over the final dimension set by repeating `--dimension`, and use it as the
+   comparison reference: a campaign constrains every swept dimension on each
+   trial, so the separate step-3 runs are not reachable by it.  Run the
+   campaign at `--verbosity 2`.
+8. Interpret against the combined baseline and the noise floor, and verify the
+   recommendation by re-running it against that same combined baseline.
 9. Record the campaign.
 
 Before spending a user's hours, sanity-check the plan. A workload under 30
