@@ -92,6 +92,54 @@ usable=$(printf '%s\n' "$controls_out" \
 unusable=$(printf '%s\n' "$controls_out" \
     | awk 'NR>1 && NF>=6 && !($2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && ($5+0)>0 && ($4+0)<=($5+0) && ($6+0)>0) {print $1}')
 
+# Query the access lists once, up front: they are needed both to validate
+# companion controls below and to tell an access-list problem from a hardware
+# limitation further down.
+supported=""; granted=""; access_ok=0
+if command -v geopmaccess >/dev/null 2>&1; then
+    if { supported=$(geopmaccess --all --controls 2>/dev/null) \
+         || supported=$(/usr/bin/geopmaccess --all --controls 2>/dev/null); } \
+       && { granted=$(geopmaccess --controls 2>/dev/null) \
+            || granted=$(/usr/bin/geopmaccess --controls 2>/dev/null); }; then
+        access_ok=1
+    fi
+fi
+
+# geopmopt writes CPU_FREQUENCY_GOVERNOR_CONTROL for every cpu-freq sweep, so a
+# cpu-freq row whose governor is missing -- unsupported or merely ungranted --
+# cannot be swept at all, however healthy its own bounds look.  Drop it from
+# the usable set here so nothing below recommends it and the exit status
+# reflects it.  A MIN companion is different: grid.py legitimately sweeps
+# MAX-only where the platform has no MIN, so a missing one only costs pinning.
+declare -A dim_companion=(
+    [cpu-freq]=CPU_FREQUENCY_GOVERNOR_CONTROL
+    [uncore-freq]=CPU_UNCORE_FREQUENCY_MIN_CONTROL
+    [gpu-freq]=GPU_CORE_FREQUENCY_MIN_CONTROL
+)
+blocking_companions=""
+missing_companions=""
+blocked_count=0
+if (( access_ok )); then
+    for dim in "${!dim_companion[@]}"; do
+        printf '%s\n%s\n' "$usable" "$unusable" | grep -qx "$dim" || continue
+        companion=${dim_companion[$dim]}
+        printf '%s\n' "$granted" | grep -qx "$companion" && continue
+        if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
+            if printf '%s\n' "$supported" | grep -qx "$companion"; then
+                blocking_companions+="  - ${dim} needs ${companion}, which is supported but not granted"$'\n'
+            else
+                blocking_companions+="  - ${dim} needs ${companion}, which this service does not expose"$'\n'
+            fi
+            if printf '%s\n' "$usable" | grep -qx "$dim"; then
+                usable=$(printf '%s\n' "$usable" | grep -vx "$dim" || true)
+                blocked_count=$(( blocked_count + 1 ))
+            fi
+        elif printf '%s\n' "$supported" | grep -qx "$companion"; then
+            missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
+        fi
+    done
+fi
+
 usable_count=$(printf '%s' "$usable" | grep -c . || true)
 
 echo "Usable dimensions: ${usable_count}"
@@ -124,8 +172,26 @@ if [[ -n $unusable ]]; then
     done <<< "$unusable"
 fi
 
+if [[ -n $blocking_companions ]]; then
+    echo
+    echo "NOT sweepable despite healthy bounds: geopmopt writes the governor for"
+    echo "every cpu-freq sweep, so the campaign fails outright without it.  These"
+    echo "are excluded from the usable set above:"
+    printf '%s' "$blocking_companions"
+    echo "  Ask an administrator; see the geopm-install skill."
+fi
+
+if [[ -n $missing_companions ]]; then
+    echo
+    echo "Usable, but pinning will be lost: a control that geopmopt pairs with"
+    echo "these is not granted, so geopmopt drops the companion and silently"
+    echo "sweeps a MAX-only cap instead of the pinned setting you expect:"
+    printf '%s' "$missing_companions"
+    echo "  Ask an administrator; see the geopm-install skill."
+fi
+
 if (( usable_count == 0 )); then
-    # Three distinct failures reach here.  Only a row with every bound present
+    # Four distinct failures reach here.  Only a row with every bound present
     # yet numerically degenerate (e.g. uncore-freq's max=0) is a platform
     # configuration problem; an n/a bound is an availability/access problem and
     # must fall through to the access-list diagnosis below instead.
@@ -133,7 +199,15 @@ if (( usable_count == 0 )); then
         | awk 'NR>1 && NF>=6 && $2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && !(($5+0)>0 && ($4+0)<=($5+0) && ($6+0)>0) {print $1}')
     bad_bounds_count=$(printf '%s' "$bad_bounds" | grep -c . || true)
     resolved_count=$(printf '%s\n' "$controls_out" | awk 'NR>1 && NF>=6 && $2!="n/a"' | grep -c . || true)
-    if (( bad_bounds_count > 0 )); then
+    if (( blocked_count > 0 )); then
+        cat <<MSG
+
+Nothing is left to sweep: ${blocked_count} otherwise-usable dimension(s) were
+excluded because a control geopmopt writes unconditionally is missing, as
+listed above.  This is an access-list or platform-support problem, not a
+bounds problem -- granting the named control makes them sweepable again.
+MSG
+    elif (( bad_bounds_count > 0 )); then
         cat <<MSG
 
 ${bad_bounds_count} dimension(s) report a resolved domain and complete bounds
@@ -167,84 +241,29 @@ else
 fi
 
 # Distinguish an access-list problem from a hardware limitation, since the two
-# look identical from --list-controls alone.
-if command -v geopmaccess >/dev/null 2>&1; then
-    supported=$(geopmaccess --all --controls 2>/dev/null \
-                || /usr/bin/geopmaccess --all --controls 2>/dev/null)
-    granted=$(geopmaccess --controls 2>/dev/null \
-              || /usr/bin/geopmaccess --controls 2>/dev/null)
-    if [[ -n $unusable ]]; then
-        withheld=""
-        for pair in "cpu-freq:CPU_FREQUENCY_MAX_CONTROL" \
-                    "uncore-freq:CPU_UNCORE_FREQUENCY_MAX_CONTROL" \
-                    "cpu-power:POWERCAP::CPU_POWER_LIMIT" \
-                    "gpu-freq:GPU_CORE_FREQUENCY_MAX_CONTROL" \
-                    "gpu-power:GPU_POWER_LIMIT_CONTROL" \
-                    "board-power:BOARD_POWER_LIMIT_CONTROL"; do
-            dim="${pair%%:*}"; ctl="${pair#*:}"
-            printf '%s\n' "$unusable" | grep -qx "$dim" || continue
-            if printf '%s\n' "$supported" | grep -qx "$ctl" \
-               && ! printf '%s\n' "$granted" | grep -qx "$ctl"; then
-                withheld+="  - ${dim} (${ctl})"$'\n'
-            fi
-        done
-        if [[ -n $withheld ]]; then
-            echo
-            echo "These are supported by the service but NOT granted to you."
-            echo "This is an access-list problem, not a hardware limitation:"
-            printf '%s' "$withheld"
-            echo "  Ask an administrator; see the geopm-install skill."
-        fi
-    fi
-
-    # A dimension can look usable -- its own control's bounds resolved and are
-    # granted -- while a control geopmopt pairs with it is still missing: the
-    # cpu-freq governor (always written), or an uncore-freq/gpu-freq MIN
-    # control.  Nothing downstream reliably surfaces this: grid.py drops an
-    # ungranted MIN rather than failing, so the campaign silently degrades to
-    # a MAX-only cap.  Name it here, for usable and unusable rows alike.
-    #
-    # The governor is reported whether it is unsupported or merely ungranted:
-    # geopmopt writes it for every cpu-freq sweep, and MSRIOGroup can expose
-    # CPU frequency on a host whose sysfs governor control is absent, so an
-    # unsupported governor still means a guaranteed-to-fail cpu-freq campaign.
-    # A MIN companion keeps the supported-list exception: grid.py legitimately
-    # sweeps MAX-only where the platform has no MIN.
-    declare -A dim_companion=(
-        [cpu-freq]=CPU_FREQUENCY_GOVERNOR_CONTROL
-        [uncore-freq]=CPU_UNCORE_FREQUENCY_MIN_CONTROL
-        [gpu-freq]=GPU_CORE_FREQUENCY_MIN_CONTROL
-    )
-    blocking_companions=""
-    missing_companions=""
-    for dim in "${!dim_companion[@]}"; do
-        printf '%s\n%s\n' "$usable" "$unusable" | grep -qx "$dim" || continue
-        companion=${dim_companion[$dim]}
-        printf '%s\n' "$granted" | grep -qx "$companion" && continue
-        if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
-            if printf '%s\n' "$supported" | grep -qx "$companion"; then
-                blocking_companions+="  - ${dim} needs ${companion}, which is supported but not granted"$'\n'
-            else
-                blocking_companions+="  - ${dim} needs ${companion}, which this service does not expose"$'\n'
-            fi
-        elif printf '%s\n' "$supported" | grep -qx "$companion"; then
-            missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
+# look identical from --list-controls alone.  The companion checks already ran
+# above, where they can still affect the usable set; this only names the
+# dimensions whose own primary control is withheld.
+if (( access_ok )) && [[ -n $unusable ]]; then
+    withheld=""
+    for pair in "cpu-freq:CPU_FREQUENCY_MAX_CONTROL" \
+                "uncore-freq:CPU_UNCORE_FREQUENCY_MAX_CONTROL" \
+                "cpu-power:POWERCAP::CPU_POWER_LIMIT" \
+                "gpu-freq:GPU_CORE_FREQUENCY_MAX_CONTROL" \
+                "gpu-power:GPU_POWER_LIMIT_CONTROL" \
+                "board-power:BOARD_POWER_LIMIT_CONTROL"; do
+        dim="${pair%%:*}"; ctl="${pair#*:}"
+        printf '%s\n' "$unusable" | grep -qx "$dim" || continue
+        if printf '%s\n' "$supported" | grep -qx "$ctl" \
+           && ! printf '%s\n' "$granted" | grep -qx "$ctl"; then
+            withheld+="  - ${dim} (${ctl})"$'\n'
         fi
     done
-    if [[ -n $blocking_companions ]]; then
+    if [[ -n $withheld ]]; then
         echo
-        echo "These dimensions CANNOT be swept, even though the table above may show"
-        echo "them as usable: geopmopt writes the governor for every cpu-freq sweep,"
-        echo "so the campaign fails outright without it:"
-        printf '%s' "$blocking_companions"
-        echo "  Ask an administrator; see the geopm-install skill."
-    fi
-    if [[ -n $missing_companions ]]; then
-        echo
-        echo "These dimensions look usable above, but a control that geopmopt pairs"
-        echo "with them is not granted.  geopmopt drops the companion and silently"
-        echo "sweeps a MAX-only cap instead of the pinned setting you expect:"
-        printf '%s' "$missing_companions"
+        echo "These are supported by the service but NOT granted to you."
+        echo "This is an access-list problem, not a hardware limitation:"
+        printf '%s' "$withheld"
         echo "  Ask an administrator; see the geopm-install skill."
     fi
 fi
