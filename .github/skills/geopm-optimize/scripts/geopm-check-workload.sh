@@ -38,7 +38,10 @@ Options:
                     reference point for judging that campaign's results
                     instead of comparing against faster, unconstrained
                     turbo-range numbers the campaign can never reach.
-                    prefetch is not supported here (see below).
+                    prefetch/prefetch-disable is NOT supported here: geopmopt
+                    expands it into four ordered MSR prefetcher-disable
+                    controls rather than one value, so baseline it manually
+                    or omit --dimension for that dimension.
                     Requires geopmopt/geopmsession/geopmread on PATH.  See
                     --list-controls for available dimension names.
   --venv DIR        Use GEOPM tools from DIR/bin (only meaningful with
@@ -188,14 +191,29 @@ if [[ -n $DIMENSION ]]; then
            exit 2 ;;
     esac
 
+    # Writability is decided by the granted *control* list, not by whether a
+    # same-named signal is readable: GEOPM grants signals and controls
+    # separately, so geopmread would both accept a readable-but-unwritable
+    # control and reject a writable one whose signal alias was never granted.
+    granted_controls=$(geopmaccess --controls 2>/dev/null \
+                       || /usr/bin/geopmaccess --controls 2>/dev/null)
+
     ref=$ctl_max
     if [[ $DIMENSION == cpu-freq ]]; then
         sticker=$(geopmread CPU_FREQUENCY_STICKER package 0 2>/dev/null)
         if [[ -n $sticker ]] && awk -v s="$sticker" -v m="$ctl_max" 'BEGIN{exit !(s > 0 && s < m)}'; then
             ref=$sticker
         fi
-        if geopmread CPU_FREQUENCY_GOVERNOR_CONTROL board 0 >/dev/null 2>&1; then
+        # geopmopt writes this unconditionally for every cpu-freq sweep, so
+        # skipping it would baseline under the current governor instead.
+        if printf '%s\n' "$granted_controls" | grep -qx CPU_FREQUENCY_GOVERNOR_CONTROL; then
             GOVERNOR_LINE="CPU_FREQUENCY_GOVERNOR_CONTROL board 0 0"
+        else
+            echo "geopm-check-workload.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is not granted to you." >&2
+            echo "  geopmopt writes it for every cpu-freq sweep, so this baseline would run" >&2
+            echo "  under your current governor while the campaign runs under 'performance'." >&2
+            echo "  Grant it first; see the geopm-install skill (references/access-lists.md)." >&2
+            exit 2
         fi
     fi
 
@@ -208,13 +226,11 @@ if [[ -n $DIMENSION ]]; then
         if [[ $CONTROL == *_MAX_CONTROL ]]; then
             min_control=${CONTROL/_MAX_/_MIN_}
             if [[ $min_control != "$CONTROL" && $min_control != CPU_FREQUENCY_MIN_CONTROL ]]; then
-                # grid.py only pairs this MIN control when the platform
-                # actually has it (pio.control_names()); writing it
-                # unconditionally can fail with an unknown-control error on a
-                # platform that intentionally supports a MAX-only sweep here.
-                supported_controls=$(geopmaccess --all --controls 2>/dev/null \
-                                     || /usr/bin/geopmaccess --all --controls 2>/dev/null)
-                if printf '%s\n' "$supported_controls" | grep -qx "$min_control"; then
+                # grid.py pairs this MIN only when it is in pio.control_names(),
+                # which for a service-backed client is the granted list; an
+                # ungranted MIN is dropped there too, so mirror that rather
+                # than failing the session on an unwritable control.
+                if printf '%s\n' "$granted_controls" | grep -qx "$min_control"; then
                     printf '%s board 0 %s\n' "$min_control" "$ref"
                 fi
             fi
