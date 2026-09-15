@@ -195,8 +195,17 @@ if [[ -n $DIMENSION ]]; then
     # same-named signal is readable: GEOPM grants signals and controls
     # separately, so geopmread would both accept a readable-but-unwritable
     # control and reject a writable one whose signal alias was never granted.
-    granted_controls=$(geopmaccess --controls 2>/dev/null \
-                       || /usr/bin/geopmaccess --controls 2>/dev/null)
+    # An unreadable list is fatal rather than empty: an empty one would drop
+    # MIN companions silently and misreport the governor as ungranted.
+    if ! granted_controls=$(geopmaccess --controls 2>/dev/null) \
+       && ! granted_controls=$(/usr/bin/geopmaccess --controls 2>/dev/null); then
+        echo "geopm-check-workload.sh: could not query the access list with geopmaccess." >&2
+        echo "  --dimension needs it to decide which controls geopmopt would write, so" >&2
+        echo "  this baseline cannot be shown to mirror campaign conditions.  If you are" >&2
+        echo "  in a virtual environment, rebuild it with --system-site-packages so that" >&2
+        echo "  PyGObject is visible; see the geopm-install skill." >&2
+        exit 2
+    fi
 
     ref=$ctl_max
     if [[ $DIMENSION == cpu-freq ]]; then

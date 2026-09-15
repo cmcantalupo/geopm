@@ -137,11 +137,25 @@ fi
 # Writability is decided by the granted *control* list, not by whether a
 # same-named signal happens to be readable: GEOPM grants signals and controls
 # separately, so geopmread would both accept a readable-but-unwritable control
-# and reject a writable one whose signal alias was never granted.
-granted_controls=$(geopmaccess --controls 2>/dev/null \
-                   || /usr/bin/geopmaccess --controls 2>/dev/null)
-supported_controls=$(geopmaccess --all --controls 2>/dev/null \
-                     || /usr/bin/geopmaccess --all --controls 2>/dev/null)
+# and reject a writable one whose signal alias was never granted.  An
+# unreadable list is fatal rather than empty: an empty one would silently omit
+# a supported MIN companion, which is the MAX-only measurement this rejects.
+if ! granted_controls=$(geopmaccess --controls 2>/dev/null) \
+   && ! granted_controls=$(/usr/bin/geopmaccess --controls 2>/dev/null); then
+    echo "geopm-sensitivity.sh: could not query the granted control list with geopmaccess." >&2
+    echo "  Without it this script cannot tell which controls geopmopt would write, so a" >&2
+    echo "  measurement taken now could not be shown to mirror the campaign.  If you are" >&2
+    echo "  in a virtual environment, rebuild it with --system-site-packages so that" >&2
+    echo "  PyGObject is visible; see the geopm-install skill." >&2
+    exit 2
+fi
+if ! supported_controls=$(geopmaccess --all --controls 2>/dev/null) \
+   && ! supported_controls=$(/usr/bin/geopmaccess --all --controls 2>/dev/null); then
+    echo "geopm-sensitivity.sh: could not query the platform's supported control list." >&2
+    echo "  Without it a missing MIN companion cannot be told apart from one this" >&2
+    echo "  platform simply does not have.  See the geopm-install skill." >&2
+    exit 2
+fi
 
 # The dimension name maps to the GEOPM control that geopmwrite understands.
 # This must match grid.py exactly: cpu-power in particular is

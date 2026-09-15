@@ -203,26 +203,47 @@ if command -v geopmaccess >/dev/null 2>&1; then
     # control.  Nothing downstream reliably surfaces this: grid.py drops an
     # ungranted MIN rather than failing, so the campaign silently degrades to
     # a MAX-only cap.  Name it here, for usable and unusable rows alike.
+    #
+    # The governor is reported whether it is unsupported or merely ungranted:
+    # geopmopt writes it for every cpu-freq sweep, and MSRIOGroup can expose
+    # CPU frequency on a host whose sysfs governor control is absent, so an
+    # unsupported governor still means a guaranteed-to-fail cpu-freq campaign.
+    # A MIN companion keeps the supported-list exception: grid.py legitimately
+    # sweeps MAX-only where the platform has no MIN.
     declare -A dim_companion=(
         [cpu-freq]=CPU_FREQUENCY_GOVERNOR_CONTROL
         [uncore-freq]=CPU_UNCORE_FREQUENCY_MIN_CONTROL
         [gpu-freq]=GPU_CORE_FREQUENCY_MIN_CONTROL
     )
+    blocking_companions=""
     missing_companions=""
     for dim in "${!dim_companion[@]}"; do
         printf '%s\n%s\n' "$usable" "$unusable" | grep -qx "$dim" || continue
         companion=${dim_companion[$dim]}
-        if printf '%s\n' "$supported" | grep -qx "$companion" \
-           && ! printf '%s\n' "$granted" | grep -qx "$companion"; then
+        printf '%s\n' "$granted" | grep -qx "$companion" && continue
+        if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
+            if printf '%s\n' "$supported" | grep -qx "$companion"; then
+                blocking_companions+="  - ${dim} needs ${companion}, which is supported but not granted"$'\n'
+            else
+                blocking_companions+="  - ${dim} needs ${companion}, which this service does not expose"$'\n'
+            fi
+        elif printf '%s\n' "$supported" | grep -qx "$companion"; then
             missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
         fi
     done
+    if [[ -n $blocking_companions ]]; then
+        echo
+        echo "These dimensions CANNOT be swept, even though the table above may show"
+        echo "them as usable: geopmopt writes the governor for every cpu-freq sweep,"
+        echo "so the campaign fails outright without it:"
+        printf '%s' "$blocking_companions"
+        echo "  Ask an administrator; see the geopm-install skill."
+    fi
     if [[ -n $missing_companions ]]; then
         echo
         echo "These dimensions look usable above, but a control that geopmopt pairs"
-        echo "with them is not granted.  A cpu-freq campaign fails outright without"
-        echo "the governor; a missing MIN companion is worse -- geopmopt drops it and"
-        echo "silently sweeps a MAX-only cap instead of the pinned setting you expect:"
+        echo "with them is not granted.  geopmopt drops the companion and silently"
+        echo "sweeps a MAX-only cap instead of the pinned setting you expect:"
         printf '%s' "$missing_companions"
         echo "  Ask an administrator; see the geopm-install skill."
     fi
