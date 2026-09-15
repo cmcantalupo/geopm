@@ -212,28 +212,45 @@ if (( ${#writable[@]} )); then
     # required (geopmopt sweeps MAX-only there by design); the governor
     # companion has no such exception -- geopmopt writes it unconditionally
     # for every cpu_frequency dimension and the campaign fails outright.
+    # The gate is "at least one sweepable control is usable", so an incomplete
+    # dimension is a warning; only a complete absence of usable ones fails.
+    complete=(); incomplete=()
     for control in "${writable[@]}"; do
         companion=${COMPANION_CONTROLS[$control]:-}
-        [[ -z $companion ]] && continue
-        if [[ $companion != CPU_FREQUENCY_GOVERNOR_CONTROL ]] \
-           && ! printf '%s\n' "$supported_controls" | grep -qx "$companion"; then
+        if [[ -z $companion ]]; then
+            complete+=("$control")
             continue
         fi
-        if ! printf '%s\n' "$granted_controls" | grep -qx "$companion"; then
+        if [[ $companion != CPU_FREQUENCY_GOVERNOR_CONTROL ]] \
+           && ! printf '%s\n' "$supported_controls" | grep -qx "$companion"; then
+            complete+=("$control")
+            continue
+        fi
+        if printf '%s\n' "$granted_controls" | grep -qx "$companion"; then
+            complete+=("$control")
+        else
+            incomplete+=("$control")
             say "${WARN_MARK} ${control} is granted but ${companion} is not"
             if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
-                fail "Sweeping that dimension also requires ${companion}, which geopmopt
-       writes for every cpu-freq sweep; the campaign fails without it.  Ask
-       for it alongside ${control}."
+                say "           sweeping it fails outright; geopmopt writes ${companion}"
+                say "           for every cpu-freq sweep.  Ask for it alongside ${control}."
             else
-                fail "Sweeping that dimension is supposed to pin ${control} by also writing
-       ${companion}.  Without that grant geopmopt drops the companion and
-       silently sweeps a MAX-only cap instead -- no error, but the campaign
-       measures weaker constraints than intended.  Ask for it alongside
-       ${control}."
+                say "           sweeping it is supposed to pin ${control} by also writing"
+                say "           ${companion}.  Without that grant geopmopt drops the"
+                say "           companion and silently sweeps a MAX-only cap -- no error,"
+                say "           but weaker constraints than intended."
             fi
         fi
     done
+    if (( ${#complete[@]} == 0 )); then
+        fail "Every granted control is missing a companion geopmopt needs:
+       $(printf '%s ' "${incomplete[@]}")
+       No dimension can be swept as intended.  Generate the exact grant
+       commands with scripts/geopm-gen-access.sh, or see
+       references/access-lists.md."
+    elif (( ${#incomplete[@]} )); then
+        say "${PASS_MARK} usable dimensions: ${#complete[@]} (${#incomplete[@]} incomplete, see warnings)"
+    fi
 elif (( access_ok )); then
     say "${FAIL_MARK} no sweepable control is granted to this user"
     # Name the controls, and separate a platform limitation from an access
