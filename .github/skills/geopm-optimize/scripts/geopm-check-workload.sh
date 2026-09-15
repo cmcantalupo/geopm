@@ -154,11 +154,12 @@ if [[ -n $DIMENSION ]]; then
         echo "geopm-check-workload.sh: could not list controls." >&2
         exit 2
     }
-    read -r ctl_domain ctl_min ctl_max < <(
-        printf '%s\n' "$controls" | awk -v d="$DIMENSION" 'NR>1 && $1==d {print $2, $4, $5}')
-    if [[ -z ${ctl_domain:-} || $ctl_domain == n/a || $ctl_min == n/a || $ctl_max == n/a ]]; then
+    read -r ctl_domain ctl_min ctl_max ctl_step < <(
+        printf '%s\n' "$controls" | awk -v d="$DIMENSION" 'NR>1 && $1==d {print $2, $4, $5, $6}')
+    if [[ -z ${ctl_domain:-} || $ctl_domain == n/a || $ctl_min == n/a || $ctl_max == n/a || $ctl_step == n/a ]]; then
         echo "geopm-check-workload.sh: '$DIMENSION' is not usable on this platform" >&2
-        echo "  (domain=${ctl_domain:-unknown} max=${ctl_max:-unknown}).  See --list-controls." >&2
+        echo "  (domain=${ctl_domain:-unknown} max=${ctl_max:-unknown} step=${ctl_step:-unknown})." >&2
+        echo "  See --list-controls." >&2
         exit 2
     fi
     # A never-tuned uncore control can auto-detect its max bound from the
@@ -174,6 +175,14 @@ if [[ -n $DIMENSION ]]; then
     if awk -v mn="$ctl_min" -v mx="$ctl_max" 'BEGIN{exit !(mn > mx)}' 2>/dev/null; then
         echo "geopm-check-workload.sh: '$DIMENSION' reports min (${ctl_min}) greater" >&2
         echo "  than max (${ctl_max}), so its bounds are invalid.  See --list-controls." >&2
+        exit 2
+    fi
+    # ControlGrid.get_dimension_grid() rejects a non-positive step, so a
+    # baseline here would otherwise claim a dimension the campaign cannot run.
+    if ! awk -v st="$ctl_step" 'BEGIN{exit !(st > 0)}' 2>/dev/null; then
+        echo "geopm-check-workload.sh: '$DIMENSION' reports a non-positive step" >&2
+        echo "  (step=${ctl_step}), so geopmopt cannot build a grid for it and no" >&2
+        echo "  campaign over this dimension can run.  See --list-controls." >&2
         exit 2
     fi
 
