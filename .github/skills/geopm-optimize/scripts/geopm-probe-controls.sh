@@ -125,17 +125,30 @@ if [[ -n $unusable ]]; then
 fi
 
 if (( usable_count == 0 )); then
-    # A resolved domain with a degenerate bound (e.g. uncore-freq's max=0) is
-    # a different, non-access problem than every domain failing to resolve.
+    # Three distinct failures reach here.  Only a row with every bound present
+    # yet numerically degenerate (e.g. uncore-freq's max=0) is a platform
+    # configuration problem; an n/a bound is an availability/access problem and
+    # must fall through to the access-list diagnosis below instead.
+    bad_bounds=$(printf '%s\n' "$controls_out" \
+        | awk 'NR>1 && NF>=6 && $2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && !(($5+0)>0 && ($4+0)<=($5+0) && ($6+0)>0) {print $1}')
+    bad_bounds_count=$(printf '%s' "$bad_bounds" | grep -c . || true)
     resolved_count=$(printf '%s\n' "$controls_out" | awk 'NR>1 && NF>=6 && $2!="n/a"' | grep -c . || true)
-    if (( resolved_count > 0 )); then
+    if (( bad_bounds_count > 0 )); then
         cat <<MSG
 
-${resolved_count} dimension(s) have a resolved domain, but their numeric
-bounds are invalid (max<=0, min>max, or step<=0) -- see the table above.
-This is a platform configuration issue (a control that was never explicitly
-tuned), not a hardware or access-list limitation.  See
+${bad_bounds_count} dimension(s) report a resolved domain and complete bounds
+that are nonetheless invalid (max<=0, min>max, or step<=0) -- see the table
+above.  That subset is a platform configuration issue (a control that was
+never explicitly tuned), not a hardware or access-list limitation.  See
 references/sweep-dimensions.md.
+MSG
+    elif (( resolved_count > 0 )); then
+        cat <<MSG
+
+${resolved_count} dimension(s) have a resolved domain, but at least one of
+their min/max/step bounds is n/a, so geopmopt has no search space.  The
+bounds signals are usually the missing piece -- see the access-list
+diagnosis below and the geopm-install skill.
 MSG
     else
         cat <<'MSG'
@@ -146,7 +159,11 @@ a container without hardware access, or WSL, none of which expose RAPL or the
 frequency controls.  Use a bare-metal host.
 MSG
     fi
-    exit 1
+    # Fall through to the access-list diagnosis rather than exiting here: a
+    # withheld grant is the most common cause and naming it is the whole point.
+    probe_failed=1
+else
+    probe_failed=0
 fi
 
 # Distinguish an access-list problem from a hardware limitation, since the two
@@ -181,12 +198,11 @@ if command -v geopmaccess >/dev/null 2>&1; then
     fi
 
     # A dimension can look usable -- its own control's bounds resolved and are
-    # granted -- while a control geopmopt unconditionally pairs with it is
-    # still missing: the cpu-freq governor (always required), or an
-    # uncore-freq/gpu-freq MIN control this platform actually has (grid.py
-    # only pairs a MIN that exists).  Check these regardless of whether the
-    # primary dimension was classified usable or unusable, since a sensitivity
-    # run or the campaign itself is what actually surfaces the gap otherwise.
+    # granted -- while a control geopmopt pairs with it is still missing: the
+    # cpu-freq governor (always written), or an uncore-freq/gpu-freq MIN
+    # control.  Nothing downstream reliably surfaces this: grid.py drops an
+    # ungranted MIN rather than failing, so the campaign silently degrades to
+    # a MAX-only cap.  Name it here, for usable and unusable rows alike.
     declare -A dim_companion=(
         [cpu-freq]=CPU_FREQUENCY_GOVERNOR_CONTROL
         [uncore-freq]=CPU_UNCORE_FREQUENCY_MIN_CONTROL
@@ -203,13 +219,16 @@ if command -v geopmaccess >/dev/null 2>&1; then
     done
     if [[ -n $missing_companions ]]; then
         echo
-        echo "These dimensions look usable above, but a control geopmopt pairs with"
-        echo "them is not granted -- a campaign or geopm-sensitivity.sh run will fail"
-        echo "on this even though --list-controls looks fine:"
+        echo "These dimensions look usable above, but a control that geopmopt pairs"
+        echo "with them is not granted.  A cpu-freq campaign fails outright without"
+        echo "the governor; a missing MIN companion is worse -- geopmopt drops it and"
+        echo "silently sweeps a MAX-only cap instead of the pinned setting you expect:"
         printf '%s' "$missing_companions"
         echo "  Ask an administrator; see the geopm-install skill."
     fi
 fi
+
+(( probe_failed )) && exit 1
 
 echo
 echo "Suggested starting point:"

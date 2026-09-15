@@ -117,6 +117,12 @@ never reach:
     --regex 'GFLOPS: ([0-9.]+)' --runs 3 -- ./bench.sh
 ```
 
+`prefetch` is the one exception: the probe can report it usable, but
+`geopm-check-workload.sh` rejects `--dimension prefetch` because `geopmopt`
+expands it into four ordered MSR prefetcher-disable controls rather than one
+value. Baseline that dimension without `--dimension` (accepting an
+unconstrained reference) and say so when interpreting its results.
+
 Establishes runtime, a recommended `--application-timeout`, whether the regex
 matches, and the noise floor. See
 [sweep-dimensions.md](references/sweep-dimensions.md) for the dimension names

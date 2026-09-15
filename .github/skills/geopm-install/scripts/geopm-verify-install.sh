@@ -26,12 +26,14 @@ CANDIDATE_CONTROLS=(
     BOARD_POWER_LIMIT_CONTROL
 )
 
-# A frequency sweep pins rather than caps: geopmopt mirrors a *_MAX_* setting
-# onto the matching *_MIN_* control.  Granting only the MAX lets the gate pass
-# and then fails the campaign partway, so check the pairs too.  cpu-freq's
-# companion is CPU_FREQUENCY_GOVERNOR_CONTROL rather than a MIN control:
-# geopmopt forces the governor to 'performance' whenever cpu-freq is swept,
-# so it is required just as much as a paired MIN control is.
+# A frequency sweep is meant to pin rather than cap: geopmopt mirrors a *_MAX_*
+# setting onto the matching *_MIN_* control, but only when that MIN is in
+# pio.control_names() -- the granted list for a service-backed client.  So a
+# granted MAX without its MIN does not fail loudly; geopmopt drops the
+# companion and silently sweeps a MAX-only cap, which is why this gate has to
+# catch it.  cpu-freq's companion is CPU_FREQUENCY_GOVERNOR_CONTROL rather than
+# a MIN control: geopmopt forces the governor to 'performance' whenever
+# cpu-freq is swept, and that one does fail the campaign outright when missing.
 declare -A COMPANION_CONTROLS=(
     [CPU_UNCORE_FREQUENCY_MAX_CONTROL]=CPU_UNCORE_FREQUENCY_MIN_CONTROL
     [GPU_CORE_FREQUENCY_MAX_CONTROL]=GPU_CORE_FREQUENCY_MIN_CONTROL
@@ -204,12 +206,12 @@ if (( ${#writable[@]} )); then
     for control in "${writable[@]}"; do
         say "           - ${control}"
     done
-    # A granted MAX without its MIN passes this gate and then fails the
-    # campaign, so surface it here rather than an hour later.  grid.py only
-    # pairs a MIN control that actually exists on this platform, so a MIN
-    # that is not supported here at all is not required (a MAX-only sweep is
-    # then valid); the governor companion has no such exception -- geopmopt
-    # unconditionally writes it for every cpu_frequency dimension.
+    # Nothing downstream reports a missing MIN companion: grid.py drops it and
+    # the campaign silently sweeps a MAX-only cap, so this gate is the only
+    # place it surfaces.  A MIN the platform does not expose at all is not
+    # required (geopmopt sweeps MAX-only there by design); the governor
+    # companion has no such exception -- geopmopt writes it unconditionally
+    # for every cpu_frequency dimension and the campaign fails outright.
     for control in "${writable[@]}"; do
         companion=${COMPANION_CONTROLS[$control]:-}
         [[ -z $companion ]] && continue
@@ -219,9 +221,17 @@ if (( ${#writable[@]} )); then
         fi
         if ! printf '%s\n' "$granted_controls" | grep -qx "$companion"; then
             say "${WARN_MARK} ${control} is granted but ${companion} is not"
-            fail "Sweeping that dimension also requires ${companion} to be granted, so
-       the campaign will fail partway without it.  Ask for it alongside
+            if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
+                fail "Sweeping that dimension also requires ${companion}, which geopmopt
+       writes for every cpu-freq sweep; the campaign fails without it.  Ask
+       for it alongside ${control}."
+            else
+                fail "Sweeping that dimension is supposed to pin ${control} by also writing
+       ${companion}.  Without that grant geopmopt drops the companion and
+       silently sweeps a MAX-only cap instead -- no error, but the campaign
+       measures weaker constraints than intended.  Ask for it alongside
        ${control}."
+            fi
         fi
     done
 elif (( access_ok )); then
@@ -298,16 +308,26 @@ else
             done <<< "$usable"
         else
             say "${FAIL_MARK} no sweep dimension has usable bounds"
-            # A resolved domain with a degenerate bound (e.g. uncore-freq's
-            # max=0) is a different, non-access problem than every domain
-            # failing to resolve at all; the two need different messages.
+            # Three distinct failures reach here.  Only a row with every bound
+            # present yet numerically degenerate (e.g. uncore-freq's max=0) is
+            # a platform configuration problem; an n/a bound is usually a
+            # missing bounds-signal grant, which an administrator can fix.
+            bad_bounds_count=$(printf '%s\n' "$opt_out" \
+                | awk 'NR>1 && NF>=6 && $2!="n/a" && $4!="n/a" && $5!="n/a" && $6!="n/a" && !(($5+0)>0 && ($4+0)<=($5+0) && ($6+0)>0)' | grep -c . || true)
             resolved_count=$(printf '%s\n' "$opt_out" | awk 'NR>1 && NF>=6 && $2!="n/a"' | grep -c . || true)
-            if (( resolved_count > 0 )); then
+            if (( bad_bounds_count > 0 )); then
+                fail "geopmopt runs and ${bad_bounds_count} dimension(s) report complete but
+       invalid bounds (max<=0, min>max, or step<=0) -- see --list-controls.
+       That subset is a platform configuration issue (a control that was
+       never explicitly tuned), not a hardware or access-list limitation.
+       See references/sweep-dimensions.md."
+            elif (( resolved_count > 0 )); then
                 fail "geopmopt runs and ${resolved_count} dimension(s) have a resolved domain,
-       but their numeric bounds are invalid (max<=0, min>max, or step<=0) --
-       see --list-controls.  This is a platform configuration issue (a
-       control that was never explicitly tuned), not a hardware or
-       access-list limitation.  See references/sweep-dimensions.md."
+       but at least one of their min/max/step bounds is n/a, so there is
+       nothing to search.  The bounds signals are usually the missing piece
+       (cpu-freq needs CPU_FREQUENCY_MIN_AVAIL, CPU_FREQUENCY_MAX_AVAIL, and
+       CPU_FREQUENCY_STEP); an administrator can grant them.  See
+       references/access-lists.md."
             else
                 fail "geopmopt runs but every dimension reports n/a bounds, so there is
        nothing to search.  The platform may not expose the frequency and

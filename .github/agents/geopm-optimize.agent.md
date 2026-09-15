@@ -54,7 +54,9 @@ Distinguishing those two cases is the whole value you add.
 3. Baseline with `scripts/geopm-check-workload.sh --dimension DIM --venv DIR
    --runs 3` for each candidate dimension from step 2, capturing the noise
    floor and a timeout recommendation under the same forced conditions that
-   dimension's sweep will use -- not unconstrained defaults.
+   dimension's sweep will use -- not unconstrained defaults. `prefetch` is the
+   exception: the helper rejects `--dimension prefetch`, so baseline that one
+   without `--dimension` and note the reference is unconstrained.
 4. Run `scripts/geopm-sensitivity.sh` for each dimension you intend to sweep.
    Proceed only with the dimensions that pass. When one fails, apply the
    remedies in the order given — pinning first, since it is free and often

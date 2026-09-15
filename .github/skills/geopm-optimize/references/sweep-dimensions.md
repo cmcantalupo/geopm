@@ -25,11 +25,16 @@ board-power   n/a       W       200           6000          1
 prefetch      cpu       level   0             4             1
 ```
 
-**A dimension is usable only when its DOMAIN is not `n/a`.** Bounds alone are
-not sufficient: `board-power` above shows a plausible-looking `200 … 6000` range
+**A dimension is usable only when its DOMAIN is not `n/a` *and* its bounds are
+numerically sane (`max > 0`, `min <= max`, `step > 0`).** Bounds alone are not
+sufficient: `board-power` above shows a plausible-looking `200 … 6000` range
 while being entirely unavailable, because those numbers are hardcoded defaults
-that are printed whether or not the control exists. On this host only
-`cpu-freq`, `uncore-freq`, `cpu-power`, and `prefetch` can actually be swept.
+that are printed whether or not the control exists. A resolved domain is not
+sufficient either — `uncore-freq` can report a real domain beside a degenerate
+`max=0`, described under
+[Where the bounds come from](#where-the-bounds-come-from). On this
+host only `cpu-freq`, `uncore-freq`, `cpu-power`, and `prefetch` can actually
+be swept.
 
 The `cpu-freq` MAX above is `2.4e+09`, the **sticker (base) frequency**, not the
 `3.7e+09` turbo maximum this part can reach. Current `geopmopt` reports and

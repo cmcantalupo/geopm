@@ -124,6 +124,24 @@ if [[ $ctl_domain == n/a || $ctl_min == n/a || $ctl_max == n/a || $ctl_step == n
     echo "  A dimension is usable only when its domain resolved." >&2
     exit 1
 fi
+# Match geopm-probe-controls.sh's numeric gate.  A degenerate bound reaching
+# the coarse-step remedy below would divide by zero or emit an invalid range.
+if ! awk -v mn="$ctl_min" -v mx="$ctl_max" -v st="$ctl_step" \
+        'BEGIN{exit !(mx > 0 && mn <= mx && st > 0)}' 2>/dev/null; then
+    echo "geopm-sensitivity.sh: '$DIMENSION' has an invalid grid" >&2
+    echo "  (min=$ctl_min max=$ctl_max step=$ctl_step): needs max>0, min<=max, step>0." >&2
+    echo "  See references/sweep-dimensions.md for the uncore-freq max=0 case." >&2
+    exit 1
+fi
+
+# Writability is decided by the granted *control* list, not by whether a
+# same-named signal happens to be readable: GEOPM grants signals and controls
+# separately, so geopmread would both accept a readable-but-unwritable control
+# and reject a writable one whose signal alias was never granted.
+granted_controls=$(geopmaccess --controls 2>/dev/null \
+                   || /usr/bin/geopmaccess --controls 2>/dev/null)
+supported_controls=$(geopmaccess --all --controls 2>/dev/null \
+                     || /usr/bin/geopmaccess --all --controls 2>/dev/null)
 
 # The dimension name maps to the GEOPM control that geopmwrite understands.
 # This must match grid.py exactly: cpu-power in particular is
@@ -145,38 +163,44 @@ esac
 
 # grid.py pins *_MAX_CONTROL sweeps by also writing the matching *_MIN_CONTROL
 # only when it exists in pio.control_names() (except CPU_FREQUENCY_MIN_CONTROL,
-# deliberately excluded there).  Mirror both halves of that: skip the MIN
-# companion when the platform doesn't have it at all (a MAX-only sweep is then
-# valid and geopmopt does the same), but treat "supported here yet not granted
-# to me" as a real gap rather than silently measuring MAX-only and claiming to
-# mirror geopmopt -- the real campaign will fail on it later.
+# deliberately excluded there).  For a service-backed client pio.control_names()
+# is the *granted* list, so an ungranted MIN is silently dropped and the
+# campaign quietly degrades to a MAX-only cap instead of failing -- which is
+# exactly the difference this script exists to measure.  Refuse to proceed
+# rather than report a MAX-only measurement as mirroring the campaign.
 MIN_CONTROL=""
 candidate_min=${CONTROL/_MAX_/_MIN_}
 if [[ $candidate_min != "$CONTROL" && $candidate_min != CPU_FREQUENCY_MIN_CONTROL ]]; then
-    supported_controls=$(geopmaccess --all --controls 2>/dev/null \
-                         || /usr/bin/geopmaccess --all --controls 2>/dev/null)
-    if printf '%s\n' "$supported_controls" | grep -qx "$candidate_min"; then
-        if geopmread "$candidate_min" "$DOMAIN" 0 >/dev/null 2>&1; then
-            MIN_CONTROL=$candidate_min
-        else
-            echo "geopm-sensitivity.sh: ${candidate_min} is supported on this platform but" >&2
-            echo "  not granted to you.  geopmopt pins it alongside ${CONTROL} for this" >&2
-            echo "  dimension, so the real campaign will fail partway without it even though" >&2
-            echo "  this measurement could otherwise proceed MAX-only.  Grant it first; see" >&2
-            echo "  scripts/geopm-verify-install.sh or references/access-lists.md." >&2
-            exit 2
-        fi
+    if printf '%s\n' "$granted_controls" | grep -qx "$candidate_min"; then
+        MIN_CONTROL=$candidate_min
+    elif printf '%s\n' "$supported_controls" | grep -qx "$candidate_min"; then
+        echo "geopm-sensitivity.sh: ${candidate_min} is supported on this platform but" >&2
+        echo "  not granted to you.  geopmopt would pin it alongside ${CONTROL}; without" >&2
+        echo "  the grant the campaign silently degrades to a MAX-only cap rather than" >&2
+        echo "  failing, so a measurement taken now would not reflect the campaign." >&2
+        echo "  Grant it first; see scripts/geopm-verify-install.sh or" >&2
+        echo "  references/access-lists.md." >&2
+        exit 2
     fi
 fi
 
 # geopmopt prepends CPU_FREQUENCY_GOVERNOR_CONTROL=performance whenever cpu-freq
 # is swept, because CPU_FREQUENCY_MAX_CONTROL is only a cap under a scaling
 # governor and the requested frequency would not stick.  Mirror that here so the
-# sensitivity measurement is taken under the same conditions as the campaign.
+# sensitivity measurement is taken under the same conditions as the campaign;
+# silently omitting it would measure a different operating point than the
+# campaign, so treat a missing grant as a setup error.
 GOVERNOR_LINE=""
 if [[ $DIMENSION == cpu-freq ]]; then
-    if geopmread CPU_FREQUENCY_GOVERNOR_CONTROL board 0 >/dev/null 2>&1; then
+    if printf '%s\n' "$granted_controls" | grep -qx CPU_FREQUENCY_GOVERNOR_CONTROL; then
         GOVERNOR_LINE="CPU_FREQUENCY_GOVERNOR_CONTROL board 0 0"
+    else
+        echo "geopm-sensitivity.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is not granted to you." >&2
+        echo "  geopmopt writes it unconditionally for every cpu-freq sweep, so without it" >&2
+        echo "  this measurement would run under your current governor while the campaign" >&2
+        echo "  runs under 'performance' -- a different operating point.  Grant it first;" >&2
+        echo "  see scripts/geopm-verify-install.sh or references/access-lists.md." >&2
+        exit 2
     fi
 fi
 
