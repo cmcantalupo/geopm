@@ -55,10 +55,14 @@ Distinguishing those two cases is the whole value you add.
    --runs 3` for each candidate dimension from step 2, capturing the noise
    floor and a timeout recommendation under the same forced conditions that
    dimension's sweep will use -- not unconstrained defaults. `prefetch` is the
-   exception: the helper rejects `--dimension prefetch`, so baseline that one
-   without `--dimension` and note the reference is unconstrained. These runs
-   are for screening and feed step 4; they are not the comparison reference.
-4. Run `scripts/geopm-sensitivity.sh` for each dimension you intend to sweep.
+   exception: neither helper accepts `--dimension prefetch`, so omit it.  The
+   BIOS default is level 0, but do not assert that -- the helper prints the
+   prefetch level it observed, and you must carry that into the final report.
+   These runs are for screening and feed step 4; they are not the comparison
+   reference.
+4. Run `scripts/geopm-sensitivity.sh` for each dimension you intend to sweep,
+   `prefetch` excepted -- it has no control mapping there either, so note it
+   as untested rather than running a command that exits 2.
    Proceed only with the dimensions that pass. When one fails, apply the
    remedies in the order given — pinning first, since it is free and often
    sufficient — and re-run the check rather than pressing on.
@@ -68,11 +72,10 @@ Distinguishing those two cases is the whole value you add.
 7. Estimate the full campaign and confirm.  Then take ONE combined baseline
    over the final dimension set by repeating `--dimension`, and use it as the
    comparison reference: a campaign constrains every swept dimension on each
-   trial, so the separate step-3 runs are not reachable by it.  If `prefetch`
-   is in the final set, omit it from `--dimension` (the helper rejects it),
-   note that the baseline leaves the prefetchers at their default level `0`,
-   and state which dimensions the baseline actually constrained.  Run the
-   campaign at `--verbosity 2`.
+   trial, so the separate step-3 runs are not reachable by it.  Omit
+   `prefetch` (unsupported by the helper) and report the prefetch level the
+   helper observed instead of assuming the BIOS default.  Run the campaign at
+   `--verbosity 2`.
 8. Interpret against the combined baseline and the noise floor, and verify the
    recommendation by re-running it against that same combined baseline.
 9. Record the campaign.

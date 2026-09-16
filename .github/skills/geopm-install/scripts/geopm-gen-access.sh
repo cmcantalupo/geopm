@@ -36,6 +36,11 @@ EXTRA_CONTROLS=()
 # CPU_POWER_LIMIT_CONTROL alias: grid.py's cpu-power dimension writes the
 # POWERCAP-iogroup control specifically, and the two names are different
 # controls (different iogroup) despite sharing a description.
+#
+# The four MSR prefetcher-disable controls are one set: every prefetch level
+# writes all four (grid.py's prefetch_settings()), so granting a subset leaves
+# the dimension unusable.  The supported-name filtering below drops them
+# safely on platforms that do not expose them.
 DEFAULT_CONTROLS=(
     CPU_FREQUENCY_MAX_CONTROL
     CPU_FREQUENCY_GOVERNOR_CONTROL
@@ -46,6 +51,10 @@ DEFAULT_CONTROLS=(
     GPU_CORE_FREQUENCY_MIN_CONTROL
     GPU_POWER_LIMIT_CONTROL
     BOARD_POWER_LIMIT_CONTROL
+    MSR::MISC_FEATURE_CONTROL:DCU_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
 )
 DEFAULT_SIGNALS=(
     TIME

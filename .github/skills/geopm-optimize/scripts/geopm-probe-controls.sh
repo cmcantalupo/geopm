@@ -154,6 +154,33 @@ for dim in "${!dim_companion[@]}"; do
     fi
 done
 
+# prefetch is not one control: every level writes all four members of grid.py's
+# _PREFETCHER_CONTROL_SEQUENCE, while --list-controls resolves the row's domain
+# from the first alone.  Granting a subset therefore leaves a usable-looking
+# row whose campaign fails on the first ungranted bit, so require the set.
+PREFETCH_CONTROLS=(
+    MSR::MISC_FEATURE_CONTROL:DCU_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
+)
+if printf '%s\n' "$usable" | grep -qx prefetch; then
+    prefetch_missing=""
+    for pctl in "${PREFETCH_CONTROLS[@]}"; do
+        printf '%s\n' "$granted" | grep -qx "$pctl" && continue
+        if printf '%s\n' "$supported" | grep -qx "$pctl"; then
+            prefetch_missing+="  - prefetch needs ${pctl}, which is supported but not granted"$'\n'
+        else
+            prefetch_missing+="  - prefetch needs ${pctl}, which this service does not expose"$'\n'
+        fi
+    done
+    if [[ -n $prefetch_missing ]]; then
+        blocking_companions+="$prefetch_missing"
+        usable=$(printf '%s\n' "$usable" | grep -vx prefetch || true)
+        blocked_count=$(( blocked_count + 1 ))
+    fi
+fi
+
 usable_count=$(printf '%s' "$usable" | grep -c . || true)
 
 echo "Usable dimensions: ${usable_count}"
@@ -188,9 +215,10 @@ fi
 
 if [[ -n $blocking_companions ]]; then
     echo
-    echo "NOT sweepable despite healthy bounds: geopmopt writes the governor for"
-    echo "every cpu-freq sweep, so the campaign fails outright without it.  These"
-    echo "are excluded from the usable set above:"
+    echo "NOT sweepable despite healthy bounds: geopmopt writes these controls"
+    echo "unconditionally for their dimension -- the governor on every cpu-freq"
+    echo "sweep, all four prefetcher bits on every prefetch level -- so the"
+    echo "campaign fails outright without them.  Excluded from the usable set above:"
     printf '%s' "$blocking_companions"
     echo "  Ask an administrator; see the geopm-install skill."
 fi

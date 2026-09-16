@@ -26,6 +26,15 @@ CANDIDATE_CONTROLS=(
     BOARD_POWER_LIMIT_CONTROL
 )
 
+# grid.py's _PREFETCHER_CONTROL_SEQUENCE.  Every prefetch level writes all four,
+# so the dimension is ready only when the whole set is granted.
+PREFETCH_CONTROLS=(
+    MSR::MISC_FEATURE_CONTROL:DCU_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
+)
+
 # A frequency sweep is meant to pin rather than cap: geopmopt mirrors a *_MAX_*
 # setting onto the matching *_MIN_* control, but only when that MIN is in
 # pio.control_names() -- the granted list for a service-backed client.  So a
@@ -212,11 +221,22 @@ for control in "${CANDIDATE_CONTROLS[@]}"; do
     fi
 done
 
-if (( ${#writable[@]} )); then
-    say "${PASS_MARK} writable controls: ${#writable[@]} of ${#CANDIDATE_CONTROLS[@]} candidates"
-    for control in "${writable[@]}"; do
-        say "           - ${control}"
-    done
+# prefetch is a set rather than a candidate control, but a machine whose only
+# sweepable dimension is prefetch can still run a campaign, so track it
+# separately rather than failing before the dimension check in section 6.
+prefetch_granted=1
+for pctl in "${PREFETCH_CONTROLS[@]}"; do
+    printf '%s\n' "$granted_controls" | grep -qx "$pctl" || prefetch_granted=0
+done
+
+if (( ${#writable[@]} || prefetch_granted )); then
+    if (( ${#writable[@]} )); then
+        say "${PASS_MARK} writable controls: ${#writable[@]} of ${#CANDIDATE_CONTROLS[@]} candidates"
+        for control in "${writable[@]}"; do
+            say "           - ${control}"
+        done
+    fi
+    (( prefetch_granted )) && say "${PASS_MARK} all ${#PREFETCH_CONTROLS[@]} prefetcher-disable controls granted (prefetch)"
     # Nothing downstream reports a missing MIN companion: grid.py drops it and
     # the campaign silently sweeps a MAX-only cap, so this gate is the only
     # place it surfaces.  A MIN the platform does not expose at all is not
@@ -349,6 +369,13 @@ else
             ready_dims=()
             while IFS= read -r dim; do
                 [[ -z $dim ]] && continue
+                # prefetch has no single control: every level writes all four
+                # members of grid.py's _PREFETCHER_CONTROL_SEQUENCE, so it is
+                # ready only when the whole set is granted.
+                if [[ $dim == prefetch ]]; then
+                    (( prefetch_granted )) && ready_dims+=("$dim")
+                    continue
+                fi
                 control=${dim_control[$dim]:-}
                 [[ -z $control ]] && continue
                 for candidate in ${complete[@]+"${complete[@]}"}; do
