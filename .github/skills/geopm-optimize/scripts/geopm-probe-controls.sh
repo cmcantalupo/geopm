@@ -94,15 +94,30 @@ unusable=$(printf '%s\n' "$controls_out" \
 
 # Query the access lists once, up front: they are needed both to validate
 # companion controls below and to tell an access-list problem from a hardware
-# limitation further down.
-supported=""; granted=""; access_ok=0
-if command -v geopmaccess >/dev/null 2>&1; then
-    if { supported=$(geopmaccess --all --controls 2>/dev/null) \
-         || supported=$(/usr/bin/geopmaccess --all --controls 2>/dev/null); } \
-       && { granted=$(geopmaccess --controls 2>/dev/null) \
-            || granted=$(/usr/bin/geopmaccess --controls 2>/dev/null); }; then
-        access_ok=1
-    fi
+# limitation further down.  A failed query is fatal, as it is in the
+# sensitivity and baseline helpers: without it a cpu-freq row cannot be
+# checked for its governor, so the probe would recommend a dimension whose
+# campaign is guaranteed to fail.
+if ! command -v geopmaccess >/dev/null 2>&1; then
+    echo "geopm-probe-controls.sh: geopmaccess not found, so the access list cannot" >&2
+    echo "  be checked.  A dimension's bounds can look fine while a control geopmopt" >&2
+    echo "  writes for it is ungranted, so this probe would recommend a campaign that" >&2
+    echo "  fails.  See the geopm-install skill." >&2
+    exit 2
+fi
+if ! supported=$(geopmaccess --all --controls 2>/dev/null) \
+   && ! supported=$(/usr/bin/geopmaccess --all --controls 2>/dev/null); then
+    echo "geopm-probe-controls.sh: could not query the platform's supported control list." >&2
+    echo "  If you are in a virtual environment, rebuild it with --system-site-packages" >&2
+    echo "  so that PyGObject is visible; see the geopm-install skill." >&2
+    exit 2
+fi
+if ! granted=$(geopmaccess --controls 2>/dev/null) \
+   && ! granted=$(/usr/bin/geopmaccess --controls 2>/dev/null); then
+    echo "geopm-probe-controls.sh: could not query your granted control list." >&2
+    echo "  If you are in a virtual environment, rebuild it with --system-site-packages" >&2
+    echo "  so that PyGObject is visible; see the geopm-install skill." >&2
+    exit 2
 fi
 
 # geopmopt writes CPU_FREQUENCY_GOVERNOR_CONTROL for every cpu-freq sweep, so a
@@ -119,27 +134,25 @@ declare -A dim_companion=(
 blocking_companions=""
 missing_companions=""
 blocked_count=0
-if (( access_ok )); then
-    for dim in "${!dim_companion[@]}"; do
-        # Only dimensions that are otherwise usable: an unavailable row is
-        # diagnosed separately below, and describing it as "usable but losing
-        # pinning" or as having healthy bounds would contradict that.
-        printf '%s\n' "$usable" | grep -qx "$dim" || continue
-        companion=${dim_companion[$dim]}
-        printf '%s\n' "$granted" | grep -qx "$companion" && continue
-        if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
-            if printf '%s\n' "$supported" | grep -qx "$companion"; then
-                blocking_companions+="  - ${dim} needs ${companion}, which is supported but not granted"$'\n'
-            else
-                blocking_companions+="  - ${dim} needs ${companion}, which this service does not expose"$'\n'
-            fi
-            usable=$(printf '%s\n' "$usable" | grep -vx "$dim" || true)
-            blocked_count=$(( blocked_count + 1 ))
-        elif printf '%s\n' "$supported" | grep -qx "$companion"; then
-            missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
+for dim in "${!dim_companion[@]}"; do
+    # Only dimensions that are otherwise usable: an unavailable row is
+    # diagnosed separately below, and describing it as "usable but losing
+    # pinning" or as having healthy bounds would contradict that.
+    printf '%s\n' "$usable" | grep -qx "$dim" || continue
+    companion=${dim_companion[$dim]}
+    printf '%s\n' "$granted" | grep -qx "$companion" && continue
+    if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
+        if printf '%s\n' "$supported" | grep -qx "$companion"; then
+            blocking_companions+="  - ${dim} needs ${companion}, which is supported but not granted"$'\n'
+        else
+            blocking_companions+="  - ${dim} needs ${companion}, which this service does not expose"$'\n'
         fi
-    done
-fi
+        usable=$(printf '%s\n' "$usable" | grep -vx "$dim" || true)
+        blocked_count=$(( blocked_count + 1 ))
+    elif printf '%s\n' "$supported" | grep -qx "$companion"; then
+        missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
+    fi
+done
 
 usable_count=$(printf '%s' "$usable" | grep -c . || true)
 
@@ -245,7 +258,7 @@ fi
 # look identical from --list-controls alone.  The companion checks already ran
 # above, where they can still affect the usable set; this only names the
 # dimensions whose own primary control is withheld.
-if (( access_ok )) && [[ -n $unusable ]]; then
+if [[ -n $unusable ]]; then
     withheld=""
     for pair in "cpu-freq:CPU_FREQUENCY_MAX_CONTROL" \
                 "uncore-freq:CPU_UNCORE_FREQUENCY_MAX_CONTROL" \

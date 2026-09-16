@@ -205,6 +205,7 @@ if (( access_ok )) \
 fi
 
 writable=()
+complete=(); incomplete=()
 for control in "${CANDIDATE_CONTROLS[@]}"; do
     if printf '%s\n' "$granted_controls" | grep -qx "$control"; then
         writable+=("$control")
@@ -222,9 +223,9 @@ if (( ${#writable[@]} )); then
     # required (geopmopt sweeps MAX-only there by design); the governor
     # companion has no such exception -- geopmopt writes it unconditionally
     # for every cpu_frequency dimension and the campaign fails outright.
-    # The gate is "at least one sweepable control is usable", so an incomplete
-    # dimension is a warning; only a complete absence of usable ones fails.
-    complete=(); incomplete=()
+    # The verdict is deferred to section 6: a control can be companion-complete
+    # while its --list-controls bounds are n/a, and vice versa, so readiness is
+    # the intersection of the two rather than either alone.
     for control in "${writable[@]}"; do
         companion=${COMPANION_CONTROLS[$control]:-}
         if [[ -z $companion ]]; then
@@ -259,7 +260,7 @@ if (( ${#writable[@]} )); then
        commands with scripts/geopm-gen-access.sh, or see
        references/access-lists.md."
     elif (( ${#incomplete[@]} )); then
-        say "${PASS_MARK} usable dimensions: ${#complete[@]} (${#incomplete[@]} incomplete, see warnings)"
+        say "${PASS_MARK} companion-complete controls: ${#complete[@]} (${#incomplete[@]} incomplete, see warnings)"
     fi
 elif (( access_ok )); then
     say "${FAIL_MARK} no sweepable control is granted to this user"
@@ -333,6 +334,40 @@ else
             while IFS= read -r dim; do
                 [[ -n $dim ]] && say "           - ${dim}"
             done <<< "$usable"
+            # Readiness is the intersection: a control can be
+            # companion-complete while its bounds are n/a, and a dimension can
+            # have healthy bounds while its companion is ungranted.  Either
+            # alone would report READY for a campaign that cannot run.
+            declare -A dim_control=(
+                [cpu-freq]=CPU_FREQUENCY_MAX_CONTROL
+                [uncore-freq]=CPU_UNCORE_FREQUENCY_MAX_CONTROL
+                [cpu-power]=POWERCAP::CPU_POWER_LIMIT
+                [gpu-freq]=GPU_CORE_FREQUENCY_MAX_CONTROL
+                [gpu-power]=GPU_POWER_LIMIT_CONTROL
+                [board-power]=BOARD_POWER_LIMIT_CONTROL
+            )
+            ready_dims=()
+            while IFS= read -r dim; do
+                [[ -z $dim ]] && continue
+                control=${dim_control[$dim]:-}
+                [[ -z $control ]] && continue
+                for candidate in ${complete[@]+"${complete[@]}"}; do
+                    if [[ $candidate == "$control" ]]; then
+                        ready_dims+=("$dim")
+                        break
+                    fi
+                done
+            done <<< "$usable"
+            if (( ${#ready_dims[@]} )); then
+                say "${PASS_MARK} ready to sweep: $(printf '%s ' "${ready_dims[@]}")"
+            else
+                say "${FAIL_MARK} no dimension is both usable and fully granted"
+                fail "Some dimensions have usable bounds and some controls have all their
+       companions granted, but no single dimension has both, so no campaign
+       can run as intended.  Compare the sweepable dimensions listed above
+       against the companion warnings, and generate the missing grants with
+       scripts/geopm-gen-access.sh."
+            fi
         else
             say "${FAIL_MARK} no sweep dimension has usable bounds"
             # Three distinct failures reach here.  Only a row with every bound
@@ -352,7 +387,8 @@ else
                 fail "geopmopt runs and ${resolved_count} dimension(s) have a resolved domain,
        but at least one of their min/max/step bounds is n/a, so there is
        nothing to search.  The bounds signals are usually the missing piece
-       (cpu-freq needs CPU_FREQUENCY_MIN_AVAIL, CPU_FREQUENCY_MAX_AVAIL, and
+       (cpu-freq needs CPU_FREQUENCY_MIN_AVAIL, CPU_FREQUENCY_STICKER -- which
+       grid.py uses as the default maximum, not CPU_FREQUENCY_MAX_AVAIL -- and
        CPU_FREQUENCY_STEP); an administrator can grant them.  See
        references/access-lists.md."
             else

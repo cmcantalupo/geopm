@@ -254,6 +254,15 @@ left uncore unconstrained and its uncore-freq baseline left CPU turbo
 unconstrained — neither is reachable by that campaign, so an improvement
 measured against either is not a real comparison.
 
+**If `prefetch` is in the final set**, pass every *other* dimension to
+`--dimension` and leave `prefetch` out — the helper rejects it, because
+`geopmopt` expands it into four ordered MSR prefetcher-disable controls rather
+than one value. The resulting baseline holds the prefetchers at the system
+default, which is grid level `0`, so it is the correct reference only if the
+campaign's `prefetch` range starts at `0`. Say explicitly which dimensions the
+baseline constrained and that `prefetch` sat at its default, so the comparison
+is not presented as more complete than it is.
+
 With a single swept dimension this is the same run as step 3; say so and reuse
 it rather than repeating the measurement.
 

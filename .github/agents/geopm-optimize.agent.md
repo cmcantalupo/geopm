@@ -68,7 +68,10 @@ Distinguishing those two cases is the whole value you add.
 7. Estimate the full campaign and confirm.  Then take ONE combined baseline
    over the final dimension set by repeating `--dimension`, and use it as the
    comparison reference: a campaign constrains every swept dimension on each
-   trial, so the separate step-3 runs are not reachable by it.  Run the
+   trial, so the separate step-3 runs are not reachable by it.  If `prefetch`
+   is in the final set, omit it from `--dimension` (the helper rejects it),
+   note that the baseline leaves the prefetchers at their default level `0`,
+   and state which dimensions the baseline actually constrained.  Run the
    campaign at `--verbosity 2`.
 8. Interpret against the combined baseline and the noise floor, and verify the
    recommendation by re-running it against that same combined baseline.
