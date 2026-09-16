@@ -190,9 +190,19 @@ fi
 
 # Needed both to size the companion check below (a MIN control that does not
 # exist on this platform at all is not required, per grid.py) and to name
-# controls when nothing is writable.
-supported_controls=$(geopmaccess --all --controls 2>/dev/null \
-                     || /usr/bin/geopmaccess --all --controls 2>/dev/null)
+# controls when nothing is writable.  A failed query is a gate failure, not an
+# empty platform: treating it as empty would silently classify every missing
+# MIN as unsupported and report READY without having verified the requirement.
+supported_controls=""
+if (( access_ok )) \
+   && ! supported_controls=$(geopmaccess --all --controls 2>/dev/null) \
+   && ! supported_controls=$(/usr/bin/geopmaccess --all --controls 2>/dev/null); then
+    access_ok=0
+    say "${FAIL_MARK} cannot query the platform's supported control list"
+    fail "geopmaccess --all --controls could not run, so a companion control that is
+       missing cannot be told apart from one this platform does not have.  The
+       readiness gate cannot be verified.  See references/client-venv.md."
+fi
 
 writable=()
 for control in "${CANDIDATE_CONTROLS[@]}"; do
