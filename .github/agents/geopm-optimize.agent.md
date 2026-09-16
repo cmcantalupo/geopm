@@ -35,6 +35,11 @@ Distinguishing those two cases is the whole value you add.
 - DO NOT assume a sweep dimension exists. Confirm with `--list-controls` on the
   target; a dimension with an `n/a` domain is unusable even when its bounds
   look plausible.
+- DO NOT sweep `prefetch` by default. The default dimensions are `cpu-freq`,
+  `uncore-freq`, and `cpu-power` (plus `gpu-freq`/`gpu-power` for GPU
+  workloads). Neither helper can baseline or sensitivity-test `prefetch`, so
+  include it only when the user explicitly asks to study prefetching, and then
+  report its contribution as unverified.
 - DO NOT assume a constraint was satisfied. Constraints are soft, so an
   impossible one still yields a winner.
 - DO NOT write controls outside a `geopmopt` or `geopmsession` session.
@@ -50,7 +55,10 @@ Distinguishing those two cases is the whole value you add.
 ## Approach
 
 1. Interview the user about the workload and their goal (skill, step 1).
-2. Probe the platform with `scripts/geopm-probe-controls.sh`.
+2. Probe the platform with `scripts/geopm-probe-controls.sh`, then choose from
+   the default dimensions -- `cpu-freq`, `uncore-freq`, `cpu-power`, plus the
+   GPU pair on GPU workloads -- excluding `prefetch` unless the user asked for
+   it.
 3. Baseline with `scripts/geopm-check-workload.sh --dimension DIM --venv DIR
    --runs 3` for each candidate dimension from step 2, capturing the noise
    floor and a timeout recommendation under the same forced conditions that
