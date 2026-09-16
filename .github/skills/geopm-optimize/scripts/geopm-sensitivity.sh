@@ -16,7 +16,7 @@ set -uo pipefail
 VENV=""
 REGEX=""
 DIMENSION="cpu-freq"
-DOMAIN="board"
+DOMAIN=""
 REPEATS=3
 SKIP_RANGE=0
 EMIT_WRAPPER=""
@@ -35,7 +35,13 @@ Options:
   --regex PATTERN   Figure of merit to scrape from stdout, one capturing group.
                     Without it, wall-clock runtime is used (lower is better).
   --dimension DIM   Control to test (default: cpu-freq).  See --list-controls.
-  --domain DOMAIN   Domain to apply it at (default: board).
+  --domain DOMAIN   Domain to apply it at.  Defaults to the control's native
+                    domain, which is what --list-controls reports bounds for
+                    and what geopmopt's --sweep defaults to.  A different
+                    domain is rejected: the bounds this script uses are
+                    resolved at the native domain, and for a sum-aggregated
+                    control a board setting is divided among the native
+                    domains, so the measurement would not match the campaign.
   --repeats N       Runs per setting (default: 3).  More runs give a tighter
                     estimate; 5 is better if you can afford the time.
   --skip-range      Skip the full-range measurement.  Halves the time, but
@@ -123,6 +129,33 @@ if [[ $ctl_domain == n/a || $ctl_min == n/a || $ctl_max == n/a || $ctl_step == n
     echo "  (domain=$ctl_domain min=$ctl_min max=$ctl_max step=$ctl_step)." >&2
     echo "  A dimension is usable only when its domain resolved." >&2
     exit 1
+fi
+
+# --list-controls resolves bounds at the control's native domain, so settings
+# have to be written there too.  Writing a native-domain value at board is not
+# equivalent for a sum-aggregated control: PlatformIO divides a board setting
+# among the native domains, so on a two-package host the per-package limit
+# would be half the reference this script reports and recommends.
+if [[ -z $DOMAIN ]]; then
+    DOMAIN=$ctl_domain
+elif [[ $DOMAIN != "$ctl_domain" ]]; then
+    echo "geopm-sensitivity.sh: --domain '$DOMAIN' is not '$DIMENSION''s native domain" >&2
+    echo "  ('$ctl_domain'), which is where --list-controls resolves the bounds this" >&2
+    echo "  script uses.  Measuring at a different domain would not mirror the campaign" >&2
+    echo "  -- a sum-aggregated control divides a board setting among its native" >&2
+    echo "  domains.  Omit --domain to use '$ctl_domain'." >&2
+    exit 2
+fi
+domain_counts=$(geopmread --domain 2>/dev/null) || {
+    echo "geopm-sensitivity.sh: could not read the platform's domain list" >&2
+    echo "  (geopmread --domain), so control writes cannot be placed." >&2
+    exit 2
+}
+DOMAIN_COUNT=$(printf '%s\n' "$domain_counts" | awk -v d="$DOMAIN" '$1==d {print $2}')
+if ! [[ ${DOMAIN_COUNT:-} =~ ^[0-9]+$ ]] || (( DOMAIN_COUNT < 1 )); then
+    echo "geopm-sensitivity.sh: domain '$DOMAIN' is not present on this platform" >&2
+    echo "  according to geopmread --domain." >&2
+    exit 2
 fi
 # Match geopm-probe-controls.sh's numeric gate.  A degenerate bound reaching
 # the coarse-step remedy below would divide by zero or emit an invalid range.
@@ -262,8 +295,10 @@ measure_once() {
     shift
     if [[ -n $setting ]]; then
         { [[ -n $GOVERNOR_LINE ]] && printf '%s\n' "$GOVERNOR_LINE"
-          printf '%s %s 0 %s\n' "$CONTROL" "$DOMAIN" "$setting"
-          [[ -n $MIN_CONTROL ]] && printf '%s %s 0 %s\n' "$MIN_CONTROL" "$DOMAIN" "$setting"; } > "$ctl_conf"
+          for (( d = 0; d < DOMAIN_COUNT; d++ )); do
+              printf '%s %s %d %s\n' "$CONTROL" "$DOMAIN" "$d" "$setting"
+              [[ -n $MIN_CONTROL ]] && printf '%s %s %d %s\n' "$MIN_CONTROL" "$DOMAIN" "$d" "$setting"
+          done; } > "$ctl_conf"
         start=$(date +%s.%N)
         geopmsession -i "$sig_conf" --control-config "$ctl_conf" -o /dev/null \
             -- "$@" > "$tmp_out" 2>&1
@@ -316,8 +351,10 @@ achieved_freq() {
     local report; report=$(mktemp) || return 1
     printf 'CPU_FREQUENCY_STATUS package 0\n' > "$ctl_conf.sig"
     { [[ -n $GOVERNOR_LINE ]] && printf '%s\n' "$GOVERNOR_LINE"
-      printf '%s %s 0 %s\n' "$CONTROL" "$DOMAIN" "$setting"
-      [[ -n $MIN_CONTROL ]] && printf '%s %s 0 %s\n' "$MIN_CONTROL" "$DOMAIN" "$setting"; } > "$ctl_conf"
+      for (( d = 0; d < DOMAIN_COUNT; d++ )); do
+          printf '%s %s %d %s\n' "$CONTROL" "$DOMAIN" "$d" "$setting"
+          [[ -n $MIN_CONTROL ]] && printf '%s %s %d %s\n' "$MIN_CONTROL" "$DOMAIN" "$d" "$setting"
+      done; } > "$ctl_conf"
     geopmsession -i "$ctl_conf.sig" --control-config "$ctl_conf" \
         -r "$report" -f yaml -p 0.2 -o /dev/null -- "$@" > /dev/null 2>&1
     grep -A6 'CPU_FREQUENCY_STATUS' "$report" 2>/dev/null \
@@ -331,7 +368,7 @@ metric_label="figure of merit"
 echo "GEOPM sensitivity check: $(hostname)"
 echo "==============================================================="
 echo "  Command    : $*"
-echo "  Dimension  : ${DIMENSION} (${CONTROL}) at ${DOMAIN}"
+echo "  Dimension  : ${DIMENSION} (${CONTROL}) at ${DOMAIN} x${DOMAIN_COUNT}"
 echo "  Grid       : min=${ctl_min} max=${ctl_max} step=${ctl_step}"
 [[ -n $STICKER ]] && echo "  Sticker    : ${STICKER}"
 echo "  Reference  : ${REF} (${REF_LABEL})"
