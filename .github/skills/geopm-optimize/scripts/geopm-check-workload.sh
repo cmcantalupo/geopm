@@ -158,6 +158,18 @@ if (( ${#DIMENSIONS[@]} )); then
         exit 2
     fi
 
+    # --list-controls reports each control's *native* domain and bounds for that
+    # domain, so the settings must be written there too.  Writing a
+    # package-derived value once at board under-caps a summed control: on a
+    # two-package host cpu-power's listed max is one package's TDP, while a
+    # board write would cap the whole board at that value and flatter the
+    # campaign's apparent improvement.
+    domain_counts=$(geopmread --domain 2>/dev/null) || {
+        echo "geopm-check-workload.sh: could not read the platform's domain list" >&2
+        echo "  (geopmread --domain), so --dimension cannot place its control writes." >&2
+        exit 2
+    }
+
     seen_dims=""
     for DIMENSION in "${DIMENSIONS[@]}"; do
         # --list-controls always keys its table by the short alias (grid.py's
@@ -253,7 +265,15 @@ if (( ${#DIMENSIONS[@]} )); then
             fi
         fi
 
-        CTL_LINES+=("$(printf '%s board 0 %s' "$CONTROL" "$ref")")
+        dom_count=$(printf '%s\n' "$domain_counts" | awk -v d="$ctl_domain" '$1==d {print $2}')
+        if ! [[ ${dom_count:-} =~ ^[0-9]+$ ]] || (( dom_count < 1 )); then
+            echo "geopm-check-workload.sh: '$DIMENSION' reports native domain '${ctl_domain}'," >&2
+            echo "  which geopmread --domain does not list as present on this platform." >&2
+            exit 2
+        fi
+        for (( dom_idx = 0; dom_idx < dom_count; dom_idx++ )); do
+            CTL_LINES+=("$(printf '%s %s %d %s' "$CONTROL" "$ctl_domain" "$dom_idx" "$ref")")
+        done
         if [[ $CONTROL == *_MAX_CONTROL ]]; then
             min_control=${CONTROL/_MAX_/_MIN_}
             if [[ $min_control != "$CONTROL" && $min_control != CPU_FREQUENCY_MIN_CONTROL ]]; then
@@ -262,11 +282,13 @@ if (( ${#DIMENSIONS[@]} )); then
                 # ungranted MIN is dropped there too, so mirror that rather
                 # than failing the session on an unwritable control.
                 if printf '%s\n' "$granted_controls" | grep -qx "$min_control"; then
-                    CTL_LINES+=("$(printf '%s board 0 %s' "$min_control" "$ref")")
+                    for (( dom_idx = 0; dom_idx < dom_count; dom_idx++ )); do
+                        CTL_LINES+=("$(printf '%s %s %d %s' "$min_control" "$ctl_domain" "$dom_idx" "$ref")")
+                    done
                 fi
             fi
         fi
-        DIM_SUMMARY+=("${DIMENSION} (${CONTROL}) at ${ref}")
+        DIM_SUMMARY+=("${DIMENSION} (${CONTROL}) at ${ref} on ${dom_count} ${ctl_domain}(s)")
     done
 
     sig_conf=$(mktemp) || exit 1

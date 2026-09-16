@@ -121,7 +121,10 @@ missing_companions=""
 blocked_count=0
 if (( access_ok )); then
     for dim in "${!dim_companion[@]}"; do
-        printf '%s\n%s\n' "$usable" "$unusable" | grep -qx "$dim" || continue
+        # Only dimensions that are otherwise usable: an unavailable row is
+        # diagnosed separately below, and describing it as "usable but losing
+        # pinning" or as having healthy bounds would contradict that.
+        printf '%s\n' "$usable" | grep -qx "$dim" || continue
         companion=${dim_companion[$dim]}
         printf '%s\n' "$granted" | grep -qx "$companion" && continue
         if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
@@ -130,10 +133,8 @@ if (( access_ok )); then
             else
                 blocking_companions+="  - ${dim} needs ${companion}, which this service does not expose"$'\n'
             fi
-            if printf '%s\n' "$usable" | grep -qx "$dim"; then
-                usable=$(printf '%s\n' "$usable" | grep -vx "$dim" || true)
-                blocked_count=$(( blocked_count + 1 ))
-            fi
+            usable=$(printf '%s\n' "$usable" | grep -vx "$dim" || true)
+            blocked_count=$(( blocked_count + 1 ))
         elif printf '%s\n' "$supported" | grep -qx "$companion"; then
             missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
         fi
