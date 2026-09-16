@@ -122,6 +122,10 @@ Controls, so `geopmopt` can sweep them:
 | `GPU_CORE_FREQUENCY_MIN_CONTROL` | **required companion** to the above |
 | `GPU_POWER_LIMIT_CONTROL` | `gpu-power`, GPU platforms only |
 | `BOARD_POWER_LIMIT_CONTROL` | `board-power`, where supported |
+| `MSR::MISC_FEATURE_CONTROL:DCU_HW_PREFETCHER_DISABLE` | `prefetch` — **all four required together** |
+| `MSR::MISC_FEATURE_CONTROL:L2_HW_PREFETCHER_DISABLE` | `prefetch` — **all four required together** |
+| `MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE` | `prefetch` — **all four required together** |
+| `MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE` | `prefetch` — **all four required together** |
 
 The two frequency companions are easy to miss and fail silently rather than
 loudly. A frequency sweep is meant to *pin* rather than cap: `geopmopt` mirrors
@@ -147,6 +151,12 @@ CPU_FREQUENCY_GOVERNOR_CONTROL board 0` still succeeds (it is readable as a
 signal), so the omission looks harmless until the first `cpu-freq` sweep fails
 partway through with `Error: Control name unknown:
 CPU_FREQUENCY_GOVERNOR_CONTROL`.
+
+The four `MSR::MISC_FEATURE_CONTROL:*_PREFETCHER_DISABLE` controls are a
+single set. `prefetch` is an integer level from 0 to 4, and *every* level
+writes *all four* bits — level N disables the first N and explicitly enables
+the rest (`grid.py`'s `prefetch_settings()`). Granting a subset is therefore
+not a partial sweep; it is a campaign that fails on the first ungranted bit.
 
 `POWERCAP::CPU_POWER_LIMIT` is not the same control as the similarly-named
 `CPU_POWER_LIMIT_CONTROL` alias — they share a description but come from

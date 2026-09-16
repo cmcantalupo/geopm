@@ -189,6 +189,24 @@ Level 0 leaves all enabled; level 4 disables all four. Worth including for
 memory-bound workloads where prefetching wastes bandwidth, and worth omitting
 otherwise, since it rarely helps compute-bound codes and costs trials.
 
+Three consequences that are easy to get wrong:
+
+- **Every level writes all four controls.** Level N sets the first N disable
+  bits and *explicitly clears* the rest, so all four
+  `MSR::MISC_FEATURE_CONTROL:*_PREFETCHER_DISABLE` controls must be granted
+  together. A partial grant is not a partial sweep; it is a campaign that
+  fails on the first ungranted bit.
+- **Level 0 is not identical to not sweeping prefetch.** Level 0 actively
+  writes four zeros; leaving the dimension out writes nothing and inherits
+  whatever the BIOS or a previous session left set. The two coincide on a
+  machine at its BIOS default, which is the normal case, but not on one whose
+  prefetchers were already disabled.
+- **The helper scripts do not constrain it.** Neither
+  `geopm-check-workload.sh --dimension` nor `geopm-sensitivity.sh --dimension`
+  accepts `prefetch`. Baselines therefore leave the prefetchers alone;
+  `geopm-check-workload.sh` reports the level it observed so the result can
+  state it rather than assume it.
+
 It is not documented in the `geopmopt` man page; the behavior above is read
 from `grid.py`.
 

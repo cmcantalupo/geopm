@@ -15,6 +15,20 @@ KEEP_OUTPUT=""
 VENV=""
 DIMENSIONS=()
 
+# Campaigns are run as --sweep DIM@board, so the baseline applies its settings
+# and resolves its bounds at the same domain.
+BASELINE_DOMAIN="board"
+
+# grid.py's _PREFETCHER_CONTROL_SEQUENCE.  This helper never writes these; it
+# reads them so the report can state the level the baseline actually ran at
+# rather than assuming the BIOS default.
+PREFETCH_CONTROLS=(
+    MSR::MISC_FEATURE_CONTROL:DCU_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_HW_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
+    MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
+)
+
 print_usage() {
     cat <<'USAGE'
 Usage: geopm-check-workload.sh [OPTION]... -- COMMAND [ARG]...
@@ -46,8 +60,9 @@ Options:
                     campaign can reproduce.
                     prefetch/prefetch-disable is NOT supported here: geopmopt
                     expands it into four ordered MSR prefetcher-disable
-                    controls rather than one value, so baseline it manually
-                    or omit --dimension for that dimension.
+                    controls rather than one value.  Omit it -- the BIOS
+                    default is level 0 (all prefetchers enabled), and the
+                    report states the level actually observed.
                     Requires geopmopt/geopmsession/geopmread on PATH.  See
                     --list-controls for available dimension names.
   --venv DIR        Use GEOPM tools from DIR/bin (only meaningful with
@@ -158,16 +173,20 @@ if (( ${#DIMENSIONS[@]} )); then
         exit 2
     fi
 
-    # --list-controls reports each control's *native* domain and bounds for that
-    # domain, so the settings must be written there too.  Writing a
-    # package-derived value once at board under-caps a summed control: on a
-    # two-package host cpu-power's listed max is one package's TDP, while a
-    # board write would cap the whole board at that value and flatter the
-    # campaign's apparent improvement.
-    domain_counts=$(geopmread --domain 2>/dev/null) || {
-        echo "geopm-check-workload.sh: could not read the platform's domain list" >&2
-        echo "  (geopmread --domain), so --dimension cannot place its control writes." >&2
-        exit 2
+    # A campaign is run as --sweep DIM@board, and ControlGrid resolves a sweep's
+    # bounds by reading the bound signals at the *requested* domain (grid.py
+    # _get_range).  --list-controls prints NATIVE-domain bounds, which differ for
+    # a sum-aggregated control: CPU_POWER_LIMIT_DEFAULT reads one package's limit
+    # at package and the board sum at board.  Read them at board so the baseline
+    # applies the same reference the campaign resolves.  Mirrors grid.py's
+    # _CLI_FLAG_TO_CONTROL bound table.
+    read_bound() {
+        local signal=$1 fallback=${2:-} value
+        if value=$(geopmread "$signal" "$BASELINE_DOMAIN" 0 2>/dev/null) && [[ -n $value ]]; then
+            printf '%s' "$value"; return 0
+        fi
+        [[ -n $fallback ]] && { printf '%s' "$fallback"; return 0; }
+        return 1
     }
 
     seen_dims=""
@@ -180,17 +199,21 @@ if (( ${#DIMENSIONS[@]} )); then
             cpu-frequency)        DIMENSION=cpu-freq ;;
             cpu-uncore-frequency) DIMENSION=uncore-freq ;;
             gpu-frequency)        DIMENSION=gpu-freq ;;
+            prefetch-disable)     DIMENSION=prefetch ;;
         esac
 
-        # prefetch expands to four ordered MSR disable controls in grid.py
-        # (prefetch_settings()), not a single MAX/MIN pair; replicating that
-        # level-to-controls mapping here would duplicate policy this baseline
-        # helper shouldn't own, so it is rejected rather than silently wrong.
-        if [[ $DIMENSION == prefetch || $DIMENSION == prefetch-disable ]]; then
+        # prefetch is a level, not a value: grid.py expands it into four ordered
+        # MSR writes (prefetch_settings()), so it has no single control to cap
+        # here.  Leaving it out is sound because the BIOS default is level 0 --
+        # all prefetchers enabled -- which is the reference a campaign whose
+        # range starts at 0 evaluates.  The report below states the level it
+        # actually observed rather than assuming it.
+        if [[ $DIMENSION == prefetch ]]; then
             echo "geopm-check-workload.sh: '$DIMENSION' is not supported by --dimension." >&2
             echo "  geopmopt expands it into four ordered MSR prefetcher-disable controls" >&2
-            echo "  (grid.py's prefetch_settings()); baseline it manually, or omit --dimension" >&2
-            echo "  and compare against a geopmopt run over this dimension directly." >&2
+            echo "  (grid.py's prefetch_settings()), which this helper does not write." >&2
+            echo "  Omit it: the BIOS default is level 0, and this script reports the" >&2
+            echo "  prefetcher level it observed so the baseline can be stated honestly." >&2
             exit 2
         fi
 
@@ -200,62 +223,71 @@ if (( ${#DIMENSIONS[@]} )); then
         fi
         seen_dims+="${DIMENSION}"$'\n'
 
-        read -r ctl_domain ctl_min ctl_max ctl_step < <(
-            printf '%s\n' "$controls" | awk -v d="$DIMENSION" 'NR>1 && $1==d {print $2, $4, $5, $6}')
-        if [[ -z ${ctl_domain:-} || $ctl_domain == n/a || $ctl_min == n/a || $ctl_max == n/a || $ctl_step == n/a ]]; then
+        read -r ctl_domain < <(
+            printf '%s\n' "$controls" | awk -v d="$DIMENSION" 'NR>1 && $1==d {print $2}')
+        if [[ -z ${ctl_domain:-} || $ctl_domain == n/a ]]; then
             echo "geopm-check-workload.sh: '$DIMENSION' is not usable on this platform" >&2
-            echo "  (domain=${ctl_domain:-unknown} max=${ctl_max:-unknown} step=${ctl_step:-unknown})." >&2
-            echo "  See --list-controls." >&2
-            exit 2
-        fi
-        # A never-tuned uncore control can auto-detect its max bound from the
-        # control's *current* value, which reads 0 on such a host; --list-controls
-        # reports a real domain and numeric bounds in that case, so the n/a check
-        # above does not catch it.  See references/sweep-dimensions.md.
-        if ! awk -v mx="$ctl_max" 'BEGIN{exit !(mx > 0)}' 2>/dev/null; then
-            echo "geopm-check-workload.sh: '$DIMENSION' reports a non-positive max bound" >&2
-            echo "  (max=${ctl_max}), so there is no valid reference value.  See" >&2
-            echo "  references/sweep-dimensions.md for the uncore-freq max=0 case." >&2
-            exit 2
-        fi
-        if awk -v mn="$ctl_min" -v mx="$ctl_max" 'BEGIN{exit !(mn > mx)}' 2>/dev/null; then
-            echo "geopm-check-workload.sh: '$DIMENSION' reports min (${ctl_min}) greater" >&2
-            echo "  than max (${ctl_max}), so its bounds are invalid.  See --list-controls." >&2
-            exit 2
-        fi
-        # ControlGrid.get_dimension_grid() rejects a non-positive step, so a
-        # baseline here would otherwise claim a dimension the campaign cannot run.
-        if ! awk -v st="$ctl_step" 'BEGIN{exit !(st > 0)}' 2>/dev/null; then
-            echo "geopm-check-workload.sh: '$DIMENSION' reports a non-positive step" >&2
-            echo "  (step=${ctl_step}), so geopmopt cannot build a grid for it and no" >&2
-            echo "  campaign over this dimension can run.  See --list-controls." >&2
+            echo "  (its native domain did not resolve).  See --list-controls." >&2
             exit 2
         fi
 
-        # Must match grid.py exactly -- see geopm-gen-access.sh and
-        # geopm-sensitivity.sh for the same mapping and why it matters.
         case "$DIMENSION" in
-            cpu-freq)    CONTROL=CPU_FREQUENCY_MAX_CONTROL ;;
-            uncore-freq) CONTROL=CPU_UNCORE_FREQUENCY_MAX_CONTROL ;;
-            cpu-power)   CONTROL=POWERCAP::CPU_POWER_LIMIT ;;
-            gpu-freq)    CONTROL=GPU_CORE_FREQUENCY_MAX_CONTROL ;;
-            gpu-power)   CONTROL=GPU_POWER_LIMIT_CONTROL ;;
-            board-power) CONTROL=BOARD_POWER_LIMIT_CONTROL ;;
+            cpu-freq)
+                CONTROL=CPU_FREQUENCY_MAX_CONTROL
+                ctl_min=$(read_bound CPU_FREQUENCY_MIN_AVAIL)
+                ctl_max=$(read_bound CPU_FREQUENCY_STICKER)
+                ctl_step=$(read_bound CPU_FREQUENCY_STEP) ;;
+            uncore-freq)
+                CONTROL=CPU_UNCORE_FREQUENCY_MAX_CONTROL
+                ctl_min=$(read_bound CPU_FREQUENCY_MIN_AVAIL)
+                ctl_max=$(read_bound CPU_UNCORE_FREQUENCY_MAX_CONTROL)
+                ctl_step=$(read_bound CPU_FREQUENCY_STEP) ;;
+            cpu-power)
+                CONTROL=POWERCAP::CPU_POWER_LIMIT
+                ctl_min=$(read_bound CPU_POWER_MIN_AVAIL)
+                ctl_max=$(read_bound CPU_POWER_LIMIT_DEFAULT)
+                ctl_step=1 ;;
+            gpu-freq)
+                CONTROL=GPU_CORE_FREQUENCY_MAX_CONTROL
+                ctl_min=$(read_bound GPU_CORE_FREQUENCY_MIN_AVAIL)
+                ctl_max=$(read_bound GPU_CORE_FREQUENCY_MAX_AVAIL)
+                ctl_step=$(read_bound GPU_CORE_FREQUENCY_STEP) ;;
+            gpu-power)
+                CONTROL=GPU_POWER_LIMIT_CONTROL
+                ctl_min=$(read_bound LEVELZERO::GPU_POWER_LIMIT_MIN_AVAIL 200)
+                ctl_max=$(read_bound LEVELZERO::GPU_POWER_LIMIT_DEFAULT)
+                [[ -z ${ctl_max:-} ]] && ctl_max=$(read_bound GPU_POWER_LIMIT_CONTROL)
+                ctl_step=1 ;;
+            board-power)
+                CONTROL=BOARD_POWER_LIMIT_CONTROL
+                ctl_min=200; ctl_max=6000; ctl_step=1 ;;
             *) echo "geopm-check-workload.sh: no control mapping for '$DIMENSION'." >&2
                echo "  Supported: cpu-freq, uncore-freq, cpu-power, gpu-freq, gpu-power, board-power" >&2
                exit 2 ;;
         esac
 
+        if [[ -z ${ctl_min:-} || -z ${ctl_max:-} || -z ${ctl_step:-} ]]; then
+            echo "geopm-check-workload.sh: could not resolve '$DIMENSION' bounds at ${BASELINE_DOMAIN}." >&2
+            echo "  The bounds signals are probably not granted; see the geopm-install skill." >&2
+            exit 2
+        fi
+        # A never-tuned uncore control resolves its max from the control's
+        # *current* value, which reads 0 on such a host.  ControlGrid also
+        # rejects a non-positive step outright.
+        if ! awk -v mn="$ctl_min" -v mx="$ctl_max" -v st="$ctl_step" \
+                'BEGIN{exit !(mx > 0 && mn <= mx && st > 0)}' 2>/dev/null; then
+            echo "geopm-check-workload.sh: '$DIMENSION' has an invalid grid at ${BASELINE_DOMAIN}" >&2
+            echo "  (min=${ctl_min} max=${ctl_max} step=${ctl_step}): needs max>0, min<=max, step>0." >&2
+            echo "  See references/sweep-dimensions.md for the uncore-freq max=0 case." >&2
+            exit 2
+        fi
+
         ref=$ctl_max
         if [[ $DIMENSION == cpu-freq ]]; then
-            sticker=$(geopmread CPU_FREQUENCY_STICKER package 0 2>/dev/null)
-            if [[ -n $sticker ]] && awk -v s="$sticker" -v m="$ctl_max" 'BEGIN{exit !(s > 0 && s < m)}'; then
-                ref=$sticker
-            fi
             # geopmopt writes this unconditionally for every cpu-freq sweep, so
             # skipping it would baseline under the current governor instead.
             if printf '%s\n' "$granted_controls" | grep -qx CPU_FREQUENCY_GOVERNOR_CONTROL; then
-                GOVERNOR_LINE="CPU_FREQUENCY_GOVERNOR_CONTROL board 0 0"
+                GOVERNOR_LINE="CPU_FREQUENCY_GOVERNOR_CONTROL ${BASELINE_DOMAIN} 0 0"
             else
                 echo "geopm-check-workload.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is not granted to you." >&2
                 echo "  geopmopt writes it for every cpu-freq sweep, so this baseline would run" >&2
@@ -265,15 +297,7 @@ if (( ${#DIMENSIONS[@]} )); then
             fi
         fi
 
-        dom_count=$(printf '%s\n' "$domain_counts" | awk -v d="$ctl_domain" '$1==d {print $2}')
-        if ! [[ ${dom_count:-} =~ ^[0-9]+$ ]] || (( dom_count < 1 )); then
-            echo "geopm-check-workload.sh: '$DIMENSION' reports native domain '${ctl_domain}'," >&2
-            echo "  which geopmread --domain does not list as present on this platform." >&2
-            exit 2
-        fi
-        for (( dom_idx = 0; dom_idx < dom_count; dom_idx++ )); do
-            CTL_LINES+=("$(printf '%s %s %d %s' "$CONTROL" "$ctl_domain" "$dom_idx" "$ref")")
-        done
+        CTL_LINES+=("$(printf '%s %s 0 %s' "$CONTROL" "$BASELINE_DOMAIN" "$ref")")
         if [[ $CONTROL == *_MAX_CONTROL ]]; then
             min_control=${CONTROL/_MAX_/_MIN_}
             if [[ $min_control != "$CONTROL" && $min_control != CPU_FREQUENCY_MIN_CONTROL ]]; then
@@ -282,14 +306,32 @@ if (( ${#DIMENSIONS[@]} )); then
                 # ungranted MIN is dropped there too, so mirror that rather
                 # than failing the session on an unwritable control.
                 if printf '%s\n' "$granted_controls" | grep -qx "$min_control"; then
-                    for (( dom_idx = 0; dom_idx < dom_count; dom_idx++ )); do
-                        CTL_LINES+=("$(printf '%s %s %d %s' "$min_control" "$ctl_domain" "$dom_idx" "$ref")")
-                    done
+                    CTL_LINES+=("$(printf '%s %s 0 %s' "$min_control" "$BASELINE_DOMAIN" "$ref")")
                 fi
             fi
         fi
-        DIM_SUMMARY+=("${DIMENSION} (${CONTROL}) at ${ref} on ${dom_count} ${ctl_domain}(s)")
+        DIM_SUMMARY+=("${DIMENSION} (${CONTROL}) at ${ref} on ${BASELINE_DOMAIN}")
     done
+
+    # The prefetchers are never written here, so report the level they were
+    # left at.  A campaign sweeping prefetch starts its range at level 0, and
+    # this baseline is only a valid reference for it when the observed level is
+    # already 0 -- state it rather than assume the BIOS default.
+    prefetch_bits=""
+    for pctl in "${PREFETCH_CONTROLS[@]}"; do
+        bit=$(geopmread "$pctl" "$BASELINE_DOMAIN" 0 2>/dev/null) || { prefetch_bits=""; break; }
+        [[ -z $bit ]] && { prefetch_bits=""; break; }
+        prefetch_bits+="$(awk -v v="$bit" 'BEGIN{printf "%d", (v > 0.5) ? 1 : 0}')"
+    done
+    if [[ -n $prefetch_bits ]]; then
+        PREFETCH_NOTE=$(awk -v b="$prefetch_bits" 'BEGIN{
+            n = 0
+            for (i = 1; i <= length(b); i++) n += substr(b, i, 1)
+            printf "level %d (%s)", n, (n == 0 ? "all enabled -- the BIOS default" : "some already disabled")
+        }')
+    else
+        PREFETCH_NOTE="unreadable (prefetcher signals not granted)"
+    fi
 
     sig_conf=$(mktemp) || exit 1
     ctl_conf=$(mktemp) || exit 1
@@ -311,6 +353,7 @@ if (( ${#DIMENSIONS[@]} )); then
         echo "  Dimension : ${entry}"
     done
     [[ -n $GOVERNOR_LINE ]] && echo "  Governor  : performance (forced, mirrors geopmopt)"
+    echo "  Prefetch  : ${PREFETCH_NOTE} -- not written by this baseline"
     if (( ${#DIM_SUMMARY[@]} > 1 )); then
         echo "  Note      : all ${#DIM_SUMMARY[@]} dimensions are constrained together, as a"
         echo "              campaign sweeping them would -- see sweep-dimensions.md"

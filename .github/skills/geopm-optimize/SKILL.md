@@ -122,11 +122,15 @@ a timeout, and they feed step 4's one-knob-at-a-time sensitivity check.
 **They are not the reference to judge the campaign against** when more than one
 dimension will be swept -- see step 7a.
 
-`prefetch` is the one exception: the probe can report it usable, but
-`geopm-check-workload.sh` rejects `--dimension prefetch` because `geopmopt`
-expands it into four ordered MSR prefetcher-disable controls rather than one
-value. Baseline that dimension without `--dimension` (accepting an
-unconstrained reference) and say so when interpreting its results.
+`prefetch` is the one exception. Neither `geopm-check-workload.sh` nor
+`geopm-sensitivity.sh` accepts `--dimension prefetch`, because `geopmopt`
+expands a prefetch level into four ordered MSR writes rather than one value.
+Omit it from both helpers: the BIOS default is level `0` — all prefetchers
+enabled — which is the point a campaign whose range starts at `0` evaluates.
+`geopm-check-workload.sh` prints a `Prefetch:` line with the level it actually
+observed, so **report that observed level in the final result** rather than
+asserting the default. If it reports anything other than level 0, say so
+plainly: the baseline is then not a point that campaign can reproduce.
 
 Establishes runtime, a recommended `--application-timeout`, whether the regex
 matches, and the noise floor. See
@@ -153,6 +157,11 @@ More trials do not help — more samples of noise are still noise.
 The script exits 0 when the workload is optimizable as configured, and 1 with
 ranked remedies when it is not. Run it for each dimension you intend to sweep,
 and sweep only the ones that pass.
+
+`prefetch` cannot be tested here either — `geopm-sensitivity.sh` has no control
+mapping for it and exits 2. Record it as **untested** rather than running that
+command, and weigh it on the recipe's advice instead (worth trying for
+memory-bound codes, rarely for compute-bound ones).
 
 Two things to know about `cpu-freq`, both documented with measurements in
 [sensitivity.md](references/sensitivity.md):
@@ -254,14 +263,14 @@ left uncore unconstrained and its uncore-freq baseline left CPU turbo
 unconstrained — neither is reachable by that campaign, so an improvement
 measured against either is not a real comparison.
 
-**If `prefetch` is in the final set**, pass every *other* dimension to
-`--dimension` and leave `prefetch` out — the helper rejects it, because
-`geopmopt` expands it into four ordered MSR prefetcher-disable controls rather
-than one value. The resulting baseline holds the prefetchers at the system
-default, which is grid level `0`, so it is the correct reference only if the
-campaign's `prefetch` range starts at `0`. Say explicitly which dimensions the
-baseline constrained and that `prefetch` sat at its default, so the comparison
-is not presented as more complete than it is.
+**Pass every dimension in the final set except `prefetch`**, which neither
+helper accepts. Leaving it out is sound because the BIOS default is level `0`,
+but do not assert that — use the `Prefetch:` level the helper observed, and
+carry it into the final report alongside the dimensions the baseline did
+constrain.
+
+With a single swept dimension this is the same run as step 3; say so and reuse
+it rather than repeating the measurement.
 
 With a single swept dimension this is the same run as step 3; say so and reuse
 it rather than repeating the measurement.
