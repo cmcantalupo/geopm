@@ -184,10 +184,10 @@ for the ED2P variant, which weights runtime more heavily.
 
 ## Memory-bound workload
 
-Lead with uncore frequency, and consider prefetchers.
+Lead with uncore frequency.
 
 ```bash
-geopmopt --sweep uncore-freq@board --sweep cpu-freq@board --sweep prefetch \
+geopmopt --sweep uncore-freq@board --sweep cpu-freq@board \
          --metric-regex 'bandwidth: ([0-9.]+) GB/s' \
          --trials 60 --verbosity 2 \
          -- ./stream.sh
@@ -196,6 +196,13 @@ geopmopt --sweep uncore-freq@board --sweep cpu-freq@board --sweep prefetch \
 A memory-bound code is often insensitive to core frequency, so a large
 improvement from `cpu-freq` alone is a hint the workload is not as
 memory-bound as assumed.
+
+Disabling hardware prefetchers can free bandwidth for this class of workload,
+but `prefetch` is **not** part of the default set — the helpers cannot baseline
+or sensitivity-test it, so its contribution cannot be verified the way the
+other dimensions' can. Add `--sweep prefetch` only when the user explicitly
+wants to study it, and say that its share of any improvement is unverified.
+See [sweep-dimensions.md](sweep-dimensions.md#the-prefetch-dimension).
 
 ## Choosing between them
 

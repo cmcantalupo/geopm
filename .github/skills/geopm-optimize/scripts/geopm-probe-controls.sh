@@ -338,8 +338,12 @@ esac
 
 if [[ -z $suggest ]]; then
     # Fall back to whatever is usable when the workload kind matched nothing.
+    # prefetch is deliberately excluded from every default suggestion: the
+    # baseline and sensitivity helpers cannot constrain it, so recommending it
+    # here would propose a campaign the rest of the workflow cannot support.
     while IFS= read -r dim; do
-        [[ -n $dim ]] && suggest+=" --sweep ${dim}@board"
+        [[ -z $dim || $dim == prefetch ]] && continue
+        suggest+=" --sweep ${dim}@board"
     done <<< "$usable"
 fi
 
@@ -354,9 +358,13 @@ echo "  trials x single-run time BEFORE starting."
 
 if printf '%s\n' "$usable" | grep -qx prefetch; then
     echo
-    echo "  prefetch is available.  Worth adding for memory-bound workloads,"
-    echo "  where disabling hardware prefetchers can free bandwidth.  It rarely"
-    echo "  helps compute-bound codes and costs trials, so omit it otherwise."
+    echo "  prefetch is available on this platform but is NOT suggested above."
+    echo "  geopmopt can sweep it, but geopm-check-workload.sh and"
+    echo "  geopm-sensitivity.sh cannot constrain it, so it has no baseline and"
+    echo "  no sensitivity screening -- its result could not be judged against a"
+    echo "  reference the campaign reproduces.  Add it only deliberately, for a"
+    echo "  memory-bound code where freeing prefetch bandwidth is the hypothesis,"
+    echo "  and treat its contribution as unverified."
 fi
 
 exit 0

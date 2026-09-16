@@ -298,9 +298,16 @@ Start with:
 | Workload | First choice | Then |
 |---|---|---|
 | CPU-bound | `cpu-freq@board` | add `uncore-freq@board` |
-| Memory-bound | `uncore-freq@board` | add `cpu-freq@board`, consider `prefetch` |
+| Memory-bound | `uncore-freq@board` | add `cpu-freq@board` |
 | Power-limited | `cpu-power@board` | add `cpu-freq@board` |
 | GPU-bound | `gpu-freq@board` | add `gpu-power@board` |
+
+**The default dimensions are `cpu-freq`, `uncore-freq`, and `cpu-power`** (plus
+the GPU pair on GPU platforms). `prefetch` is deliberately *not* among them
+even where the platform supports it: the baseline and sensitivity helpers
+cannot constrain it, so a campaign including it has no reference point and no
+sensitivity screening. Add it only when a user explicitly asks to study
+prefetching, and report its contribution as unverified.
 
 `cpu-freq` and `cpu-power` interact: both ultimately limit the same silicon, so
 sweeping both often produces a flat region rather than a sharp optimum. Prefer

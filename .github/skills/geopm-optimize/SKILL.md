@@ -102,6 +102,16 @@ starting set. Never assume a dimension exists — bounds are platform-specific,
 and an unavailable dimension can still print plausible-looking numbers next to
 an `n/a` domain.
 
+**Default dimensions: `cpu-freq`, `uncore-freq`, and `cpu-power`** — whichever
+of those the probe reports usable, plus `gpu-freq`/`gpu-power` on a GPU
+workload. Pick from these unless the user asks otherwise.
+
+**Do not include `prefetch` by default**, even when the probe reports it
+usable. Neither helper can constrain it, so a campaign including it has no
+baseline reference and no sensitivity screening — its contribution could not
+be verified. Add it only when the user explicitly asks to study prefetching,
+and then say plainly that its share of any improvement is unverified.
+
 See [sweep-dimensions.md](references/sweep-dimensions.md).
 
 ### 3. Baseline the workload
