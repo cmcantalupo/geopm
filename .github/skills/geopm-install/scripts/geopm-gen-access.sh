@@ -51,13 +51,19 @@ DEFAULT_CONTROLS=(
     GPU_CORE_FREQUENCY_MIN_CONTROL
     GPU_POWER_LIMIT_CONTROL
     BOARD_POWER_LIMIT_CONTROL
+)
+# The four prefetcher-disable controls are one atomic set: every prefetch level
+# writes all four (grid.py's prefetch_settings()), so a partial grant is
+# useless.  They are added below only when the whole set is supported, not
+# filtered independently like the controls above.
+PREFETCH_CONTROLS=(
     MSR::MISC_FEATURE_CONTROL:DCU_HW_PREFETCHER_DISABLE
     MSR::MISC_FEATURE_CONTROL:L2_HW_PREFETCHER_DISABLE
     MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
     MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
 )
-# Every bound signal grid.py resolves a dimension's range from is granted as a
-# *signal*, including the two controls it reads back as one
+# Every bound signal grid.py uses to resolve a dimension's range is granted as
+# a *signal*, including the two controls it reads back as a bound
 # (CPU_UNCORE_FREQUENCY_MAX_CONTROL, GPU_POWER_LIMIT_CONTROL).  Without them a
 # freshly granted control still reports n/a bounds and the dimension is
 # unusable.  Unsupported names are dropped by the filtering below.
@@ -131,8 +137,29 @@ if [[ -z $GROUP ]]; then
     exit 2
 fi
 
-if ! command -v geopmaccess >/dev/null 2>&1; then
+if ! command -v geopmaccess >/dev/null 2>&1 && [[ ! -x /usr/bin/geopmaccess ]]; then
     echo "geopm-gen-access.sh: geopmaccess not found on PATH" >&2
+    exit 1
+fi
+
+# Resolve ONE working geopmaccess up front and use it for every query.  A
+# virtual environment built without --system-site-packages cannot import
+# PyGObject, which dasbus needs, so the venv copy is on PATH but fails; the
+# system copy still works.  Discovery, validation and the existing-list reads
+# must all use the same working executable, or discovery can succeed via the
+# fallback while validation then aborts on the broken bare command.
+GEOPMACCESS=""
+if geopmaccess --all >/dev/null 2>&1; then
+    GEOPMACCESS=geopmaccess
+elif /usr/bin/geopmaccess --all >/dev/null 2>&1; then
+    GEOPMACCESS=/usr/bin/geopmaccess
+fi
+if [[ -z $GEOPMACCESS ]]; then
+    echo "geopm-gen-access.sh: could not run geopmaccess (PATH copy or /usr/bin)." >&2
+    echo "  Is geopmd running?  Try: systemctl is-active geopm" >&2
+    echo "  If you are in a virtual environment, rebuild it with" >&2
+    echo "  --system-site-packages so PyGObject is visible, or run this from a" >&2
+    echo "  shell that can reach /usr/bin/geopmaccess." >&2
     exit 1
 fi
 
@@ -144,21 +171,17 @@ fi
 
 mkdir -p "$OUT_DIR" || exit 1
 
-# A virtual environment built without --system-site-packages cannot import
-# PyGObject, which dasbus needs, so the venv geopmaccess fails even though the
-# access list is fine.  Fall back to the system copy, as the verifier and probe
-# do, and fail explicitly only when both are unavailable.
-supported_signals=$(geopmaccess --all 2>/dev/null) \
-    || supported_signals=$(/usr/bin/geopmaccess --all 2>/dev/null)
-supported_controls=$(geopmaccess --all --controls 2>/dev/null) \
-    || supported_controls=$(/usr/bin/geopmaccess --all --controls 2>/dev/null)
-
-if [[ -z $supported_signals ]]; then
+# Both discovery queries use the resolved executable and must both succeed:
+# treating a failed controls query as empty data would drop every control from
+# the grant and give incorrect guidance.
+if ! supported_signals=$($GEOPMACCESS --all 2>/dev/null) || [[ -z $supported_signals ]]; then
     echo "geopm-gen-access.sh: could not query supported signals." >&2
     echo "  Is geopmd running?  Try: systemctl is-active geopm" >&2
-    echo "  If you are in a virtual environment, rebuild it with" >&2
-    echo "  --system-site-packages so PyGObject is visible, or run this from a" >&2
-    echo "  shell that can reach /usr/bin/geopmaccess." >&2
+    exit 1
+fi
+if ! supported_controls=$($GEOPMACCESS --all --controls 2>/dev/null) || [[ -z $supported_controls ]]; then
+    echo "geopm-gen-access.sh: could not query supported controls." >&2
+    echo "  Is geopmd running?  Try: systemctl is-active geopm" >&2
     exit 1
 fi
 
@@ -190,6 +213,20 @@ keep_signals=();  drop_signals=()
 select_supported want_controls "$supported_controls" keep_controls drop_controls
 select_supported want_signals  "$supported_signals"  keep_signals  drop_signals
 
+# prefetch is all-or-nothing: add the four controls only when every one is
+# supported, so the generated grant never contains a partial, unusable set.
+prefetch_supported=1
+for name in "${PREFETCH_CONTROLS[@]}"; do
+    printf '%s\n' "$supported_controls" | grep -qx -- "$name" || prefetch_supported=0
+done
+if (( prefetch_supported )); then
+    keep_controls+=("${PREFETCH_CONTROLS[@]}")
+else
+    echo "geopm-gen-access.sh: prefetch is unavailable here (not all four" >&2
+    echo "  prefetcher-disable controls are supported), so it is omitted from the" >&2
+    echo "  grant.  geopmopt cannot sweep prefetch on this platform." >&2
+fi
+
 # A granted control is implicitly readable under the same name, but the signal
 # list must still name it for tools that read the current setting explicitly.
 for name in "${keep_controls[@]}"; do
@@ -216,9 +253,9 @@ printf '%s\n' "${keep_controls[@]}" | sort -u > "$control_file"
 validate() {
     local file=$1 kind=$2 err
     if [[ $kind == controls ]]; then
-        err=$(geopmaccess --write --dry-run --controls < "$file" 2>&1)
+        err=$($GEOPMACCESS --write --dry-run --controls < "$file" 2>&1)
     else
-        err=$(geopmaccess --write --dry-run < "$file" 2>&1)
+        err=$($GEOPMACCESS --write --dry-run < "$file" 2>&1)
     fi
     local rc=$?
     if (( rc != 0 )); then
@@ -232,8 +269,8 @@ validate() {
 validate "$signal_file" signals   || exit 1
 validate "$control_file" controls || exit 1
 
-existing_signals=$(geopmaccess --group "$GROUP" 2>/dev/null)
-existing_controls=$(geopmaccess --group "$GROUP" --controls 2>/dev/null)
+existing_signals=$($GEOPMACCESS --group "$GROUP" 2>/dev/null)
+existing_controls=$($GEOPMACCESS --group "$GROUP" --controls 2>/dev/null)
 existing_signal_count=$(printf '%s' "$existing_signals" | grep -c . || true)
 existing_control_count=$(printf '%s' "$existing_controls" | grep -c . || true)
 

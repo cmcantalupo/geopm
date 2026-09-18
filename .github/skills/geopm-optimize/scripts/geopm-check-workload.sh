@@ -335,12 +335,21 @@ if (( ${#DIMENSIONS[@]} )); then
         if [[ $CONTROL == *_MAX_CONTROL ]]; then
             min_control=${CONTROL/_MAX_/_MIN_}
             if [[ $min_control != "$CONTROL" && $min_control != CPU_FREQUENCY_MIN_CONTROL ]]; then
-                # grid.py pairs this MIN only when it is in pio.control_names(),
-                # which for a service-backed client is the granted list; an
-                # ungranted MIN is dropped there too, so mirror that rather
-                # than failing the session on an unwritable control.
+                # grid.py pairs this MIN only when the platform exposes it.  If
+                # it does but the grant is missing, geopmopt would silently
+                # sweep a MAX-only cap; the probe, verifier and sensitivity
+                # helper all reject that, so fail here too rather than measure a
+                # baseline that claims to mirror a campaign it does not.  A MIN
+                # the platform does not expose at all is a legitimate MAX-only
+                # sweep, so it is omitted without error.
                 if printf '%s\n' "$granted_controls" | grep -qx "$min_control"; then
                     CTL_LINES+=("$(printf '%s %s 0 %s' "$min_control" "$BASELINE_DOMAIN" "$ref")")
+                elif printf '%s\n' "$supported_controls" | grep -qx "$min_control"; then
+                    echo "geopm-check-workload.sh: ${min_control} is supported but not granted to you." >&2
+                    echo "  geopmopt pins it alongside ${CONTROL} for ${DIMENSION}; without the grant" >&2
+                    echo "  the campaign silently sweeps a MAX-only cap, so this baseline would not" >&2
+                    echo "  mirror it.  Grant it first; see the geopm-install skill." >&2
+                    exit 2
                 fi
             fi
         fi

@@ -113,7 +113,21 @@ case "$DIMENSION" in
     cpu-frequency)        DIMENSION=cpu-freq ;;
     cpu-uncore-frequency) DIMENSION=uncore-freq ;;
     gpu-frequency)        DIMENSION=gpu-freq ;;
+    prefetch-disable)     DIMENSION=prefetch ;;
 esac
+
+# prefetch is a level that expands into four ordered MSR writes (grid.py's
+# prefetch_settings()), which this helper does not perform, so it is rejected
+# explicitly -- matching geopm-check-workload.sh -- rather than reported as an
+# unknown dimension.
+if [[ $DIMENSION == prefetch ]]; then
+    echo "geopm-sensitivity.sh: 'prefetch' is not supported by this helper." >&2
+    echo "  geopmopt expands it into four ordered MSR prefetcher-disable controls" >&2
+    echo "  rather than one value, so its sensitivity cannot be measured here.  It" >&2
+    echo "  is not a default sweep dimension; if you sweep it deliberately, its" >&2
+    echo "  contribution is unverified.  See references/sweep-dimensions.md." >&2
+    exit 2
+fi
 
 controls=$(geopmopt --list-controls 2>&1) || {
     echo "geopm-sensitivity.sh: could not list controls." >&2
