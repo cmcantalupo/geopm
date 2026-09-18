@@ -48,6 +48,12 @@ Options:
                     baseline.  Baselining them one at a time leaves the other
                     controls unconstrained, and no such run is a reference the
                     campaign can reproduce.
+                    An optional =REF or =MIN:MAX:STEP suffix sets the reference
+                    setting explicitly (raw units, no GHz/W suffix), for when
+                    the campaign overrides the default range with its own
+                    --sweep DIM=MIN:MAX:STEP; the baseline then caps at that
+                    range's MAX instead of the auto-detected default, so it
+                    stays inside the campaign's search space.
                     prefetch/prefetch-disable is NOT supported here: geopmopt
                     expands it into four ordered MSR prefetcher-disable
                     controls rather than one value.  This helper leaves the
@@ -162,6 +168,13 @@ if (( ${#DIMENSIONS[@]} )); then
         echo "  PyGObject is visible; see the geopm-install skill." >&2
         exit 2
     fi
+    # Distinguishes "supported but not granted" from "unsupported" below.
+    if ! supported_controls=$(geopmaccess --all --controls 2>/dev/null) \
+       && ! supported_controls=$(/usr/bin/geopmaccess --all --controls 2>/dev/null); then
+        echo "geopm-check-workload.sh: could not query the platform's supported control list." >&2
+        echo "  See the geopm-install skill." >&2
+        exit 2
+    fi
 
     # A campaign is run as --sweep DIM@board, and ControlGrid resolves a sweep's
     # bounds by reading the bound signals at the *requested* domain (grid.py
@@ -180,7 +193,22 @@ if (( ${#DIMENSIONS[@]} )); then
     }
 
     seen_dims=""
-    for DIMENSION in "${DIMENSIONS[@]}"; do
+    for raw_dim in "${DIMENSIONS[@]}"; do
+        # An optional =REF or =MIN:MAX:STEP suffix pins the reference to the
+        # campaign's actual range instead of the auto-detected default.
+        ref_override=""
+        DIMENSION="$raw_dim"
+        if [[ $raw_dim == *=* ]]; then
+            DIMENSION="${raw_dim%%=*}"
+            ref_override="${raw_dim#*=}"
+            # MIN:MAX:STEP -> the baseline caps at MAX, the top of the sweep.
+            [[ $ref_override == *:* ]] && ref_override=$(printf '%s' "$ref_override" | cut -d: -f2)
+            if ! awk -v v="$ref_override" 'BEGIN{exit !(v+0==v && v+0>0)}' 2>/dev/null; then
+                echo "geopm-check-workload.sh: '$raw_dim' reference must be a positive number" >&2
+                echo "  in raw units (no GHz/W suffix); MIN:MAX:STEP is also accepted." >&2
+                exit 2
+            fi
+        fi
         # --list-controls always keys its table by the short alias (grid.py's
         # _PREFERRED_ALIAS), even though --sweep also accepts these long dashed
         # spellings (_CONTROL_ALIASES).  Normalize before the lookup below, or a
@@ -277,13 +305,30 @@ if (( ${#DIMENSIONS[@]} )); then
             # skipping it would baseline under the current governor instead.
             if printf '%s\n' "$granted_controls" | grep -qx CPU_FREQUENCY_GOVERNOR_CONTROL; then
                 GOVERNOR_LINE="CPU_FREQUENCY_GOVERNOR_CONTROL ${BASELINE_DOMAIN} 0 0"
+            elif printf '%s\n' "$supported_controls" | grep -qx CPU_FREQUENCY_GOVERNOR_CONTROL; then
+                echo "geopm-check-workload.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is supported but not" >&2
+                echo "  granted to you.  geopmopt writes it for every cpu-freq sweep, so this" >&2
+                echo "  baseline would run under your current governor while the campaign runs" >&2
+                echo "  under 'performance'.  Grant it first; see the geopm-install skill" >&2
+                echo "  (references/access-lists.md)." >&2
+                exit 2
             else
-                echo "geopm-check-workload.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is not granted to you." >&2
-                echo "  geopmopt writes it for every cpu-freq sweep, so this baseline would run" >&2
-                echo "  under your current governor while the campaign runs under 'performance'." >&2
-                echo "  Grant it first; see the geopm-install skill (references/access-lists.md)." >&2
+                echo "geopm-check-workload.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is not exposed by" >&2
+                echo "  this platform, so geopmopt cannot force the performance governor and" >&2
+                echo "  cpu-freq cannot be swept as the campaign would.  Choose another dimension." >&2
                 exit 2
             fi
+        fi
+
+        # An explicit campaign range overrides the auto-detected reference, but
+        # must still be a real setting on this platform.
+        if [[ -n $ref_override ]]; then
+            if awk -v r="$ref_override" -v mn="$ctl_min" 'BEGIN{exit !(r < mn)}' 2>/dev/null; then
+                echo "geopm-check-workload.sh: '$DIMENSION' reference ${ref_override} is below the" >&2
+                echo "  platform minimum ${ctl_min}, so no campaign could use it.  See --list-controls." >&2
+                exit 2
+            fi
+            ref=$ref_override
         fi
 
         CTL_LINES+=("$(printf '%s %s 0 %s' "$CONTROL" "$BASELINE_DOMAIN" "$ref")")
@@ -323,8 +368,9 @@ if (( ${#DIMENSIONS[@]} )); then
     done
     [[ -n $GOVERNOR_LINE ]] && echo "  Governor  : performance (forced, mirrors geopmopt)"
     if (( ${#DIM_SUMMARY[@]} > 1 )); then
-        echo "  Note      : all ${#DIM_SUMMARY[@]} dimensions are constrained together, as a"
-        echo "              campaign sweeping them would -- see sweep-dimensions.md"
+        echo "  Note      : all ${#DIM_SUMMARY[@]} dimensions are constrained together, the way a"
+        echo "              campaign that swept them jointly would apply them on every"
+        echo "              trial -- see sweep-dimensions.md"
     else
         echo "  Note      : this baseline reflects campaign conditions, not"
         echo "              unconstrained defaults -- see sweep-dimensions.md"

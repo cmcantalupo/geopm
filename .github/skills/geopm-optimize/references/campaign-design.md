@@ -188,8 +188,10 @@ For a 90-second CPU-bound benchmark on a two-socket machine:
 # 1. What can this platform sweep?
 ./scripts/geopm-probe-controls.sh --venv ~/geopm-venv --workload cpu-bound
 
-# 2. Baseline and noise floor
-./scripts/geopm-check-workload.sh --regex 'GFLOPS: ([0-9.]+)' --runs 3 -- ./bench.sh
+# 2. Baseline and noise floor under the campaign's dimensions -- pass every
+#    one the campaign will sweep, so the reference is a point it can reproduce.
+./scripts/geopm-check-workload.sh --regex 'GFLOPS: ([0-9.]+)' --runs 3 \
+    --dimension cpu-freq --dimension uncore-freq -- ./bench.sh
 #    -> mean 92s, metric spread 1.8%, suggests --application-timeout 300
 
 # 3. Smoke test, about 5 minutes

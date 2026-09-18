@@ -56,8 +56,8 @@ DEFAULT_CONTROLS=(
     MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
     MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
 )
-# Every bound signal grid.py resolves a dimension's range from is requested as
-# a *signal*, including the two controls it reads back as one
+# Every bound signal grid.py resolves a dimension's range from is granted as a
+# *signal*, including the two controls it reads back as one
 # (CPU_UNCORE_FREQUENCY_MAX_CONTROL, GPU_POWER_LIMIT_CONTROL).  Without them a
 # freshly granted control still reports n/a bounds and the dimension is
 # unusable.  Unsupported names are dropped by the filtering below.
@@ -144,12 +144,21 @@ fi
 
 mkdir -p "$OUT_DIR" || exit 1
 
-supported_signals=$(geopmaccess --all 2>/dev/null)
-supported_controls=$(geopmaccess --all --controls 2>/dev/null)
+# A virtual environment built without --system-site-packages cannot import
+# PyGObject, which dasbus needs, so the venv geopmaccess fails even though the
+# access list is fine.  Fall back to the system copy, as the verifier and probe
+# do, and fail explicitly only when both are unavailable.
+supported_signals=$(geopmaccess --all 2>/dev/null) \
+    || supported_signals=$(/usr/bin/geopmaccess --all 2>/dev/null)
+supported_controls=$(geopmaccess --all --controls 2>/dev/null) \
+    || supported_controls=$(/usr/bin/geopmaccess --all --controls 2>/dev/null)
 
 if [[ -z $supported_signals ]]; then
     echo "geopm-gen-access.sh: could not query supported signals." >&2
     echo "  Is geopmd running?  Try: systemctl is-active geopm" >&2
+    echo "  If you are in a virtual environment, rebuild it with" >&2
+    echo "  --system-site-packages so PyGObject is visible, or run this from a" >&2
+    echo "  shell that can reach /usr/bin/geopmaccess." >&2
     exit 1
 fi
 

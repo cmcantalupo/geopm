@@ -132,7 +132,6 @@ declare -A dim_companion=(
     [gpu-freq]=GPU_CORE_FREQUENCY_MIN_CONTROL
 )
 blocking_companions=""
-missing_companions=""
 blocked_count=0
 for dim in "${!dim_companion[@]}"; do
     # Only dimensions that are otherwise usable: an unavailable row is
@@ -150,7 +149,14 @@ for dim in "${!dim_companion[@]}"; do
         usable=$(printf '%s\n' "$usable" | grep -vx "$dim" || true)
         blocked_count=$(( blocked_count + 1 ))
     elif printf '%s\n' "$supported" | grep -qx "$companion"; then
-        missing_companions+="  - ${dim} also needs ${companion}, which is not granted"$'\n'
+        # A supported-but-ungranted MIN is not merely a pinning warning: the
+        # mandatory sensitivity check rejects that exact state, so a suggestion
+        # including this dimension would fail the next step.  Withhold it until
+        # the MIN is granted.  (An unsupported MIN is different -- grid.py then
+        # sweeps MAX-only by design, so the dimension stays usable below.)
+        blocking_companions+="  - ${dim} needs ${companion}, which is supported but not granted"$'\n'
+        usable=$(printf '%s\n' "$usable" | grep -vx "$dim" || true)
+        blocked_count=$(( blocked_count + 1 ))
     fi
 done
 
@@ -215,20 +221,12 @@ fi
 
 if [[ -n $blocking_companions ]]; then
     echo
-    echo "NOT sweepable despite healthy bounds: geopmopt writes these controls"
-    echo "unconditionally for their dimension -- the governor on every cpu-freq"
-    echo "sweep, all four prefetcher bits on every prefetch level -- so the"
-    echo "campaign fails outright without them.  Excluded from the usable set above:"
+    echo "Excluded from the usable set above: each of these needs a companion"
+    echo "control that is supported but not granted (or, for the governor and the"
+    echo "prefetcher bits, one geopmopt writes unconditionally).  A campaign would"
+    echo "fail or the mandatory sensitivity check would reject it, so it is not a"
+    echo "safe default until the companion is granted:"
     printf '%s' "$blocking_companions"
-    echo "  Ask an administrator; see the geopm-install skill."
-fi
-
-if [[ -n $missing_companions ]]; then
-    echo
-    echo "Usable, but pinning will be lost: a control that geopmopt pairs with"
-    echo "these is not granted, so geopmopt drops the companion and silently"
-    echo "sweeps a MAX-only cap instead of the pinned setting you expect:"
-    printf '%s' "$missing_companions"
     echo "  Ask an administrator; see the geopm-install skill."
 fi
 
@@ -352,18 +350,23 @@ if (( dims == 0 )); then
     # Reachable when prefetch is the only usable dimension: it is filtered out
     # of every suggestion, so emitting the command template anyway would print
     # a geopmopt invocation with no --sweep at all.
-    cat <<'MSG'
-  No default dimension is available on this platform.
-MSG
     if printf '%s\n' "$usable" | grep -qx prefetch; then
         cat <<'MSG'
-  prefetch is usable, but it is not a default dimension: the baseline and
-  sensitivity helpers cannot constrain it, so a campaign over it has no
-  reference point and no screening.  Sweep it only as a deliberate opt-in
-  (--sweep prefetch), and treat its contribution as unverified.
+  No default dimension is available on this platform, but prefetch is usable.
+  It is not a default dimension: the baseline and sensitivity helpers cannot
+  constrain it, so a campaign over it has no reference point and no screening.
+  Sweep it only as a deliberate opt-in (--sweep prefetch), and treat its
+  contribution as unverified.
 MSG
+        # prefetch is an explicitly sweepable dimension, so the usage contract's
+        # "at least one dimension is usable" holds: exit 0, matching the
+        # readiness verifier rather than handing the caller back to install.
+        exit 0
     fi
-    echo "  Otherwise there is nothing to tune here; see the geopm-install skill."
+    cat <<'MSG'
+  No default dimension is available on this platform, and nothing else is
+  usable.  There is nothing to tune here; see the geopm-install skill.
+MSG
     exit 1
 fi
 

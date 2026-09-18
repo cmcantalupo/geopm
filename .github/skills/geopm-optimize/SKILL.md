@@ -118,9 +118,11 @@ See [sweep-dimensions.md](references/sweep-dimensions.md).
 
 Run once per candidate dimension identified in step 2, passing `--dimension`
 (and `--venv`, matching steps 2 and 4) so the baseline is measured under the
-same forced conditions -- governor, pinned MIN/MAX -- that dimension's sweep
-will actually run under, not faster, unconstrained defaults the campaign can
-never reach:
+same forced conditions that dimension's sweep will actually run under --
+governor for `cpu-freq`, and the paired `*_MIN_*` control for uncore/GPU
+frequency (`cpu-freq` is MAX-only; `grid.py` excludes
+`CPU_FREQUENCY_MIN_CONTROL`) -- not faster, unconstrained defaults the campaign
+can never reach:
 
 ```bash
 ./scripts/geopm-check-workload.sh --venv ~/geopm-venv --dimension cpu-freq \
