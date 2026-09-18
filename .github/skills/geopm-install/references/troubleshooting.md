@@ -165,7 +165,7 @@ Coarser is fine and aggregates; finer is an error.
 ```bash
 geopmread --domain                       # what this machine has
 geopmread --signal-domain CPU_POWER      # native domain for a signal
-geopmwrite --control-domain CPU_POWER_LIMIT_CONTROL
+geopmwrite --control-domain POWERCAP::CPU_POWER_LIMIT
 ```
 
 ## Access list rejected
@@ -262,9 +262,10 @@ Causes, in order of likelihood:
 1. The platform has no such hardware. `gpu-freq` shows `n/a` on a CPU-only host,
    and on hosts whose only DRM device is a management or VGA controller.
 2. The bounds signals are not granted. `cpu-freq` needs
-   `CPU_FREQUENCY_MIN_AVAIL`, `CPU_FREQUENCY_MAX_AVAIL`, and
-   `CPU_FREQUENCY_STEP`; without them the dimension collapses to `n/a` even
-   though the control itself is writable.
+   `CPU_FREQUENCY_MIN_AVAIL`, `CPU_FREQUENCY_STICKER` (grid.py's default
+   maximum, not `CPU_FREQUENCY_MAX_AVAIL`), and `CPU_FREQUENCY_STEP`; without
+   them the dimension collapses to `n/a` even though the control itself is
+   writable.
 3. GEOPM was built without the relevant support, for example no LevelZero or
    NVML for GPU dimensions.
 4. The domain resolved, but the bound itself is degenerate (most often

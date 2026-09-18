@@ -127,10 +127,13 @@ worst non-repeat (`-5.802`) differ by less than the noise seen at a single
 setting, so **this campaign established nothing**, despite reporting a
 confident-looking best configuration.
 
-Establish the floor before you start, with repeated identical runs:
+Establish the floor before you start, with repeated identical runs under the
+same dimensions the campaign will sweep -- an unconstrained baseline is not a
+reference the campaign can reproduce:
 
 ```bash
-./scripts/geopm-check-workload.sh --regex 'GFLOPS: ([0-9.]+)' --runs 3 -- ./bench.sh
+./scripts/geopm-check-workload.sh --regex 'GFLOPS: ([0-9.]+)' --runs 3 \
+    --dimension cpu-freq --dimension uncore-freq -- ./bench.sh
 ```
 
 If it reports a metric spread above about 5%, expect to need many more trials,

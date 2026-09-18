@@ -263,8 +263,14 @@ if (( ${#writable[@]} || prefetch_granted )); then
             incomplete+=("$control")
             say "${WARN_MARK} ${control} is granted but ${companion} is not"
             if [[ $companion == CPU_FREQUENCY_GOVERNOR_CONTROL ]]; then
-                say "           sweeping it fails outright; geopmopt writes ${companion}"
-                say "           for every cpu-freq sweep.  Ask for it alongside ${control}."
+                if printf '%s\n' "$supported_controls" | grep -qx "$companion"; then
+                    say "           sweeping it fails outright; geopmopt writes ${companion}"
+                    say "           for every cpu-freq sweep.  Ask for it alongside ${control}."
+                else
+                    say "           ${companion} is not exposed by this platform, so geopmopt"
+                    say "           cannot force the performance governor and ${control} cannot"
+                    say "           be swept.  This is not fixable by an access grant."
+                fi
             else
                 say "           sweeping it is supposed to pin ${control} by also writing"
                 say "           ${companion}.  Without that grant geopmopt drops the"

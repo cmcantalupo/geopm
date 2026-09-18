@@ -173,7 +173,7 @@ Signals, so the result can be measured and the search space discovered:
 | `TIME` | always required; the default objective is wall-clock runtime |
 | `CPU_POWER`, `CPU_ENERGY` | energy and efficiency objectives |
 | `CPU_FREQUENCY_STATUS` | observed frequency |
-| `CPU_FREQUENCY_MIN_AVAIL`, `CPU_FREQUENCY_MAX_AVAIL`, `CPU_FREQUENCY_STEP` | auto-detected `cpu-freq` bounds |
+| `CPU_FREQUENCY_MIN_AVAIL`, `CPU_FREQUENCY_STICKER`, `CPU_FREQUENCY_STEP` | auto-detected `cpu-freq` bounds (the max is the **sticker**, not `CPU_FREQUENCY_MAX_AVAIL`) |
 | `CPU_POWER_MIN_AVAIL`, `CPU_POWER_MAX_AVAIL`, `CPU_POWER_LIMIT_DEFAULT` | auto-detected `cpu-power` bounds |
 | `GPU_POWER`, `GPU_ENERGY`, `BOARD_POWER`, `BOARD_ENERGY` | corresponding objectives where supported |
 

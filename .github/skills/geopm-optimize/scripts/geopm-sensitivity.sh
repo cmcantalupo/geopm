@@ -35,9 +35,11 @@ Options:
   --regex PATTERN   Figure of merit to scrape from stdout, one capturing group.
                     Without it, wall-clock runtime is used (lower is better).
   --dimension DIM   Control to test (default: cpu-freq).  See --list-controls.
-  --domain DOMAIN   Domain to apply it at (default: board).  Bounds are
-                    resolved at this same domain, so the measurement and the
-                    --sweep DIM@DOMAIN it recommends describe one experiment.
+  --domain DOMAIN   Domain to apply it at (default: board; board only).  This
+                    helper reads and writes one index, so a multi-index domain
+                    like package would test index 0 while --sweep DIM@package
+                    searches every index independently -- a different, possibly
+                    misleading experiment.  Sweep and measure at board.
   --repeats N       Runs per setting (default: 3).  More runs give a tighter
                     estimate; 5 is better if you can afford the time.
   --skip-range      Skip the full-range measurement.  Halves the time, but
@@ -71,6 +73,13 @@ while (( $# )); do
 done
 
 (( $# )) || { echo "geopm-sensitivity.sh: no command given after --" >&2; exit 2; }
+if [[ $DOMAIN != board ]]; then
+    echo "geopm-sensitivity.sh: --domain must be 'board'." >&2
+    echo "  This helper measures one domain index, but --sweep DIM@${DOMAIN} would" >&2
+    echo "  search every index of ${DOMAIN} independently, so the measurement would" >&2
+    echo "  not describe the campaign.  Measure and sweep at board." >&2
+    exit 2
+fi
 if ! [[ $REPEATS =~ ^[0-9]+$ ]] || (( REPEATS < 2 )); then
     echo "geopm-sensitivity.sh: --repeats must be an integer of 2 or more" >&2
     exit 2
@@ -264,12 +273,17 @@ GOVERNOR_LINE=""
 if [[ $DIMENSION == cpu-freq ]]; then
     if printf '%s\n' "$granted_controls" | grep -qx CPU_FREQUENCY_GOVERNOR_CONTROL; then
         GOVERNOR_LINE="CPU_FREQUENCY_GOVERNOR_CONTROL board 0 0"
+    elif printf '%s\n' "$supported_controls" | grep -qx CPU_FREQUENCY_GOVERNOR_CONTROL; then
+        echo "geopm-sensitivity.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is supported but not" >&2
+        echo "  granted to you.  geopmopt writes it for every cpu-freq sweep, so without" >&2
+        echo "  it this measurement would run under your current governor while the" >&2
+        echo "  campaign runs under 'performance' -- a different operating point.  Grant" >&2
+        echo "  it first; see scripts/geopm-verify-install.sh or references/access-lists.md." >&2
+        exit 2
     else
-        echo "geopm-sensitivity.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is not granted to you." >&2
-        echo "  geopmopt writes it unconditionally for every cpu-freq sweep, so without it" >&2
-        echo "  this measurement would run under your current governor while the campaign" >&2
-        echo "  runs under 'performance' -- a different operating point.  Grant it first;" >&2
-        echo "  see scripts/geopm-verify-install.sh or references/access-lists.md." >&2
+        echo "geopm-sensitivity.sh: CPU_FREQUENCY_GOVERNOR_CONTROL is not exposed by this" >&2
+        echo "  platform, so geopmopt cannot force the performance governor and cpu-freq" >&2
+        echo "  cannot be swept as the campaign would.  Choose another dimension." >&2
         exit 2
     fi
 fi

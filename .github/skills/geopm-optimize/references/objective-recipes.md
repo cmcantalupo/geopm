@@ -190,6 +190,7 @@ Lead with uncore frequency.
 geopmopt --sweep uncore-freq@board --sweep cpu-freq@board \
          --metric-regex 'bandwidth: ([0-9.]+) GB/s' \
          --trials 60 --verbosity 2 \
+         --output-file best.conf \
          -- ./stream.sh
 ```
 
