@@ -129,10 +129,11 @@ confident-looking best configuration.
 
 Establish the floor before you start, with repeated identical runs under the
 same dimensions the campaign will sweep -- an unconstrained baseline is not a
-reference the campaign can reproduce:
+reference the campaign can reproduce.  `--dimension` needs the client tools, so
+pass `--venv` too (or activate the environment first):
 
 ```bash
-./scripts/geopm-check-workload.sh --regex 'GFLOPS: ([0-9.]+)' --runs 3 \
+./scripts/geopm-check-workload.sh --venv ~/geopm-venv --regex 'GFLOPS: ([0-9.]+)' --runs 3 \
     --dimension cpu-freq --dimension uncore-freq -- ./bench.sh
 ```
 

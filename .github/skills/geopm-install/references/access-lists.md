@@ -174,7 +174,10 @@ Signals, so the result can be measured and the search space discovered:
 | `CPU_POWER`, `CPU_ENERGY` | energy and efficiency objectives |
 | `CPU_FREQUENCY_STATUS` | observed frequency |
 | `CPU_FREQUENCY_MIN_AVAIL`, `CPU_FREQUENCY_STICKER`, `CPU_FREQUENCY_STEP` | auto-detected `cpu-freq` bounds (the max is the **sticker**, not `CPU_FREQUENCY_MAX_AVAIL`) |
+| `CPU_UNCORE_FREQUENCY_MAX_CONTROL` | `uncore-freq` max bound (read back as a signal) |
 | `CPU_POWER_MIN_AVAIL`, `CPU_POWER_MAX_AVAIL`, `CPU_POWER_LIMIT_DEFAULT` | auto-detected `cpu-power` bounds |
+| `GPU_CORE_FREQUENCY_MIN_AVAIL`, `GPU_CORE_FREQUENCY_MAX_AVAIL`, `GPU_CORE_FREQUENCY_STEP` | auto-detected `gpu-freq` bounds |
+| `GPU_POWER_LIMIT_CONTROL`, `LEVELZERO::GPU_POWER_LIMIT_MIN_AVAIL`, `LEVELZERO::GPU_POWER_LIMIT_DEFAULT` | auto-detected `gpu-power` bounds |
 | `GPU_POWER`, `GPU_ENERGY`, `BOARD_POWER`, `BOARD_ENERGY` | corresponding objectives where supported |
 
 Omitting the `*_AVAIL` and `*_STEP` signals is a subtle failure: `geopmopt`

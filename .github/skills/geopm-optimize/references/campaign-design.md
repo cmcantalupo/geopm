@@ -190,7 +190,8 @@ For a 90-second CPU-bound benchmark on a two-socket machine:
 
 # 2. Baseline and noise floor under the campaign's dimensions -- pass every
 #    one the campaign will sweep, so the reference is a point it can reproduce.
-./scripts/geopm-check-workload.sh --regex 'GFLOPS: ([0-9.]+)' --runs 3 \
+#    --dimension needs the client tools, so pass --venv too (as step 1 does).
+./scripts/geopm-check-workload.sh --venv ~/geopm-venv --regex 'GFLOPS: ([0-9.]+)' --runs 3 \
     --dimension cpu-freq --dimension uncore-freq -- ./bench.sh
 #    -> mean 92s, metric spread 1.8%, suggests --application-timeout 300
 

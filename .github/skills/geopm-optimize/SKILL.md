@@ -15,9 +15,13 @@ statement that no improvement was demonstrated.
 Do not start until all three hold:
 
 - `geopmopt --list-controls` runs and lists at least one dimension with real
-  (non-`n/a`) min, max, and step values.
+  (non-`n/a`) and numerically sane min/max/step (max > 0, min <= max, step > 0).
 - `geopmread` returns a plausible power reading.
-- At least one sweepable control is writable by the invoking user.
+- At least one dimension is **fully** grantable: its primary control is
+  writable *and* every control `geopmopt` writes for it is granted -- the
+  `performance` governor for `cpu-freq`, and the paired `*_MIN_*` control for
+  `uncore-freq`/`gpu-freq` where the platform exposes it. A writable primary
+  control alone is not enough.
 
 Check it:
 
