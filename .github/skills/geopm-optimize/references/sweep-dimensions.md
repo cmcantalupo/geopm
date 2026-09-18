@@ -201,11 +201,12 @@ Three consequences that are easy to get wrong:
   whatever the BIOS or a previous session left set. The two coincide on a
   machine at its BIOS default, which is the normal case, but not on one whose
   prefetchers were already disabled.
-- **The helper scripts do not constrain it.** Neither
-  `geopm-check-workload.sh --dimension` nor `geopm-sensitivity.sh --dimension`
-  accepts `prefetch`. Baselines therefore leave the prefetchers alone;
-  `geopm-check-workload.sh` reports the level it observed so the result can
-  state it rather than assume it.
+- **The helper scripts do not constrain it, and it is not a default
+  dimension.** Neither `geopm-check-workload.sh --dimension` nor
+  `geopm-sensitivity.sh --dimension` accepts `prefetch`, so a campaign that
+  sweeps it has no baseline reference and no sensitivity screening. Sweep it
+  only as a deliberate opt-in, and report its share of any improvement as
+  unverified.
 
 It is not documented in the `geopmopt` man page; the behavior above is read
 from `grid.py`.

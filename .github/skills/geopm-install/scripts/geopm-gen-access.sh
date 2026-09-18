@@ -56,6 +56,11 @@ DEFAULT_CONTROLS=(
     MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
     MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
 )
+# Every bound signal grid.py resolves a dimension's range from is requested as
+# a *signal*, including the two controls it reads back as one
+# (CPU_UNCORE_FREQUENCY_MAX_CONTROL, GPU_POWER_LIMIT_CONTROL).  Without them a
+# freshly granted control still reports n/a bounds and the dimension is
+# unusable.  Unsupported names are dropped by the filtering below.
 DEFAULT_SIGNALS=(
     TIME
     CPU_POWER
@@ -65,11 +70,18 @@ DEFAULT_SIGNALS=(
     CPU_FREQUENCY_MIN_AVAIL
     CPU_FREQUENCY_STICKER
     CPU_FREQUENCY_STEP
+    CPU_UNCORE_FREQUENCY_MAX_CONTROL
     CPU_POWER_LIMIT_DEFAULT
     CPU_POWER_MIN_AVAIL
     CPU_POWER_MAX_AVAIL
     GPU_POWER
     GPU_ENERGY
+    GPU_CORE_FREQUENCY_MIN_AVAIL
+    GPU_CORE_FREQUENCY_MAX_AVAIL
+    GPU_CORE_FREQUENCY_STEP
+    GPU_POWER_LIMIT_CONTROL
+    LEVELZERO::GPU_POWER_LIMIT_MIN_AVAIL
+    LEVELZERO::GPU_POWER_LIMIT_DEFAULT
     BOARD_POWER
     BOARD_ENERGY
 )

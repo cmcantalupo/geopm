@@ -135,12 +135,9 @@ dimension will be swept -- see step 7a.
 `prefetch` is the one exception. Neither `geopm-check-workload.sh` nor
 `geopm-sensitivity.sh` accepts `--dimension prefetch`, because `geopmopt`
 expands a prefetch level into four ordered MSR writes rather than one value.
-Omit it from both helpers: the BIOS default is level `0` — all prefetchers
-enabled — which is the point a campaign whose range starts at `0` evaluates.
-`geopm-check-workload.sh` prints a `Prefetch:` line with the level it actually
-observed, so **report that observed level in the final result** rather than
-asserting the default. If it reports anything other than level 0, say so
-plainly: the baseline is then not a point that campaign can reproduce.
+It is also not a default sweep dimension. If the user has explicitly asked to
+sweep it, the baseline simply does not constrain it — say so, and report its
+contribution to any improvement as **unverified**.
 
 Establishes runtime, a recommended `--application-timeout`, whether the regex
 matches, and the noise floor. See
@@ -274,13 +271,9 @@ unconstrained — neither is reachable by that campaign, so an improvement
 measured against either is not a real comparison.
 
 **Pass every dimension in the final set except `prefetch`**, which neither
-helper accepts. Leaving it out is sound because the BIOS default is level `0`,
-but do not assert that — use the `Prefetch:` level the helper observed, and
-carry it into the final report alongside the dimensions the baseline did
-constrain.
-
-With a single swept dimension this is the same run as step 3; say so and reuse
-it rather than repeating the measurement.
+helper accepts and which is not a default dimension. If it is being swept on
+explicit request, state that the baseline leaves the prefetchers unconstrained
+and that prefetch's share of any improvement is unverified.
 
 With a single swept dimension this is the same run as step 3; say so and reuse
 it rather than repeating the measurement.
@@ -304,9 +297,12 @@ campaign is indistinguishable from a hang.
 
 ### 9. Interpret honestly
 
-Compare the improvement against the **combined baseline from step 7a** and the
-**noise floor from step 3**. Then verify by running the recommended
-configuration against that same combined baseline several times.
+Compare the improvement against the **combined baseline from step 7a**, using
+**that run's noise floor** — it measured the workload under the same joint
+constraints the campaign applies. Step 3's per-dimension noise floors left the
+other controls unconstrained, so they are not the right yardstick here. Then
+verify by running the recommended configuration against that same combined
+baseline several times.
 
 See [interpreting-results.md](references/interpreting-results.md).
 

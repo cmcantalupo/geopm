@@ -19,16 +19,6 @@ DIMENSIONS=()
 # and resolves its bounds at the same domain.
 BASELINE_DOMAIN="board"
 
-# grid.py's _PREFETCHER_CONTROL_SEQUENCE.  This helper never writes these; it
-# reads them so the report can state the level the baseline actually ran at
-# rather than assuming the BIOS default.
-PREFETCH_CONTROLS=(
-    MSR::MISC_FEATURE_CONTROL:DCU_HW_PREFETCHER_DISABLE
-    MSR::MISC_FEATURE_CONTROL:L2_HW_PREFETCHER_DISABLE
-    MSR::MISC_FEATURE_CONTROL:DCU_IP_PREFETCHER_DISABLE
-    MSR::MISC_FEATURE_CONTROL:L2_ADJACENT_PREFETCHER_DISABLE
-)
-
 print_usage() {
     cat <<'USAGE'
 Usage: geopm-check-workload.sh [OPTION]... -- COMMAND [ARG]...
@@ -60,9 +50,9 @@ Options:
                     campaign can reproduce.
                     prefetch/prefetch-disable is NOT supported here: geopmopt
                     expands it into four ordered MSR prefetcher-disable
-                    controls rather than one value.  Omit it -- the BIOS
-                    default is level 0 (all prefetchers enabled), and the
-                    report states the level actually observed.
+                    controls rather than one value.  This helper leaves the
+                    prefetchers untouched, so a baseline taken with it does
+                    not constrain them.
                     Requires geopmopt/geopmsession/geopmread on PATH.  See
                     --list-controls for available dimension names.
   --venv DIR        Use GEOPM tools from DIR/bin (only meaningful with
@@ -204,16 +194,15 @@ if (( ${#DIMENSIONS[@]} )); then
 
         # prefetch is a level, not a value: grid.py expands it into four ordered
         # MSR writes (prefetch_settings()), so it has no single control to cap
-        # here.  Leaving it out is sound because the BIOS default is level 0 --
-        # all prefetchers enabled -- which is the reference a campaign whose
-        # range starts at 0 evaluates.  The report below states the level it
-        # actually observed rather than assuming it.
+        # here.  It is also not a default sweep dimension -- see
+        # references/sweep-dimensions.md.
         if [[ $DIMENSION == prefetch ]]; then
             echo "geopm-check-workload.sh: '$DIMENSION' is not supported by --dimension." >&2
             echo "  geopmopt expands it into four ordered MSR prefetcher-disable controls" >&2
             echo "  (grid.py's prefetch_settings()), which this helper does not write." >&2
-            echo "  Omit it: the BIOS default is level 0, and this script reports the" >&2
-            echo "  prefetcher level it observed so the baseline can be stated honestly." >&2
+            echo "  prefetch is not a default sweep dimension; if you are sweeping it" >&2
+            echo "  deliberately, this baseline cannot constrain it and its contribution" >&2
+            echo "  to any improvement is unverified." >&2
             exit 2
         fi
 
@@ -313,26 +302,6 @@ if (( ${#DIMENSIONS[@]} )); then
         DIM_SUMMARY+=("${DIMENSION} (${CONTROL}) at ${ref} on ${BASELINE_DOMAIN}")
     done
 
-    # The prefetchers are never written here, so report the level they were
-    # left at.  A campaign sweeping prefetch starts its range at level 0, and
-    # this baseline is only a valid reference for it when the observed level is
-    # already 0 -- state it rather than assume the BIOS default.
-    prefetch_bits=""
-    for pctl in "${PREFETCH_CONTROLS[@]}"; do
-        bit=$(geopmread "$pctl" "$BASELINE_DOMAIN" 0 2>/dev/null) || { prefetch_bits=""; break; }
-        [[ -z $bit ]] && { prefetch_bits=""; break; }
-        prefetch_bits+="$(awk -v v="$bit" 'BEGIN{printf "%d", (v > 0.5) ? 1 : 0}')"
-    done
-    if [[ -n $prefetch_bits ]]; then
-        PREFETCH_NOTE=$(awk -v b="$prefetch_bits" 'BEGIN{
-            n = 0
-            for (i = 1; i <= length(b); i++) n += substr(b, i, 1)
-            printf "level %d (%s)", n, (n == 0 ? "all enabled -- the BIOS default" : "some already disabled")
-        }')
-    else
-        PREFETCH_NOTE="unreadable (prefetcher signals not granted)"
-    fi
-
     sig_conf=$(mktemp) || exit 1
     ctl_conf=$(mktemp) || exit 1
     printf 'TIME board 0\n' > "$sig_conf"
@@ -353,7 +322,6 @@ if (( ${#DIMENSIONS[@]} )); then
         echo "  Dimension : ${entry}"
     done
     [[ -n $GOVERNOR_LINE ]] && echo "  Governor  : performance (forced, mirrors geopmopt)"
-    echo "  Prefetch  : ${PREFETCH_NOTE} -- not written by this baseline"
     if (( ${#DIM_SUMMARY[@]} > 1 )); then
         echo "  Note      : all ${#DIM_SUMMARY[@]} dimensions are constrained together, as a"
         echo "              campaign sweeping them would -- see sweep-dimensions.md"
