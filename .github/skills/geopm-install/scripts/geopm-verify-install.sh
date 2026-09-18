@@ -273,6 +273,10 @@ if (( ${#writable[@]} || prefetch_granted )); then
             fi
         fi
     done
+    # prefetch has no companion of its own -- the complete four-control set IS
+    # the requirement -- so count it here, or a prefetch-only install records a
+    # permanent failure while section 6 simultaneously calls it ready.
+    (( prefetch_granted )) && complete+=("prefetch")
     if (( ${#complete[@]} == 0 )); then
         fail "Every granted control is missing a companion geopmopt needs:
        $(printf '%s ' "${incomplete[@]}")
@@ -369,9 +373,6 @@ else
             ready_dims=()
             while IFS= read -r dim; do
                 [[ -z $dim ]] && continue
-                # prefetch has no single control: every level writes all four
-                # members of grid.py's _PREFETCHER_CONTROL_SEQUENCE, so it is
-                # ready only when the whole set is granted.
                 if [[ $dim == prefetch ]]; then
                     (( prefetch_granted )) && ready_dims+=("$dim")
                     continue
@@ -430,10 +431,18 @@ fi
 ## 7. Optional write probe
 
 if (( WRITE_PROBE )); then
-    if (( ${#writable[@]} == 0 )); then
+    # A prefetch-only install has nothing in writable, but the set is granted
+    # and the gate can pass on it, so probe one of its controls rather than
+    # skipping the write and still reporting READY.
+    probe_control=""
+    if (( ${#writable[@]} )); then
+        probe_control="${writable[0]}"
+    elif (( prefetch_granted )); then
+        probe_control="${PREFETCH_CONTROLS[0]}"
+    fi
+    if [[ -z $probe_control ]]; then
         say "${WARN_MARK} skipping write probe: no candidate control is granted"
     else
-        probe_control="${writable[0]}"
         # --control-domain is a geopmwrite option; geopmread spells it
         # --signal-domain and would reject the query.
         probe_domain=$(geopmwrite --control-domain "$probe_control" 2>/dev/null)

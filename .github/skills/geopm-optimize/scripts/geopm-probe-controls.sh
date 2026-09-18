@@ -348,6 +348,25 @@ if [[ -z $suggest ]]; then
 fi
 
 dims=$(printf '%s' "$suggest" | grep -o -- '--sweep' | grep -c . || true)
+if (( dims == 0 )); then
+    # Reachable when prefetch is the only usable dimension: it is filtered out
+    # of every suggestion, so emitting the command template anyway would print
+    # a geopmopt invocation with no --sweep at all.
+    cat <<'MSG'
+  No default dimension is available on this platform.
+MSG
+    if printf '%s\n' "$usable" | grep -qx prefetch; then
+        cat <<'MSG'
+  prefetch is usable, but it is not a default dimension: the baseline and
+  sensitivity helpers cannot constrain it, so a campaign over it has no
+  reference point and no screening.  Sweep it only as a deliberate opt-in
+  (--sweep prefetch), and treat its contribution as unverified.
+MSG
+    fi
+    echo "  Otherwise there is nothing to tune here; see the geopm-install skill."
+    exit 1
+fi
+
 echo "  geopmopt${suggest} \\"
 echo "           --trials $(( dims <= 1 ? 20 : dims == 2 ? 40 : 60 )) --verbosity 2 \\"
 echo "           -- ./your-workload.sh"

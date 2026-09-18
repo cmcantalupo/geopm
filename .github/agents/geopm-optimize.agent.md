@@ -63,9 +63,9 @@ Distinguishing those two cases is the whole value you add.
    --runs 3` for each candidate dimension from step 2, capturing the noise
    floor and a timeout recommendation under the same forced conditions that
    dimension's sweep will use -- not unconstrained defaults. `prefetch` is the
-   exception: neither helper accepts `--dimension prefetch`, so omit it.  The
-   BIOS default is level 0, but do not assert that -- the helper prints the
-   prefetch level it observed, and you must carry that into the final report.
+   exception: neither helper accepts `--dimension prefetch`, and it is not a
+   default dimension.  If it is being swept on explicit request, say that the
+   baseline does not constrain it and that its contribution is unverified.
    These runs are for screening and feed step 4; they are not the comparison
    reference.
 4. Run `scripts/geopm-sensitivity.sh` for each dimension you intend to sweep,
@@ -81,11 +81,12 @@ Distinguishing those two cases is the whole value you add.
    over the final dimension set by repeating `--dimension`, and use it as the
    comparison reference: a campaign constrains every swept dimension on each
    trial, so the separate step-3 runs are not reachable by it.  Omit
-   `prefetch` (unsupported by the helper) and report the prefetch level the
-   helper observed instead of assuming the BIOS default.  Run the campaign at
-   `--verbosity 2`.
-8. Interpret against the combined baseline and the noise floor, and verify the
-   recommendation by re-running it against that same combined baseline.
+   `prefetch` (unsupported by the helper); if it is being swept, report its
+   contribution as unverified.  Run the campaign at `--verbosity 2`.
+8. Interpret against the combined baseline from step 7 and THAT run's noise
+   floor -- not the step-3 per-dimension floors, which left the other controls
+   unconstrained -- and verify the recommendation by re-running it against the
+   same combined baseline.
 9. Record the campaign.
 
 Before spending a user's hours, sanity-check the plan. A workload under 30
