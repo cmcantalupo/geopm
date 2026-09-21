@@ -90,9 +90,9 @@ void PowerGovernorAgentTest::set_up_leaf(void)
 void PowerGovernorAgentTest::set_up_pio(void)
 {
     ON_CALL(m_platform_io, read_signal("CPU_ENERGY", _, _))
-        .WillByDefault(testing::InvokeWithoutArgs([this] {
+        .WillByDefault([this] {
                     m_energy_package += 10.0; return m_energy_package;
-                }));
+                });
 
     EXPECT_CALL(m_platform_io, read_signal("CPU_POWER_MIN_AVAIL", GEOPM_DOMAIN_BOARD, 0))
         .WillOnce(Return(m_power_min));

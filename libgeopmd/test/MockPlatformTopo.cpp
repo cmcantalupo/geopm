@@ -10,7 +10,6 @@
 
 using geopm::Exception;
 using ::testing::_;
-using ::testing::Invoke;
 using ::testing::Return;
 
 MockPlatformTopo::MockPlatformTopo()
@@ -119,12 +118,12 @@ std::shared_ptr<MockPlatformTopo> make_topo(int num_package, int num_core, int n
 
     // expectations for domain_idx
     ON_CALL(*topo, domain_idx(GEOPM_DOMAIN_CPU, _))
-        .WillByDefault(Invoke([](int, int cpu_idx){ return cpu_idx; }));
+        .WillByDefault([](int, int cpu_idx){ return cpu_idx; });
     ON_CALL(*topo, domain_idx(GEOPM_DOMAIN_CORE, _))
-        .WillByDefault(Invoke([num_core](int, int cpu_idx){ return cpu_idx % num_core; }));
+        .WillByDefault([num_core](int, int cpu_idx){ return cpu_idx % num_core; });
     ON_CALL(*topo, domain_idx(GEOPM_DOMAIN_PACKAGE, _))
-        .WillByDefault(Invoke([num_core, core_per_package](int, int cpu_idx){
-                              return (cpu_idx % num_core) / core_per_package; }));
+        .WillByDefault([num_core, core_per_package](int, int cpu_idx){
+                        return (cpu_idx % num_core) / core_per_package; });
     ON_CALL(*topo, domain_idx(GEOPM_DOMAIN_BOARD, _))
         .WillByDefault(Return(0));
 

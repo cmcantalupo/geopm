@@ -16,7 +16,6 @@
 using geopm::TreeCommLevel;
 using geopm::TreeCommLevelImp;
 using testing::Return;
-using testing::Invoke;
 using testing::SetArgPointee;
 using testing::_;
 
@@ -90,22 +89,22 @@ void TreeCommLevelTest::TearDown()
     EXPECT_CALL(*m_comm_0, barrier());
     EXPECT_CALL(*m_comm_1, barrier());
     EXPECT_CALL(*m_comm_0, window_destroy((size_t)m_sample_window[0]))
-        .WillOnce(Invoke(delete_func));
+        .WillOnce(delete_func);
     EXPECT_CALL(*m_comm_1, window_destroy((size_t)m_sample_window[1]))
-        .WillOnce(Invoke(delete_func));
+        .WillOnce(delete_func);
     EXPECT_CALL(*m_comm_0, window_destroy((size_t)m_policy_window[0]))
-        .WillOnce(Invoke(delete_func));
+        .WillOnce(delete_func);
     EXPECT_CALL(*m_comm_1, window_destroy((size_t)m_policy_window[1]))
-        .WillOnce(Invoke(delete_func));
+        .WillOnce(delete_func);
 
     EXPECT_CALL(*m_comm_0, free_mem(m_sample_mem_0))
-        .WillOnce(Invoke(free_func));
+        .WillOnce(free_func);
     EXPECT_CALL(*m_comm_1, free_mem(m_sample_mem_1))
-        .WillOnce(Invoke(free_func));
+        .WillOnce(free_func);
     EXPECT_CALL(*m_comm_0, free_mem(m_policy_mem_0))
-        .WillOnce(Invoke(free_func));
+        .WillOnce(free_func);
     EXPECT_CALL(*m_comm_1, free_mem(m_policy_mem_1))
-        .WillOnce(Invoke(free_func));
+        .WillOnce(free_func);
 
     m_level_rank_0.reset();
     m_level_rank_1.reset();
@@ -130,8 +129,8 @@ TEST_F(TreeCommLevelTest, level_rank)
     EXPECT_CALL(*comm, barrier());
     EXPECT_CALL(*comm, window_destroy(_)).Times(2);
     EXPECT_CALL(*comm, free_mem(_)).Times(2)
-        .WillRepeatedly(Invoke([] (void *base)
-                         { free(base); }));
+        .WillRepeatedly([] (void *base)
+                         { free(base); });
     // create and destroy level for rank 42
     {
         TreeCommLevelImp level(comm, m_num_up, m_num_down);

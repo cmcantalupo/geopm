@@ -18,7 +18,6 @@ using ::testing::_;
 using testing::AllOf;
 using testing::ElementsAre;
 using testing::Ge;
-using ::testing::Invoke;
 using testing::Lt;
 using testing::Pair;
 using ::testing::Return;
@@ -98,20 +97,20 @@ void SSTFrequencyLimitDetectorTest::SetUp()
         .WillByDefault(Return(LP_FREQ_AVX512));
 
     ON_CALL(m_platform_io, push_signal("SST::COREPRIORITY:ASSOCIATION", GEOPM_DOMAIN_CORE, _))
-        .WillByDefault(Invoke(
+        .WillByDefault(
             [](const std::string &, int, int core_idx) {
                 return CLOS_SIGNAL_INDEX_OFFSET + core_idx;
-            }));
+            });
     ON_CALL(m_platform_io, push_signal("SST::TURBO_ENABLE:ENABLE", GEOPM_DOMAIN_PACKAGE, _))
-        .WillByDefault(Invoke(
+        .WillByDefault(
             [](const std::string &, int, int package_idx) {
                 return SST_ENABLE_SIGNAL_INDEX_OFFSET + package_idx;
-            }));
+            });
     ON_CALL(m_platform_io, push_signal("CPU_FREQUENCY_MAX_CONTROL", GEOPM_DOMAIN_CORE, _))
-        .WillByDefault(Invoke(
+        .WillByDefault(
             [](const std::string &, int, int core_idx) {
                 return FREQUENCY_CONTROL_SIGNAL_INDEX_OFFSET + core_idx;
-            }));
+            });
 
     ON_CALL(m_platform_topo, num_domain(GEOPM_DOMAIN_PACKAGE))
         .WillByDefault(Return(1));
@@ -306,4 +305,3 @@ TEST_F(SSTFrequencyLimitDetectorTest, limits_license_level_search_if_frequency_c
     EXPECT_EQ(LP_FREQ_AVX512,
               sst_frequency_limit_detector.get_core_low_priority_frequency(1));
 }
-

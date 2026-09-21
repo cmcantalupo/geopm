@@ -20,7 +20,6 @@ using testing::NiceMock;
 using testing::_;
 using testing::Return;
 using testing::Throw;
-using testing::Invoke;
 
 class FrequencyGovernorTest : public ::testing::Test
 {
@@ -201,7 +200,7 @@ TEST_F(FrequencyGovernorTest, set_domain_type)
     EXPECT_CALL(m_topo, is_nested_domain(_, _)).WillOnce(Return(true));
     EXPECT_CALL(m_platio, push_control("CPU_FREQUENCY_MAX_CONTROL", GEOPM_DOMAIN_CORE, _))
         .Times(M_NUM_CORE)
-        .WillRepeatedly(Invoke([](const std::string&, int, int idx){ return idx; }));
+        .WillRepeatedly([](const std::string&, int, int idx){ return idx; });
     m_gov->set_domain_type(GEOPM_DOMAIN_CORE);
     m_gov->init_platform_io();
 

@@ -22,7 +22,6 @@ using geopm::SSTClosGovernor;
 using geopm::SSTClosGovernorImp;
 using ::testing::_;
 using ::testing::Expectation;
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::Throw;
 
@@ -67,7 +66,7 @@ void SSTClosGovernorTest::SetUp(void)
         .WillByDefault(Return(MAX_FREQ));
 
     ON_CALL(m_platform_io, push_control("SST::COREPRIORITY:ASSOCIATION", GEOPM_DOMAIN_CORE, _))
-        .WillByDefault(Invoke([](const std::string &, int, int core) { return CLOS_CONTROL_IDX + core; }));
+        .WillByDefault([](const std::string &, int, int core) { return CLOS_CONTROL_IDX + core; });
 
     m_governor = geopm::make_unique<SSTClosGovernorImp>(m_platform_io, m_platform_topo);
     m_governor->init_platform_io();

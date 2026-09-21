@@ -34,7 +34,6 @@ using geopm::FrequencyLimitDetector;
 using geopm::PlatformTopo;
 using ::testing::_;
 using ::testing::Return;
-using ::testing::Invoke;
 using ::testing::AtLeast;
 using ::testing::Expectation;
 using ::testing::Pointwise;
@@ -109,13 +108,13 @@ void FrequencyBalancerAgentTest::SetUp()
     ON_CALL(m_platform_io, push_signal("MSR::APERF:ACNT", _, _)).WillByDefault(Return(ACNT_SIGNAL_IDX));
     ON_CALL(m_platform_io, push_signal("MSR::MPERF:MCNT", _, _)).WillByDefault(Return(MCNT_SIGNAL_IDX));
     ON_CALL(m_platform_io, push_signal("REGION_HASH", GEOPM_DOMAIN_CORE, _))
-        .WillByDefault(Invoke([] (const std::string&, int, int core) {
+        .WillByDefault([] (const std::string&, int, int core) {
             return REGION_SIGNAL_IDX + core;
-        }));
+        });
     ON_CALL(m_platform_io, push_signal("REGION_HINT", GEOPM_DOMAIN_CORE, _))
-        .WillByDefault(Invoke([] (const std::string&, int, int core) {
+        .WillByDefault([] (const std::string&, int, int core) {
             return HINT_SIGNAL_IDX + core;
-        }));
+        });
     ON_CALL(m_platform_io, push_signal("TIME_HINT_NETWORK", _, _)).WillByDefault(Return(NETWORK_SIGNAL_IDX));
 
     ON_CALL(m_platform_io, sample(EPOCH_SIGNAL_IDX)).WillByDefault(Return(0));
@@ -126,13 +125,13 @@ void FrequencyBalancerAgentTest::SetUp()
     ON_CALL(m_platform_topo, num_domain(GEOPM_DOMAIN_CORE))
         .WillByDefault(Return(CORE_COUNT));
     ON_CALL(m_platform_topo, domain_nested(GEOPM_DOMAIN_CORE, GEOPM_DOMAIN_PACKAGE, _))
-        .WillByDefault(Invoke([] (int, int, int package_idx) -> std::set<int> {
+        .WillByDefault([] (int, int, int package_idx) -> std::set<int> {
             // Mock the set of cores per package by evenly dividing cores into each
             // package, in order (e.g., 4 cores in 2 packages are {0, 1}, {2, 3})
             std::vector<int> cores_in_package(CORE_COUNT / PACKAGE_COUNT);
             std::iota(cores_in_package.begin(), cores_in_package.end(), CORE_COUNT / PACKAGE_COUNT * package_idx);
             return std::set<int>(cores_in_package.begin(), cores_in_package.end());
-        }));
+        });
     ON_CALL(*m_sst_clos_governor, clos_domain_type())
         .WillByDefault(Return(GEOPM_DOMAIN_CORE));
 

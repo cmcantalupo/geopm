@@ -26,8 +26,6 @@
 #include "geopm_test.hpp"
 
 using ::testing::_;
-using ::testing::Invoke;
-using ::testing::InvokeWithoutArgs;
 using ::testing::Sequence;
 using ::testing::Return;
 using ::testing::AtLeast;
@@ -491,7 +489,7 @@ TEST_F(GPUActivityAgentTest, adjust_platform_idle_reset)
     double mock_util = 0.0;
     EXPECT_CALL(*m_platform_io, sample(GPU_CORE_ACTIVITY_IDX)).WillRepeatedly(Return(1.0));
     EXPECT_CALL(*m_platform_io, sample(GPU_UTILIZATION_IDX))
-                .WillRepeatedly(InvokeWithoutArgs([&mock_util]() { return mock_util; }));
+                .WillRepeatedly([&mock_util]() { return mock_util; });
     EXPECT_CALL(*m_platform_io, sample(GPU_ENERGY_IDX)).WillRepeatedly(Return(123456789));
     EXPECT_CALL(*m_platform_io, sample(TIME_IDX)).WillRepeatedly(Return(0.0));
 
