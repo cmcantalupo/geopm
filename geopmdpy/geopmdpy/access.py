@@ -12,7 +12,12 @@ import tempfile
 import grp
 import subprocess # nosec
 from argparse import ArgumentParser
-from dasbus.connection import SystemMessageBus
+USE_SYSTEM_GEOPMACCESS=False
+try:
+    from dasbus.connection import SystemMessageBus
+except ModuleNotFoundError:
+    USE_SYSTEM_GEOPMACCESS=True
+    SystemMessageBus = None
 from dasbus.error import DBusError
 from geopmdpy import system_files
 from . import gffi
@@ -463,6 +468,11 @@ def main():
     lists for the GEOPM Service signals and controls.
 
     """
+    if USE_SYSTEM_GEOPMACCESS:
+        argv = ['/usr/bin/geopmaccess']
+        argv.extend(sys.argv[1:])
+        subprocess.run(argv)
+        return 0
 
     err = 0
     parser = ArgumentParser(description=main.__doc__)
