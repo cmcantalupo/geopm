@@ -24,7 +24,6 @@ using testing::AtLeast;
 using testing::AnyOf;
 using testing::Throw;
 using testing::InSequence;
-using testing::Invoke;
 using testing::Gt;
 
 class SSTIOGroupTest : public :: testing :: Test
@@ -383,11 +382,11 @@ TEST_F(SSTIOGroupTest, restored_controls_follow_ordered_dependencies_disabled)
 
     std::vector<uint16_t> disable_commands;
     EXPECT_CALL(*m_sstio, write_mbox_once(_, AnyOf(SST_TF_COMMAND, SST_CP_COMMAND),
-                ENABLE_SUBCOMMAND, _, _, _, _, 0, _)).WillRepeatedly(Invoke(
+                ENABLE_SUBCOMMAND, _, _, _, _, 0, _)).WillRepeatedly(
                     [&disable_commands] (uint32_t, uint16_t command, uint16_t, uint32_t, uint16_t,
                                          uint32_t, uint32_t, uint64_t, uint64_t) {
                         disable_commands.push_back(command);
-                    }));
+                    });
     m_group->restore_control();
 
     // disable_commands may include a direct attempt to disable SST-TF, which
@@ -413,11 +412,11 @@ TEST_F(SSTIOGroupTest, restored_controls_follow_ordered_dependencies_enabled)
 
     std::vector<uint16_t> enable_commands;
     EXPECT_CALL(*m_sstio, write_mbox_once(_, AnyOf(SST_TF_COMMAND, SST_CP_COMMAND),
-                ENABLE_SUBCOMMAND, _, _, _, _, Gt(0u), _)).WillRepeatedly(Invoke(
+                ENABLE_SUBCOMMAND, _, _, _, _, Gt(0u), _)).WillRepeatedly(
                     [&enable_commands] (uint32_t, uint16_t command, uint16_t, uint32_t, uint16_t,
                                          uint32_t, uint32_t, uint64_t, uint64_t) {
                         enable_commands.push_back(command);
-                    }));
+                    });
     m_group->restore_control();
 
     // enable_commands may include a direct attempt to enable SST-CP, which

@@ -31,7 +31,6 @@ using geopm::MSRIOImp;
 using geopm::MSRPath;
 using geopm::IOUring;
 using testing::Return;
-using testing::Invoke;
 using testing::_;
 
 class MSRIOMockFiles
@@ -793,8 +792,7 @@ TEST_F(MSRIOTest, read_batch)
             *ret = nbytes;
         }
     };
-    EXPECT_CALL(*m_batch_io, prep_read(_, _, _, _, _)).WillRepeatedly(
-            Invoke(read_all_bytes));
+    EXPECT_CALL(*m_batch_io, prep_read(_, _, _, _, _)).WillRepeatedly(read_all_bytes);
     EXPECT_CALL(*m_batch_io, submit()).Times(2);
 
     m_msrio->read_batch();
@@ -882,8 +880,7 @@ TEST_F(MSRIOTest, write_batch)
             *ret = nbytes;
         }
     };
-    EXPECT_CALL(*m_batch_io, prep_read(_, _, _, _, _)).WillRepeatedly(
-            Invoke(read_all_bytes));
+    EXPECT_CALL(*m_batch_io, prep_read(_, _, _, _, _)).WillRepeatedly(read_all_bytes);
 
     // Take whatever would be written to a file, and put it in the written_words0 vector
     auto write_all_bytes = [&written_words0, &offsets0, &written_words1, &offsets1](
@@ -906,8 +903,7 @@ TEST_F(MSRIOTest, write_batch)
             *ret = nbytes;
         }
     };
-    EXPECT_CALL(*m_batch_io, prep_write(_, _, _, _, _)).WillRepeatedly(
-            Invoke(write_all_bytes));
+    EXPECT_CALL(*m_batch_io, prep_write(_, _, _, _, _)).WillRepeatedly(write_all_bytes);
 
     // Called twice per write_batch(). Once for read, then again for modified write.
     EXPECT_CALL(*m_batch_io, submit()).Times(4);

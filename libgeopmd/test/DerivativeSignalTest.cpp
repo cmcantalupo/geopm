@@ -17,7 +17,6 @@ using geopm::Signal;
 using geopm::DerivativeSignal;
 
 using testing::Return;
-using testing::InvokeWithoutArgs;
 
 class DerivativeSignalTest : public ::testing::Test
 {
@@ -72,10 +71,10 @@ TEST_F(DerivativeSignalTest, read_flat)
 {
     size_t ii = 0;
     EXPECT_CALL(*m_time_sig, read()).Times(m_num_history_sample)
-        .WillRepeatedly(InvokeWithoutArgs([&ii]() {
+        .WillRepeatedly([&ii]() {
                     ++ii;
                     return ii;
-                }));
+                });
     EXPECT_CALL(*m_y_sig, read()).Times(m_num_history_sample)
         .WillRepeatedly(Return(7.7));
     double result = m_sig->read();
@@ -87,15 +86,15 @@ TEST_F(DerivativeSignalTest, read_slope_1)
     size_t ii = 0;
     double val = 2.5;
     EXPECT_CALL(*m_time_sig, read()).Times(m_num_history_sample)
-        .WillRepeatedly(InvokeWithoutArgs([&ii]() {
+        .WillRepeatedly([&ii]() {
                     ++ii;
                     return ii;
-                }));
+                });
     EXPECT_CALL(*m_y_sig, read()).Times(m_num_history_sample)
-        .WillRepeatedly(InvokeWithoutArgs([&val]() {
+        .WillRepeatedly([&val]() {
                     val += 1.0;;
                     return val;
-                }));
+                });
     double result = m_sig->read();
     EXPECT_NEAR(m_exp_slope_1, result, 0.0001);
 }

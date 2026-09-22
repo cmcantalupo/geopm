@@ -30,7 +30,6 @@ using testing::AtLeast;
 using testing::AnyOf;
 using testing::Throw;
 using testing::InSequence;
-using testing::Invoke;
 using testing::Gt;
 
 class SysfsIOGroupTest : public :: testing :: Test
@@ -145,7 +144,7 @@ TEST_F(SysfsIOGroupTest, batch_reads)
         }
     };
     // Mock the file read
-    EXPECT_CALL(*m_batch_io, prep_read(_, _, _, _, _)).WillRepeatedly(Invoke(read_value));
+    EXPECT_CALL(*m_batch_io, prep_read(_, _, _, _, _)).WillRepeatedly(read_value);
     // Mock the translation from file contents to a number
     EXPECT_CALL(*m_driver, signal_parse("TESTIOGROUP::SIGNAL1"))
         .WillRepeatedly(Return([](const std::string& value)->double {return std::stod(value);}));
@@ -170,7 +169,7 @@ TEST_F(SysfsIOGroupTest, batch_writes)
     EXPECT_CALL(*m_driver, control_gen("TESTIOGROUP::CONTROL1"))
         .WillRepeatedly(Return(double_to_3dec_string));
     // Mock the file write
-    EXPECT_CALL(*m_batch_io, prep_write(_, _, _, _, _)).WillRepeatedly(Invoke(write_value));
+    EXPECT_CALL(*m_batch_io, prep_write(_, _, _, _, _)).WillRepeatedly(write_value);
     auto control_idx = m_group->push_control("TESTIOGROUP::CONTROL1", GEOPM_DOMAIN_BOARD, 0);
     m_group->adjust(control_idx, 1.25);
     m_group->write_batch();
